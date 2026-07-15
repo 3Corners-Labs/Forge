@@ -1,0 +1,16 @@
+site_name: 3Corners Forge
+site_description: AI-native engineering platform foundation
+repo_name: 3corners/forge
+nav:
+  - Home: README.md
+  - Engineering Constitution: docs/standards/engineering-constitution.md
+  - Architecture: docs/architecture/overview.md
+  - RFCs: docs/rfc/index.md
+  - ADRs: docs/adr/index.md
+theme:
+  name: material
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true

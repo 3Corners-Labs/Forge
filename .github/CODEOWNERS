@@ -1,0 +1,4 @@
+* @3corners/engineering
+/docs/architecture/ @3corners/architecture
+/.github/ @3corners/engineering
+/deploy/ @3corners/platform

@@ -1,0 +1,6 @@
+organization:
+  name: 3Corners
+runtime:
+  mode: compose
+intelligence:
+  enabled: false

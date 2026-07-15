@@ -1,0 +1,23 @@
+version: '3'
+
+tasks:
+  default:
+    cmds: [task --list]
+  fmt:
+    cmds: [gofmt -w cmd internal]
+  lint:
+    cmds: [go vet ./...]
+  test:
+    cmds: [go test ./... -cover]
+  build:
+    cmds:
+      - mkdir -p dist
+      - go build -trimpath -ldflags "-s -w" -o dist/forge ./cmd/forge
+  verify:
+    deps: [fmt, lint, test, build]
+  up:
+    cmds: [go run ./cmd/forge up]
+  down:
+    cmds: [go run ./cmd/forge down]
+  docs:
+    cmds: [docker run --rm -p 8000:8000 -v "$PWD:/docs" squidfunk/mkdocs-material]
