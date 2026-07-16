@@ -1,0 +1,47 @@
+name: Programming agent task
+description: A bounded implementation task suitable for an agent
+title: "[Agent]: "
+labels: ["agent-ready"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Allowed scope
+      description: List directories and files the agent may modify.
+    validations:
+      required: true
+  - type: textarea
+    id: exclusions
+    attributes:
+      label: Explicit exclusions
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Required verification commands
+      value: |
+        task verify
+  - type: checkboxes
+    id: approvals
+    attributes:
+      label: Restrictions
+      options:
+        - label: Agent must use a feature branch and draft pull request.
+          required: true
+        - label: Agent may not access or add secrets.
+          required: true
+        - label: Human approval is required before merge.
+          required: true
