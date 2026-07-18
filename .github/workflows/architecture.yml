@@ -1,0 +1,42 @@
+name: Architecture
+
+on:
+  pull_request:
+    paths:
+      - "architecture/**"
+      - "adrs/**"
+      - "rfcs/**"
+      - "docs/**"
+      - ".github/workflows/architecture.yml"
+      - ".github/pull_request_template.md"
+  push:
+    branches: [main]
+    paths:
+      - "architecture/**"
+      - "adrs/**"
+      - "rfcs/**"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject empty ADR and RFC files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in adrs rfcs; do
+            [[ -d "$dir" ]] || continue
+            while IFS= read -r -d '' file; do
+              [[ -s "$file" ]] || { echo "Empty file: $file"; exit 1; }
+            done < <(find "$dir" -type f -name '*.md' -print0)
+          done
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --accept 200,429 './**/*.md'
+          fail: true
