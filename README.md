@@ -1,28 +1,55 @@
-# 3Corners Forge
+# Forge
 
-Forge is the reusable engineering foundation for 3Corners products. It provides a portable local platform, a Go CLI, documentation-as-code, CI guardrails and a future integration point for online and offline programming agents.
+Forge is an enterprise engineering foundation for governed AI capabilities.
 
-## Quick start
+The repository currently defines the architectural and governance baseline. It does not claim that the described platform capabilities have already been implemented or validated.
 
-```bash
-go run ./cmd/forge doctor
-go run ./cmd/forge up
-```
+## Status
 
-Local services:
+| Area | Status |
+|---|---|
+| Engineering principles | Proposed baseline |
+| Reference architecture | Proposed |
+| Capability contracts | To be defined |
+| Security architecture | Proposed baseline |
+| Production readiness | Not assessed |
 
-- PostgreSQL: `localhost:5432`
-- Keycloak: `http://localhost:8081`
-- OpenBao: `http://localhost:8200`
-- MinIO: `http://localhost:9001`
-- Grafana: `http://localhost:3000`
-- Prometheus: `http://localhost:9090`
-- Mailpit: `http://localhost:8025`
+Status terms used throughout the documentation:
 
-Development credentials are intentionally insecure and must never be reused outside local development.
+- **Proposed**: documented for review; not yet approved.
+- **Accepted**: approved through the architecture decision process.
+- **Validated**: supported by repeatable evidence.
+- **Implemented**: available in a delivered system; this does not imply production readiness.
 
-## Verification
+## Start here
 
-```bash
-task verify
-```
+1. [Engineering Constitution](docs/standards/engineering-constitution.md)
+2. [System Overview](docs/SYSTEM_OVERVIEW.md)
+3. [Architecture](docs/ARCHITECTURE.md)
+4. [Capability Catalog](docs/CAPABILITY_CATALOG.md)
+5. [Security Architecture](docs/SECURITY.md)
+6. [Engineering Workflow](docs/TASK_WORKFLOW.md)
+7. [Architecture decisions](docs/adr/index.md)
+8. [Requests for comments](docs/rfc/index.md)
+
+## Scope
+
+Forge separates reusable platform capabilities from product-specific behavior. The baseline covers governance, identity, policy, context, execution, integration, evidence, and operations.
+
+Product features, provider-specific behavior, and deployment topology are outside the normative baseline until accepted through an ADR.
+
+## Decision rule
+
+When documents conflict, the order of authority is:
+
+1. accepted Engineering Constitution;
+2. accepted ADRs;
+3. accepted Architecture;
+4. capability contracts;
+5. operational guidance.
+
+Draft or proposed material never overrides an accepted decision.
+
+## Contribution
+
+Changes begin with an explicit task or RFC. Architecture, security, public contracts, and deployment-boundary changes require architecture review before implementation. Human approval remains mandatory for consequential decisions.

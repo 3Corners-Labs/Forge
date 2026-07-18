@@ -1,10 +1,15 @@
 site_name: 3Corners Forge
-site_description: AI-native engineering platform foundation
-repo_name: 3corners/forge
+site_description: Governed AI engineering foundation
+repo_name: 3Corners-Labs/Forge
 nav:
   - Home: README.md
+  - System Overview: docs/SYSTEM_OVERVIEW.md
   - Engineering Constitution: docs/standards/engineering-constitution.md
-  - Architecture: docs/architecture/overview.md
+  - Architecture: docs/ARCHITECTURE.md
+  - Capability Catalog: docs/CAPABILITY_CATALOG.md
+  - Security: docs/SECURITY.md
+  - Engineering Workflow: docs/TASK_WORKFLOW.md
+  - Repository Map: docs/REPOSITORY_MAP.md
   - RFCs: docs/rfc/index.md
   - ADRs: docs/adr/index.md
 theme:

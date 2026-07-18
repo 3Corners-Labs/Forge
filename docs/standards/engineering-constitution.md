@@ -1,28 +1,46 @@
-# Engineering Constitution v0.1
+---
+title: Engineering Constitution
+version: 1.0
+status: Proposed
+owner: Architecture
+---
+
+# Engineering Constitution
+
+This is the single normative constitution for Forge. It becomes binding only after explicit human approval.
 
 ## Principles
 
-1. Humans remain accountable for architecture, security, releases and consequential changes.
-2. AI agents create reviewable artifacts; they never bypass protected branches or approval gates.
-3. Privacy, security and accessibility are release criteria, not optional reviews.
-4. Prefer open standards and replaceable components over vendor-specific coupling.
-5. Start modular; split deployment units only when scale, ownership or risk justifies it.
-6. Every externally observable behavior has an automated test and operational signal.
-7. Documentation, schemas and architecture decisions are versioned with the code.
-8. Community users receive a secure and useful baseline; security is not an enterprise-only feature.
-9. Build once and promote immutable artifacts across environments and release channels.
-10. Claims are labeled as proven, validated, proposed or experimental.
+1. **Human accountability** — Humans remain accountable for architecture, security, legal, release, and business decisions.
+2. **Evidence before claims** — Statements are labeled proposed, accepted, validated, or implemented. Aspirations are not presented as delivered capabilities.
+3. **Repository as source of truth** — Accepted decisions, contracts, policies, and evidence are version controlled and peer reviewed.
+4. **Security and privacy by design** — Identity, authorization, data protection, audit, and least privilege are designed before execution paths are enabled.
+5. **Capability before technology** — Forge owns stable capability contracts. Products, protocols, and vendors are replaceable adapters.
+6. **Modularity before distribution** — Begin with clear module boundaries. Split deployment units only when scale, availability, isolation, ownership, or regulatory evidence justifies it.
+7. **Policy before side effects** — Every consequential model or tool action is authorized against the exact identity, purpose, resource, and data classification.
+8. **Minimal and attributable context** — Context is purpose-bound, reproducible, provenance-aware, and limited to what execution requires.
+9. **Audit by default** — Decisions, denials, approvals, external calls, outcomes, and relevant versions produce tamper-resistant evidence.
+10. **Open standards first** — Prefer widely supported standards where they satisfy security, interoperability, and operational needs.
+11. **Operational fitness** — Reliability, observability, recovery, maintainability, and cost are architectural requirements.
+12. **Incremental evolution** — Significant choices are recorded through ADRs. Reversible steps are preferred over speculative decomposition.
 
-## Pull requests
+## Required controls
 
-- No direct commits to the protected default branch.
+- No direct change to a protected default branch.
 - At least one human approval for normal changes.
-- Security-sensitive and architectural changes require CODEOWNER approval.
-- Tests, linting, dependency review and secret scanning must pass.
+- Architecture and security changes require accountable-owner approval.
+- Deterministic validation must pass before release.
+- AI-generated output is treated as untrusted until reviewed and validated.
+- Production access, secrets, and consequential actions use least privilege.
 
-## AI programming agents
+## Conflict resolution
 
-- Agents receive least-privilege context packages and tools.
-- Source code or customer data is routed only to providers allowed by data-classification policy.
-- Agent output is treated as untrusted until validated by deterministic tooling and human review.
-- Model, prompt, context sources, tools and costs are auditable.
+When accepted artifacts conflict, precedence is:
+
+1. Constitution;
+2. ADRs;
+3. Architecture;
+4. capability and interface contracts;
+5. implementation and operational guidance.
+
+Proposed documents have no authority over accepted documents.
