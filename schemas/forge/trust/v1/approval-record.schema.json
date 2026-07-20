@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/approval-record.schema.json",
+  "title": "Forge Approval Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "approverId", "action", "subjectType", "subjectDigest", "decision", "decidedAt", "expiresAt", "evidenceCorrelationId"],
+  "properties": {
+    "schemaVersion": {"const": "forge.approval-record.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "approverId": {"type": "string", "minLength": 1},
+    "delegationReference": {"type": "string", "minLength": 1},
+    "action": {"type": "string", "minLength": 1},
+    "subjectType": {"type": "string", "minLength": 1},
+    "subjectDigest": {"type": "string", "minLength": 1},
+    "decision": {"type": "string", "enum": ["approved", "rejected", "revoked"]},
+    "decidedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "conditions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "evidenceCorrelationId": {"type": "string", "minLength": 1}
+  }
+}

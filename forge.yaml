@@ -2,5 +2,6 @@ organization:
   name: 3Corners
 runtime:
   mode: compose
+  profile: developer
 intelligence:
   enabled: false

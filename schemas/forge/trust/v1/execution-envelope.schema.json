@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/execution-envelope.schema.json",
+  "title": "Forge Execution Envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "issuer", "issuedAt", "expiresAt", "scope", "principal", "purpose", "actions", "policyDecisionIds", "limits", "evidenceCorrelationId"],
+  "properties": {
+    "schemaVersion": {"const": "forge.execution-envelope.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "parentId": {"type": "string", "minLength": 1},
+    "issuer": {"type": "string", "minLength": 1},
+    "issuedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "workspaceId", "projectId", "deliveryRunId"],
+      "properties": {
+        "tenantId": {"type": "string", "minLength": 1},
+        "workspaceId": {"type": "string", "minLength": 1},
+        "projectId": {"type": "string", "minLength": 1},
+        "deliveryRunId": {"type": "string", "minLength": 1}
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subjectId", "agentId", "delegationChain"],
+      "properties": {
+        "subjectId": {"type": "string", "minLength": 1},
+        "agentId": {"type": "string", "minLength": 1},
+        "delegationChain": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "purpose": {"type": "string", "minLength": 1},
+    "riskClass": {"type": "string", "enum": ["low", "moderate", "high", "critical"]},
+    "actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "classifications": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "destinations": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "modelIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "toolIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "secretReferenceIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "policyDecisionIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "approvalRecordIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxDurationSeconds", "maxCostMinorUnits", "maxConcurrency"],
+      "properties": {
+        "maxDurationSeconds": {"type": "integer", "minimum": 1},
+        "maxCostMinorUnits": {"type": "integer", "minimum": 0},
+        "maxInputTokens": {"type": "integer", "minimum": 0},
+        "maxOutputTokens": {"type": "integer", "minimum": 0},
+        "maxConcurrency": {"type": "integer", "minimum": 1}
+      }
+    },
+    "idempotencyKey": {"type": "string", "minLength": 1},
+    "evidenceCorrelationId": {"type": "string", "minLength": 1},
+    "integrity": {"$ref": "#/$defs/integrity"}
+  },
+  "$defs": {
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "minLength": 1},
+        "signatureReference": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

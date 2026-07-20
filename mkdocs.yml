@@ -1,21 +1,92 @@
 site_name: 3Corners Forge
-site_description: Governed AI engineering foundation
+site_description: Agentic software company and application engineering platform
 repo_name: 3Corners-Labs/Forge
+docs_dir: docs
 nav:
   - Home: README.md
-  - System Overview: docs/SYSTEM_OVERVIEW.md
-  - Engineering Constitution: docs/standards/engineering-constitution.md
-  - Architecture: docs/ARCHITECTURE.md
-  - Capability Catalog: docs/CAPABILITY_CATALOG.md
-  - Security: docs/SECURITY.md
-  - Engineering Workflow: docs/TASK_WORKFLOW.md
-  - Repository Map: docs/REPOSITORY_MAP.md
-  - RFCs: docs/rfc/index.md
-  - ADRs: docs/adr/index.md
+  - Foundation:
+      - Product Vision: foundation/vision.md
+      - Enduring Principles: foundation/principles.md
+      - Mega Masterplan: foundation/masterplan.md
+      - Engineering Constitution: foundation/constitution.md
+  - Context Routing: context/README.md
+  - Architecture Readiness: governance/architecture-readiness.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Metamodel: architecture/metamodel.md
+      - Capabilities: architecture/capabilities.md
+      - Identity and Tenancy: architecture/identity-and-tenancy.md
+      - First Vertical Slice: architecture/vertical-slice.md
+      - Agentic Delivery: architecture/agentic-delivery.md
+      - Runtime and Workflow: architecture/runtime-and-workflow.md
+      - Experience and Explainability: architecture/experience.md
+      - Knowledge and Context: architecture/knowledge.md
+      - Intelligence Governance: architecture/intelligence.md
+      - Policy and Authorization: architecture/policy-and-authorization.md
+      - Security: architecture/security.md
+      - Threat Model: architecture/threat-model.md
+      - Cryptography: architecture/cryptography.md
+      - Data and Privacy: architecture/data-and-privacy.md
+      - Software Supply Chain: architecture/software-supply-chain.md
+      - Evidence and Observability: architecture/evidence-and-observability.md
+      - Quality and Operations: architecture/quality-and-operations.md
+      - User Journey Assurance: architecture/user-journey-assurance.md
+      - Continuous Security Testing: architecture/continuous-security-testing.md
+      - Deployment: architecture/deployment.md
+      - Extensibility: architecture/extensibility.md
+  - Governance:
+      - Delivery: governance/delivery.md
+      - Documentation Lifecycle: governance/document-lifecycle.md
+      - Content Migration: governance/content-migration.md
+      - External Baseline Assessment: governance/workplace-baseline-assessment.md
+  - Decisions:
+      - Index: decisions/README.md
+      - ADR Template: decisions/ADR-TEMPLATE.md
+      - ADR-0001 Modular Platform: decisions/0001-modular-platform.md
+      - ADR-0002 Architecture Metamodel: decisions/0002-architecture-metamodel.md
+      - ADR-0003 Authority and Context: decisions/0003-separate-authority-and-context.md
+      - ADR-0004 Deployment Profiles: decisions/0004-composable-deployment-profiles.md
+      - ADR-0005 Journey and Security Assurance: decisions/0005-user-journey-and-security-assurance.md
+  - Roadmap: roadmap.md
+  - Reference Applications:
+      - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
+  - Reference:
+      - Glossary: reference/glossary.md
+  - Source Material:
+      - Handling Rules: source-material/README.md
+      - Forge Principles Map: source-material/forge-principles-map.md
+      - Forge Principles Manuscript: source-material/3corners-forge-principles-v0.1.md
+      - Forge Principles Addendum v0.1: source-material/3corners-forge-principles-addendum-v0.1.md
+      - Forge Principles Addendum v0.2: source-material/3corners-forge-principles-addendum-v0.2.md
+  - Historical Source Archive:
+      - System Overview: SYSTEM_OVERVIEW.md
+      - Engineering Constitution: CONSTITUTION.md
+      - Concise Constitution: standards/engineering-constitution.md
+      - Architecture: ARCHITECTURE.md
+      - Engineering Intent: ENGINEERING_INTENT.md
+      - Design Philosophy: DESIGN_PHILOSOPHY.md
+      - Security Baseline: SECURITY.md
+      - Capability Catalog: CAPABILITY_CATALOG.md
+      - Agent Contract: AGENTS.md
+      - Engineering Workflow: TASK_WORKFLOW.md
+      - Repository Map: REPOSITORY_MAP.md
+      - Engineering Language: ENGINEERING_LANGUAGE.md
+      - Intelligence Model: INTELLIGENCE_MODEL.md
+      - Model Selection Policy: MODEL_SELECTION_POLICY.md
+      - LLM Bootstrap: LLM_BOOTSTRAP.md
+      - Project Memory: PROJECT_MEMORY.md
+      - Token Stewardship: TOKEN_STEWARDSHIP.md
+      - Compute Stewardship: COMPUTE_STEWARDSHIP.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Existing ADRs: adr/index.md
+      - ADR Template: adr/ADR-TEMPLATE.md
+      - Existing RFCs: rfc/index.md
+      - Repository Strategy RFC: rfc/RFC-0001-repository-strategy.md
 theme:
   name: material
 markdown_extensions:
   - admonition
+  - attr_list
   - tables
   - toc:
       permalink: true

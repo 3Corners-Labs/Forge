@@ -1,0 +1,18 @@
+# Architecture decisions
+
+Status: Proposed
+Owner: Forge Architecture
+
+Architecture decision records capture choices that are difficult or expensive to reverse.
+
+File names use `NNNN-short-title.md`. Each ADR records status, context, decision, alternatives, consequences, validation, and supersession relationships.
+
+## Register
+
+| ADR | Decision | Status |
+|---|---|---|
+| [ADR-0001](0001-modular-platform.md) | Begin as a modular platform | Proposed |
+| [ADR-0002](0002-architecture-metamodel.md) | Adopt one architecture metamodel | Proposed |
+| [ADR-0003](0003-separate-authority-and-context.md) | Separate authority objects from context objects | Proposed |
+| [ADR-0004](0004-composable-deployment-profiles.md) | Model deployment profiles as compositions | Proposed |
+| [ADR-0005](0005-user-journey-and-security-assurance.md) | Separate user journey and continuous security assurance | Proposed |

@@ -55,7 +55,7 @@ func runInit(args []string) error {
 	if _, err := os.Stat(*path); err == nil {
 		return fmt.Errorf("%s already exists", *path)
 	}
-	content := "organization:\n  name: 3Corners\nruntime:\n  mode: compose\nintelligence:\n  enabled: false\n"
+	content := "organization:\n  name: 3Corners\nruntime:\n  mode: compose\n  profile: developer\nintelligence:\n  enabled: false\n"
 	return os.WriteFile(*path, []byte(content), 0o644)
 }
 
@@ -70,6 +70,9 @@ func runUp() error {
 	}
 	if cfg.Runtime.Mode != "compose" {
 		return fmt.Errorf("runtime mode %q is not implemented", cfg.Runtime.Mode)
+	}
+	if cfg.Runtime.Profile != "developer" {
+		return fmt.Errorf("compose bootstrap is developer-only; refusing runtime profile %q", cfg.Runtime.Profile)
 	}
 	return platform.Compose("up")
 }

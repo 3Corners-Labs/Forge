@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/evidence-record.schema.json",
+  "title": "Forge Evidence Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "recordedAt", "actorId", "scope", "subject", "references", "classification", "retentionClass", "integrity"],
+  "properties": {
+    "schemaVersion": {"const": "forge.evidence-record.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "type": {"type": "string", "minLength": 1},
+    "recordedAt": {"type": "string", "format": "date-time"},
+    "actorId": {"type": "string", "minLength": 1},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "workspaceId", "projectId"],
+      "properties": {
+        "tenantId": {"type": "string", "minLength": 1},
+        "workspaceId": {"type": "string", "minLength": 1},
+        "projectId": {"type": "string", "minLength": 1},
+        "deliveryRunId": {"type": "string", "minLength": 1}
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id", "digest"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "id": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "minLength": 1}
+      }
+    },
+    "references": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "outcome": {"type": "string", "minLength": 1},
+    "classification": {"type": "string", "minLength": 1},
+    "retentionClass": {"type": "string", "minLength": 1},
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "digest"],
+      "properties": {
+        "algorithm": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "minLength": 1},
+        "previousRecordDigest": {"type": "string", "minLength": 1},
+        "signatureReference": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

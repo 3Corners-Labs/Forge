@@ -1,3 +1,7 @@
+name: forge-development
+
+x-forge-profile: developer-only
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -5,7 +9,7 @@ services:
       POSTGRES_USER: forge
       POSTGRES_PASSWORD: forge-dev-only
       POSTGRES_DB: forge
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U forge"]
       interval: 5s
@@ -19,13 +23,13 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin-dev-only
-    ports: ["8081:8080"]
+    ports: ["127.0.0.1:8081:8080"]
 
   openbao:
     image: quay.io/openbao/openbao:2.3
     command: ["server", "-dev", "-dev-root-token-id=dev-only-token", "-dev-listen-address=0.0.0.0:8200"]
     cap_add: ["IPC_LOCK"]
-    ports: ["8200:8200"]
+    ports: ["127.0.0.1:8200:8200"]
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
@@ -33,7 +37,7 @@ services:
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio-dev-only
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     volumes: ["minio-data:/data"]
 
   otel-collector:
@@ -41,26 +45,26 @@ services:
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ../../observability/otel-collector/config.yaml:/etc/otelcol/config.yaml:ro
-    ports: ["4317:4317", "4318:4318", "8889:8889"]
+    ports: ["127.0.0.1:4317:4317", "127.0.0.1:4318:4318", "127.0.0.1:8889:8889"]
 
   prometheus:
     image: prom/prometheus:v3.3.0
     command: ["--config.file=/etc/prometheus/prometheus.yml"]
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports: ["9090:9090"]
+    ports: ["127.0.0.1:9090:9090"]
 
   grafana:
     image: grafana/grafana:11.6.1
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin-dev-only
-    ports: ["3000:3000"]
+    ports: ["127.0.0.1:3000:3000"]
     volumes: ["grafana-data:/var/lib/grafana"]
 
   mailpit:
     image: axllent/mailpit:v1.25
-    ports: ["1025:1025", "8025:8025"]
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
 
 volumes:
   postgres-data:
