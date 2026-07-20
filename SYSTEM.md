@@ -580,5 +580,3 @@ Implementation details are intentionally delegated to:
 These documents collectively define the normative implementation architecture.
 
 _End of SYSTEM_OVERVIEW.md_
-
-

@@ -1103,6 +1103,3 @@ Related documents:
 - GOVERNANCE_MODEL.md
 
 _End of ARCHITECTURE.md_
-
-
-
