@@ -15,13 +15,20 @@ nav:
       - Overview: architecture/overview.md
       - Metamodel: architecture/metamodel.md
       - Capabilities: architecture/capabilities.md
+      - Identity and Tenancy: architecture/identity-and-tenancy.md
       - First Vertical Slice: architecture/vertical-slice.md
       - Agentic Delivery: architecture/agentic-delivery.md
+      - Runtime and Workflow: architecture/runtime-and-workflow.md
       - Experience and Explainability: architecture/experience.md
       - Knowledge and Context: architecture/knowledge.md
       - Intelligence Governance: architecture/intelligence.md
+      - Policy and Authorization: architecture/policy-and-authorization.md
       - Security: architecture/security.md
+      - Threat Model: architecture/threat-model.md
       - Cryptography: architecture/cryptography.md
+      - Data and Privacy: architecture/data-and-privacy.md
+      - Software Supply Chain: architecture/software-supply-chain.md
+      - Evidence and Observability: architecture/evidence-and-observability.md
       - Quality and Operations: architecture/quality-and-operations.md
       - User Journey Assurance: architecture/user-journey-assurance.md
       - Continuous Security Testing: architecture/continuous-security-testing.md

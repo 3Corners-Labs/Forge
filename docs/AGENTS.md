@@ -1,6 +1,6 @@
 # Documentation agent adapter
 
-The repository's single agent operating contract is [`/AGENTS.md`](../AGENTS.md).
+The repository's single agent operating contract is `/AGENTS.md` at the repository root.
 
 For documentation work, also read:
 
