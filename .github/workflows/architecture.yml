@@ -3,19 +3,27 @@ name: Architecture
 on:
   pull_request:
     paths:
-      - "architecture/**"
-      - "adrs/**"
-      - "rfcs/**"
       - "docs/**"
+      - "schemas/**"
+      - "scripts/check_architecture.py"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "README.md"
+      - "SYSTEM.md"
+      - "mkdocs.yml"
       - ".github/workflows/architecture.yml"
       - ".github/pull_request_template.md"
   push:
     branches: [main]
     paths:
-      - "architecture/**"
-      - "adrs/**"
-      - "rfcs/**"
       - "docs/**"
+      - "schemas/**"
+      - "scripts/check_architecture.py"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "README.md"
+      - "SYSTEM.md"
+      - "mkdocs.yml"
 
 permissions:
   contents: read
@@ -25,14 +33,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate architecture as code
+        run: python3 scripts/check_architecture.py
       - name: Reject empty ADR and RFC files
         shell: bash
         run: |
           set -euo pipefail
-          for dir in adrs rfcs; do
+          for dir in docs/decisions docs/adr docs/rfc; do
             [[ -d "$dir" ]] || continue
             while IFS= read -r -d '' file; do
               [[ -s "$file" ]] || { echo "Empty file: $file"; exit 1; }
+            done < <(find "$dir" -type f -name '*.md' -print0)
+          done
+      - name: Validate proposed architecture metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in docs/foundation docs/architecture docs/governance docs/decisions docs/reference docs/reference-applications docs/context; do
+            while IFS= read -r -d '' file; do
+              grep -Eq '^Status: (Draft|Proposed|Accepted|Superseded|Deprecated|Archive)$' "$file" || {
+                echo "Missing or invalid Status metadata: $file"
+                exit 1
+              }
+              grep -Eq '^Owner: .+' "$file" || {
+                echo "Missing Owner metadata: $file"
+                exit 1
+              }
             done < <(find "$dir" -type f -name '*.md' -print0)
           done
       - name: Check Markdown links
@@ -40,3 +66,9 @@ jobs:
         with:
           args: --no-progress --accept 200,429 './**/*.md'
           fail: true
+      - name: Build documentation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install mkdocs-material==9.7.7
+      - run: mkdocs build --strict

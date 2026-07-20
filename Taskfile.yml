@@ -13,11 +13,13 @@ tasks:
     cmds:
       - mkdir -p dist
       - go build -trimpath -ldflags "-s -w" -o dist/forge ./cmd/forge
+  architecture:
+    cmds: [python3 scripts/check_architecture.py]
   verify:
-    deps: [fmt, lint, test, build]
+    deps: [fmt, lint, test, build, architecture]
   up:
     cmds: [go run ./cmd/forge up]
   down:
     cmds: [go run ./cmd/forge down]
   docs:
-    cmds: [docker run --rm -p 8000:8000 -v "$PWD:/docs" squidfunk/mkdocs-material]
+    cmds: [docker run --rm -p 127.0.0.1:8000:8000 -v "$PWD:/docs" squidfunk/mkdocs-material:9.7.7]

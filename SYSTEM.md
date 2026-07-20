@@ -8,6 +8,8 @@ status: Draft
 
 # System Overview
 
+> **Architecture consolidation in progress:** this document remains intact as source material while its unique concepts are reconciled into the [proposed architecture](docs/architecture/overview.md). The [content migration map](docs/governance/content-migration.md) controls any later supersession or removal.
+
 > This document provides the high-level reference architecture for the Forge platform.
 
 ## Purpose

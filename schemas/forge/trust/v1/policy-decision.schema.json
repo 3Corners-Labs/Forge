@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/policy-decision.schema.json",
+  "title": "Forge Policy Decision v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "decisionPoint", "subjectId", "action", "resource", "evaluatedAt", "policyVersions", "outcome", "obligations", "evidenceCorrelationId"],
+  "properties": {
+    "schemaVersion": {"const": "forge.policy-decision.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "decisionPoint": {"type": "string", "enum": ["retrieval", "secret-resolution", "selection", "execution", "evidence-disclosure", "publication", "release"]},
+    "subjectId": {"type": "string", "minLength": 1},
+    "action": {"type": "string", "minLength": 1},
+    "resource": {"type": "string", "minLength": 1},
+    "evaluatedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "policyVersions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "outcome": {"type": "string", "enum": ["permit", "deny", "indeterminate"]},
+    "obligations": {"type": "array", "items": {"type": "object", "additionalProperties": true, "required": ["type"], "properties": {"type": {"type": "string", "minLength": 1}}}},
+    "reasonCodes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "evidenceCorrelationId": {"type": "string", "minLength": 1}
+  }
+}

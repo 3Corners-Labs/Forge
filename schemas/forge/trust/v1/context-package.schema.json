@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/context-package.schema.json",
+  "title": "Forge Context Package v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "executionEnvelopeId", "objective", "assembledAt", "items", "policyDecisionIds", "manifestDigest"],
+  "properties": {
+    "schemaVersion": {"const": "forge.context-package.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "executionEnvelopeId": {"type": "string", "minLength": 1},
+    "objective": {"type": "string", "minLength": 1},
+    "assembledAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "policyDecisionIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceId", "sourceRevision", "locator", "classification", "authority", "purpose", "contentDigest"],
+        "properties": {
+          "sourceId": {"type": "string", "minLength": 1},
+          "sourceRevision": {"type": "string", "minLength": 1},
+          "locator": {"type": "string", "minLength": 1},
+          "classification": {"type": "string", "minLength": 1},
+          "authority": {"type": "string", "enum": ["none", "reference", "accepted-knowledge", "task-instruction"]},
+          "purpose": {"type": "string", "minLength": 1},
+          "freshnessAt": {"type": "string", "format": "date-time"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "contentDigest": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "omissions": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "conflicts": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "manifestDigest": {"type": "string", "minLength": 1}
+  }
+}
