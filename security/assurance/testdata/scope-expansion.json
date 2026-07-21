@@ -1,0 +1,1 @@
+{"expectedViolation":"scope-expansion","override":{"scope":{"targets":["fixture://forge-m1-contracts","fixture://undeclared-target"]}}}

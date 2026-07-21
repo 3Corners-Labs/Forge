@@ -1,0 +1,9 @@
+{
+  "runnerConfigurationVersion": "forge.security-runner-config.v1",
+  "enabled": false,
+  "mode": "contract-only",
+  "activeNetworkRequests": 0,
+  "generatedContentMayConfigure": false,
+  "scopeEnforcement": "external-deterministic-controller",
+  "killSwitchEngaged": true
+}

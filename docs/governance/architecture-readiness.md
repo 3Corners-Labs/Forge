@@ -37,7 +37,7 @@ Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F
 | G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Accepted evidence at `e3c6355`](g7-deployment-evidence.md) | Accepted for F0 |
 | G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | Passing required checks | In progress |
 | G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Reviewed scenario oracles and execution plan](g9-user-intent-assurance-evidence.md) | Ready for review |
-| G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | Threat review, safety conformance plan and ADR-0005 | In progress |
+| G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | [Disabled contract-only rules of engagement and negative conformance suite](g10-offensive-assurance-safety-evidence.md) | Ready for review |
 
 Only G0 safety hardening and work required to close G1–G10 are authorized before readiness acceptance.
 

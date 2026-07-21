@@ -1,0 +1,1 @@
+{"expectedViolation":"production-target","override":{"authorization":{"environment":"production"},"scope":{"productionTargetsAllowed":true}}}

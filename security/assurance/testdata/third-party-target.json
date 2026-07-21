@@ -1,0 +1,1 @@
+{"expectedViolation":"third-party-target","override":{"scope":{"targets":["https://example.com"],"thirdPartyTargetsAllowed":true}}}

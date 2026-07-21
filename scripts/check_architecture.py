@@ -504,6 +504,106 @@ def check_journey_contracts() -> None:
             fail(f"identity binding mismatch for {binding['scenario']}")
 
 
+def check_offensive_assurance_safety() -> None:
+    schema_path = ROOT / "schemas/forge/security/v1/rules-of-engagement.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    for field in ("$schema", "$id", "title", "type"):
+        if field not in schema:
+            fail(f"{schema_path.relative_to(ROOT)} is missing {field}")
+    if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+        fail("rules-of-engagement schema must be a closed top-level object")
+
+    roe_path = ROOT / "security/assurance/m1.rules-of-engagement.json"
+    roe = json.loads(roe_path.read_text(encoding="utf-8"))
+    missing = set(schema["required"]) - set(roe)
+    if missing:
+        fail(f"{roe_path.relative_to(ROOT)} lacks required fields: {sorted(missing)}")
+    target_path = ROOT / "security/assurance/m1-target-set.json"
+    runner_path = ROOT / "security/assurance/m1-runner-config.json"
+    expected_target_digest = "sha256:" + hashlib.sha256(target_path.read_bytes()).hexdigest()
+    expected_runner_digest = "sha256:" + hashlib.sha256(runner_path.read_bytes()).hexdigest()
+    authorization = roe["authorization"]
+    if authorization.get("targetSetDigest") != expected_target_digest:
+        fail("rules of engagement do not bind the exact target set")
+    if authorization.get("runnerConfigurationDigest") != expected_runner_digest:
+        fail("rules of engagement do not bind the exact runner configuration")
+    target_set = json.loads(target_path.read_text(encoding="utf-8"))
+    runner_config = json.loads(runner_path.read_text(encoding="utf-8"))
+    allowed_targets = set(target_set["targets"])
+
+    def violations(candidate: dict) -> set[str]:
+        result: set[str] = set()
+        environment = candidate.get("authorization", {}).get("environment")
+        scope = candidate.get("scope", {})
+        runner = candidate.get("runner", {})
+        stop = candidate.get("stopControls", {})
+        limits = candidate.get("limits", {})
+        targets = set(scope.get("targets", []))
+        if environment == "production" or scope.get("productionTargetsAllowed") is not False:
+            result.add("production-target")
+        if scope.get("thirdPartyTargetsAllowed") is not False or any(
+            not target.startswith("fixture://") for target in targets
+        ):
+            result.add("third-party-target")
+        if targets != allowed_targets:
+            result.add("scope-expansion")
+        if runner.get("enabled") is not False or runner.get("generatedContentMayConfigure") is not False:
+            result.add("generated-activation")
+        if runner.get("autonomous") is not False or runner.get("mode") != "contract-only":
+            result.add("active-runner")
+        if runner.get("scopeEnforcement") != "external-deterministic-controller":
+            result.add("scope-enforcement")
+        if stop.get("killSwitchEngaged") is not True or stop.get("failClosed") is not True:
+            result.add("kill-switch-override")
+        if any(limits.get(field) != 0 for field in ("activeNetworkRequests", "requestsPerSecond", "costUnits", "payloadBytes")):
+            result.add("active-impact")
+        return result
+
+    base_violations = violations(roe)
+    if base_violations:
+        fail(f"M1 rules of engagement are unsafe: {sorted(base_violations)}")
+    if runner_config != {
+        "runnerConfigurationVersion": "forge.security-runner-config.v1",
+        "enabled": False,
+        "mode": "contract-only",
+        "activeNetworkRequests": 0,
+        "generatedContentMayConfigure": False,
+        "scopeEnforcement": "external-deterministic-controller",
+        "killSwitchEngaged": True,
+    }:
+        fail("M1 offensive runner configuration must remain exactly disabled and contract-only")
+
+    def merged(base: dict, override: dict) -> dict:
+        result = json.loads(json.dumps(base))
+        stack = [(result, override)]
+        while stack:
+            destination, source = stack.pop()
+            for key, value in source.items():
+                if isinstance(value, dict) and isinstance(destination.get(key), dict):
+                    stack.append((destination[key], value))
+                else:
+                    destination[key] = value
+        return result
+
+    fixture_directory = ROOT / "security/assurance/testdata"
+    expected_fixtures = {
+        "generated-activation.json",
+        "kill-switch-override.json",
+        "production-target.json",
+        "scope-expansion.json",
+        "third-party-target.json",
+    }
+    fixture_paths = sorted(fixture_directory.glob("*.json"))
+    if {path.name for path in fixture_paths} != expected_fixtures:
+        fail("offensive-safety negative fixture set changed")
+    for path in fixture_paths:
+        fixture = json.loads(path.read_text(encoding="utf-8"))
+        expected = fixture.get("expectedViolation")
+        actual = violations(merged(roe, fixture.get("override", {})))
+        if expected not in actual:
+            fail(f"{path.relative_to(ROOT)} did not fail with {expected}; found {sorted(actual)}")
+
+
 def check_principles_integrity() -> None:
     digest = hashlib.sha256(PRINCIPLES_SOURCE.read_bytes()).hexdigest()
     if digest != PRINCIPLES_SHA256:
@@ -575,6 +675,7 @@ def main() -> int:
         check_deployment_profiles,
         check_assurance_schemas,
         check_journey_contracts,
+        check_offensive_assurance_safety,
         check_principles_integrity,
         check_developer_compose,
     )
