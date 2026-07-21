@@ -11,6 +11,7 @@ nav:
       - Engineering Constitution: foundation/constitution.md
   - Context Routing: context/README.md
   - Architecture Readiness: governance/architecture-readiness.md
+  - F0 Readiness Plan: governance/f0-readiness-plan.md
   - Implementation Baseline: governance/implementation-baseline.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:

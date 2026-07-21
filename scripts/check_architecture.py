@@ -229,6 +229,54 @@ def check_roadmap_structure() -> None:
             )
 
 
+def check_f0_readiness_governance() -> None:
+    register_path = ROOT / "docs/governance/architecture-readiness.md"
+    register = register_path.read_text(encoding="utf-8")
+    plan_path = ROOT / "docs/governance/f0-readiness-plan.md"
+    plan = plan_path.read_text(encoding="utf-8")
+
+    allowed_statuses = {"Open", "In progress", "Ready for review", "Accepted for F0"}
+    gate_rows = re.findall(
+        r"^\| G(\d+) [^|]+\|[^|]+\|[^|]+\| ([^|]+) \|$",
+        register,
+        re.MULTILINE,
+    )
+    gate_statuses = {int(identifier): status.strip() for identifier, status in gate_rows}
+    expected_gates = set(range(11))
+    if len(gate_rows) != len(expected_gates) or set(gate_statuses) != expected_gates:
+        fail(
+            "F0 readiness register must contain G0 through G10 exactly once: "
+            f"found rows={len(gate_rows)}, gates={sorted(gate_statuses)}"
+        )
+    invalid = {
+        identifier: status
+        for identifier, status in gate_statuses.items()
+        if status not in allowed_statuses
+    }
+    if invalid:
+        fail(f"F0 readiness register uses invalid gate statuses: {invalid}")
+
+    required_plan_content = (
+        "## Gate status vocabulary",
+        "## Evidence phases",
+        "## Ownership model",
+        "## Gate evidence assignments",
+        "## Gate acceptance record",
+        "## F0 final acceptance",
+        "Before M1",
+        "M1 exit",
+        "Before Trial",
+    )
+    missing = [item for item in required_plan_content if item not in plan]
+    if missing:
+        fail("F0 readiness plan is missing required content: " + ", ".join(missing))
+    for identifier in range(11):
+        if f"| G{identifier} |" not in plan:
+            fail(f"F0 readiness plan is missing ownership for G{identifier}")
+    if "governance/f0-readiness-plan.md" not in (ROOT / "docs/roadmap.md").read_text(encoding="utf-8"):
+        fail("roadmap must link the F0 readiness plan")
+
+
 def check_capability_ids() -> None:
     path = ROOT / "docs/architecture/capabilities.md"
     text = path.read_text(encoding="utf-8")
@@ -331,6 +379,7 @@ def main() -> int:
         check_navigation_coverage,
         check_decision_register,
         check_roadmap_structure,
+        check_f0_readiness_governance,
         check_capability_ids,
         check_trust_schemas,
         check_assurance_schemas,

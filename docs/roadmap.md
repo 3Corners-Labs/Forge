@@ -57,7 +57,7 @@ Preserve and complete the architecture-foundation work required to begin M1 with
 | Foundation work | Current status | Evidence | Required disposition |
 |---|---|---|---|
 | Accept the constitution, minimum capability boundary, trust model, and foundational ADRs | Canonical target baseline Accepted | [ADR-0006](decisions/0006-accept-minimum-architecture-baseline.md) and [ADR-0008](decisions/0008-accept-canonical-documentation-baseline.md) | Keep unimplemented capabilities at Research; authorize Trials incrementally when a milestone requires them |
-| Close the mandatory readiness gates | In progress | [Architecture readiness register](governance/architecture-readiness.md) | Close G0 and G6–G10 with the required design, test, safety, and ownership evidence before M1 functional implementation |
+| Close the mandatory readiness gates | In progress | [Architecture readiness register](governance/architecture-readiness.md) and [F0 readiness plan](governance/f0-readiness-plan.md) | Close G0 and G6–G10 with the required pre-M1 design, test-contract, safety, and ownership evidence before M1 functional implementation |
 | Reconcile document status, capability maturity, and evidence labels | Complete for the canonical baseline | Accepted [documentation lifecycle](governance/document-lifecycle.md), ADR-0008, and lifecycle fitness check | Maintain the separation without treating Accepted design as implemented capability |
 | Accept or revise the metamodel, trust-object, and deployment-profile decisions | Partially complete | ADR-0002, ADR-0003, and ADR-0004 are Accepted | Complete the G7 profile specification and test plan; do not treat profile composition as production support |
 | Define non-functional requirements and deployment profiles | In progress | First-slice validation hypotheses and Accepted deployment architecture | Approve the Developer Trial envelope and one production-shaped reference-profile test plan before implementation depends on them |
@@ -76,7 +76,7 @@ Preserve and complete the architecture-foundation work required to begin M1 with
 
 ### Acceptance criteria
 
-- The architecture readiness register explicitly authorizes M1 functional implementation; every mandatory gate is Accepted for its scope and none remains Open, Proposed, or In progress.
+- The architecture readiness register explicitly authorizes M1 functional implementation; every mandatory gate is `Accepted for F0` and none remains Open, In progress, or Ready for review.
 - Minimum dependency, isolation, schema, source-integrity, documentation, developer-profile, journey, and safety checks pass in required CI.
 - Trial decisions identify identity, repository credentials, retention, evidence integrity, worker isolation, public-interface journeys, and deployment assumptions.
 - The masterplan and roadmap either agree or retain an explicit accepted decision explaining each remaining difference.
