@@ -1,6 +1,6 @@
 # Trust and security architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security Architecture
 
 ## Trust model
@@ -19,7 +19,7 @@ The following are untrusted by default: users, agents, models, prompts, retrieve
 - Audit evidence is integrity-protected and access-controlled.
 - Approval is bound to an artefact digest, action, actor, environment, and expiry time.
 
-The Proposed trust-object schemas under `schemas/forge/trust/v1/` separate Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record. Until ADR-0003 is Accepted they are a review baseline, not a conformance claim.
+The trust-object schemas under `schemas/forge/trust/v1/` form the Accepted design baseline under ADR-0003 and separate Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record. Their presence is not an implemented-conformance claim.
 
 ## Mandatory threat scenarios
 

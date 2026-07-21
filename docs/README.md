@@ -1,6 +1,6 @@
 # Forge documentation
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 This directory is the canonical entry point for Forge product and architecture knowledge.
@@ -14,7 +14,7 @@ This directory is the canonical entry point for Forge product and architecture k
 5. [Context router](context/README.md)
 6. [Architecture readiness](governance/architecture-readiness.md)
 7. [Verified implementation baseline](governance/implementation-baseline.md)
-8. [Minimum architecture acceptance packet](governance/minimum-architecture-acceptance.md)
+8. [Historical minimum architecture acceptance packet](governance/minimum-architecture-acceptance.md) (Superseded by ADR-0006)
 9. [Architecture overview](architecture/overview.md)
 10. [Architecture metamodel](architecture/metamodel.md)
 11. [Capability model](architecture/capabilities.md)

@@ -1,6 +1,6 @@
 # Architecture decisions
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 Architecture decision records capture choices that are difficult or expensive to reverse.
@@ -18,3 +18,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0005](0005-user-journey-and-security-assurance.md) | Separate user journey and continuous security assurance | Accepted |
 | [ADR-0006](0006-accept-minimum-architecture-baseline.md) | Accept the minimum architecture baseline | Accepted |
 | [ADR-0007](0007-sequence-self-building-before-full-advisory.md) | Sequence the self-building kernel before full advisory capability | Accepted |
+| [ADR-0008](0008-accept-canonical-documentation-baseline.md) | Accept the canonical documentation baseline | Accepted |

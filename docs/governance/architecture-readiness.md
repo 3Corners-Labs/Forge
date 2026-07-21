@@ -1,6 +1,6 @@
 # Architecture readiness register
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture Board
 Version: 0.2
 
@@ -43,7 +43,7 @@ Only G0 safety hardening and work required to close G1–G10 are authorized befo
 
 | Finding | Required disposition |
 |---|---|
-| No Accepted architecture baseline | Resolved by ADR-0006 for the bounded first slice; broader future-state documents remain Proposed |
+| No Accepted architecture baseline | Resolved by ADR-0006 for the bounded first slice and ADR-0008 for the canonical target baseline; capability maturity and implementation authorization remain separate |
 | Conflicting lifecycle vocabularies | Separate document status, technology maturity and evidence labels |
 | Missing capability contracts | Specify only capabilities needed for the first vertical slice, then expand incrementally |
 | Execution Envelope and Context Package overlap | Define separate authority and information objects with one-way derivation |

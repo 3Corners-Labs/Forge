@@ -1,6 +1,6 @@
 # Existing-content migration map
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 ## Purpose

@@ -1,6 +1,6 @@
 # Workplace Orchestrator lighthouse application
 
-Status: Proposed
+Status: Accepted
 Owner: Workplace Orchestrator Product
 
 ## Relationship to Forge

@@ -36,6 +36,40 @@ PRINCIPLES_ADDENDUM = ROOT / "docs/source-material/3corners-forge-principles-add
 PRINCIPLES_ADDENDUM_SHA256 = "9a3e68eb0588a3bdff230167f4c442ac6b57f7774c7d6450ca009a8fcffdeec5"
 PRINCIPLES_ADDENDUM_V02 = ROOT / "docs/source-material/3corners-forge-principles-addendum-v0.2.md"
 PRINCIPLES_ADDENDUM_V02_SHA256 = "9e80a6ba904e3eae209a81794a5621be46c0da1c13144b1ec65ae5f6a8a1e676"
+ACCEPTED_DOCUMENTATION_BASELINE = (
+    "docs/README.md",
+    "docs/architecture/agentic-delivery.md",
+    "docs/architecture/capabilities.md",
+    "docs/architecture/continuous-security-testing.md",
+    "docs/architecture/data-and-privacy.md",
+    "docs/architecture/deployment.md",
+    "docs/architecture/evidence-and-observability.md",
+    "docs/architecture/experience.md",
+    "docs/architecture/extensibility.md",
+    "docs/architecture/identity-and-tenancy.md",
+    "docs/architecture/intelligence.md",
+    "docs/architecture/knowledge.md",
+    "docs/architecture/overview.md",
+    "docs/architecture/policy-and-authorization.md",
+    "docs/architecture/quality-and-operations.md",
+    "docs/architecture/runtime-and-workflow.md",
+    "docs/architecture/security.md",
+    "docs/architecture/software-supply-chain.md",
+    "docs/architecture/user-journey-assurance.md",
+    "docs/context/README.md",
+    "docs/decisions/README.md",
+    "docs/foundation/masterplan.md",
+    "docs/foundation/principles.md",
+    "docs/foundation/vision.md",
+    "docs/governance/architecture-readiness.md",
+    "docs/governance/content-migration.md",
+    "docs/governance/delivery.md",
+    "docs/governance/implementation-baseline.md",
+    "docs/governance/workplace-baseline-assessment.md",
+    "docs/reference-applications/workplace-orchestrator.md",
+    "docs/reference/glossary.md",
+    "docs/roadmap.md",
+)
 
 
 def fail(message: str) -> None:
@@ -60,6 +94,23 @@ def check_document_metadata() -> None:
                 fail(f"{path.relative_to(ROOT)} has missing or invalid Status metadata")
             if not owner or not owner.group(1).strip():
                 fail(f"{path.relative_to(ROOT)} has missing Owner metadata")
+
+
+def check_documentation_acceptance_baseline() -> None:
+    expected_statuses = {
+        **{path: "Accepted" for path in ACCEPTED_DOCUMENTATION_BASELINE},
+        "docs/architecture/cryptography.md": "Proposed",
+        "docs/governance/minimum-architecture-acceptance.md": "Superseded",
+    }
+    mismatches: list[str] = []
+    for relative_path, expected in expected_statuses.items():
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        match = re.search(r"^Status: (.+)$", text, re.MULTILINE)
+        actual = match.group(1) if match else "missing"
+        if actual != expected:
+            mismatches.append(f"{relative_path}: expected={expected}, actual={actual}")
+    if mismatches:
+        fail("documentation acceptance baseline changed: " + "; ".join(mismatches))
 
 
 def check_local_markdown_links() -> None:
@@ -275,6 +326,7 @@ def main() -> int:
     checks = (
         check_operating_contract,
         check_document_metadata,
+        check_documentation_acceptance_baseline,
         check_local_markdown_links,
         check_navigation_coverage,
         check_decision_register,

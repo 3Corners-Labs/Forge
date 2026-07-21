@@ -1,6 +1,6 @@
 # Forge product vision
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 
 ## Purpose

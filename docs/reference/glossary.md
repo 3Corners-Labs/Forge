@@ -1,6 +1,6 @@
 # Glossary
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 - Agent: an identity-bound software actor executing a role within delegated authority.

@@ -1,6 +1,6 @@
 # User journey assurance
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product, Experience, and Quality Architecture
 Version: 0.1
 

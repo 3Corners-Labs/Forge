@@ -1,12 +1,13 @@
 # Minimum architecture acceptance packet
 
-Status: Proposed
+Status: Superseded
 Owner: Forge Architecture Board
 Version: 0.1
+Superseded by: `../decisions/0006-accept-minimum-architecture-baseline.md`
 
 ## Purpose
 
-This packet defines the smallest coherent set of human decisions needed before functional implementation of the trustworthy intent-to-pull-request slice may begin. It does not accept itself or any referenced document.
+This packet defined the smallest coherent set of human decisions needed before functional implementation of the trustworthy intent-to-pull-request slice could begin. ADR-0006 records the completed review and is now authoritative for that acceptance.
 
 Reviewers accept, revise, or reject each decision explicitly. Silence, repository presence, merged wording, or AI recommendation is not acceptance.
 

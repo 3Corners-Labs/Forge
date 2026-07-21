@@ -1,6 +1,6 @@
 # Workplace Orchestrator baseline assessment
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 ## Purpose

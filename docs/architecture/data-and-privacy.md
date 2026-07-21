@@ -1,6 +1,6 @@
 # Data and privacy architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Data and Privacy Architecture
 Version: 0.1
 

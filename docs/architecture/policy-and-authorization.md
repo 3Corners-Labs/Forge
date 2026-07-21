@@ -1,6 +1,6 @@
 # Policy and authorization architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security and Governance Architecture
 Version: 0.1
 

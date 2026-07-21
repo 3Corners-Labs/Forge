@@ -1,6 +1,6 @@
 # Agentic software delivery
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product Engineering
 
 ## Operating model

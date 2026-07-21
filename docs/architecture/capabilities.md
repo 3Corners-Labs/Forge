@@ -1,6 +1,6 @@
 # Capability model
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 Version: 0.3
 

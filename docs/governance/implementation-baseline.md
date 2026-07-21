@@ -1,6 +1,6 @@
 # Forge implementation baseline
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Engineering and Architecture
 Version: 0.1
 Verified: 2026-07-21

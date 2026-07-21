@@ -1,6 +1,6 @@
 # Identity, delegation, and tenancy
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Identity and Security Architecture
 Version: 0.1
 

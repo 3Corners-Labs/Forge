@@ -1,6 +1,6 @@
 # Forge implementation roadmap
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 Version: 0.3
 
@@ -56,21 +56,21 @@ Preserve and complete the architecture-foundation work required to begin M1 with
 
 | Foundation work | Current status | Evidence | Required disposition |
 |---|---|---|---|
-| Accept the constitution, minimum capability boundary, trust model, and foundational ADRs | Minimum M1 scope Accepted | [ADR-0006](decisions/0006-accept-minimum-architecture-baseline.md) | Keep the broader capability catalogue Proposed; accept capabilities incrementally when a milestone requires them |
+| Accept the constitution, minimum capability boundary, trust model, and foundational ADRs | Canonical target baseline Accepted | [ADR-0006](decisions/0006-accept-minimum-architecture-baseline.md) and [ADR-0008](decisions/0008-accept-canonical-documentation-baseline.md) | Keep unimplemented capabilities at Research; authorize Trials incrementally when a milestone requires them |
 | Close the mandatory readiness gates | In progress | [Architecture readiness register](governance/architecture-readiness.md) | Close G0 and G6–G10 with the required design, test, safety, and ownership evidence before M1 functional implementation |
-| Reconcile document status, capability maturity, and evidence labels | Partially complete | Accepted [documentation lifecycle](governance/document-lifecycle.md) | Apply the lifecycle consistently and label roadmap evidence without treating Accepted design as implemented capability |
+| Reconcile document status, capability maturity, and evidence labels | Complete for the canonical baseline | Accepted [documentation lifecycle](governance/document-lifecycle.md), ADR-0008, and lifecycle fitness check | Maintain the separation without treating Accepted design as implemented capability |
 | Accept or revise the metamodel, trust-object, and deployment-profile decisions | Partially complete | ADR-0002, ADR-0003, and ADR-0004 are Accepted | Complete the G7 profile specification and test plan; do not treat profile composition as production support |
-| Define non-functional requirements and deployment profiles | In progress | First-slice validation hypotheses and Proposed deployment architecture | Approve the Developer Trial envelope and one production-shaped reference-profile test plan before implementation depends on them |
+| Define non-functional requirements and deployment profiles | In progress | First-slice validation hypotheses and Accepted deployment architecture | Approve the Developer Trial envelope and one production-shaped reference-profile test plan before implementation depends on them |
 | Establish documentation, contract, dependency, isolation, and architecture fitness checks | In progress | Required CI architecture checks and G8 | Complete the minimum dependency and isolation fitness functions before M1; M2 expands them into supply-chain assurance |
-| Define accepted journey, exploratory scenario, and offensive-test rules-of-engagement contracts | Partially complete | Accepted ADR-0005 and Proposed assurance schemas | Accept the minimum allowed and denied M1 journey plan and the G10 safety contract; broad active testing remains excluded from M1 |
+| Define accepted journey, exploratory scenario, and offensive-test rules-of-engagement contracts | Partially complete | Accepted ADR-0005 and Research assurance schemas | Accept the minimum allowed and denied M1 journey plan and the G10 safety contract; broad active testing remains excluded from M1 |
 | Replace development defaults that could be mistaken for production posture | In progress | Developer-only profile marker, loopback checks, and runtime-profile rejection | Close G0 with tests proving that development credentials, services, exporters, and bindings cannot run as a non-developer profile |
-| Review and accept or revise the product masterplan | Open outside the M1 minimum | Proposed [Forge mega masterplan](foundation/masterplan.md) | Reconcile this roadmap’s sequencing and scope before accepting the masterplan or expanding beyond the ADR-0006 boundary |
+| Review and accept or revise the product masterplan | Accepted | Accepted [Forge mega masterplan](foundation/masterplan.md) and ADR-0008 | ADR-0007 remains authoritative for implementation sequencing and the bounded M1 scope |
 | Complete source-content migration without loss | In progress | [Content migration map](governance/content-migration.md) and source map | Preserve provenance, finish concept-level verification, and prevent source removal until migration rules pass |
 | Establish capability owners, quality scenarios, threat coverage, and the ADR register | Partially complete for M1 | Accepted first-slice contracts, threat model, ADR register, and validation hypotheses | Assign implementation and operational owners and close missing quality scenarios before authorizing each Trial |
 
 ### Dependencies
 
-- Accepted constitution, documentation lifecycle, metamodel, ADR-0001 through ADR-0007, and first-slice architecture.
+- Accepted constitution, documentation lifecycle, metamodel, ADR-0001 through ADR-0008, and first-slice architecture.
 - Accountable Product, Architecture, Security/Privacy, Engineering, and Operations review.
 - Current repository and implementation evidence from the implementation baseline and CI.
 
