@@ -1,8 +1,8 @@
 # Architecture readiness register
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture Board
-Version: 0.2
+Version: 0.3
 
 ## Decision
 
@@ -23,27 +23,29 @@ Functional capability implementation may begin only after the mandatory gates be
 
 ## Mandatory readiness gates
 
-| Gate | Required outcome | Evidence | Status |
-|---|---|---|---|
-| G0 Development safety | Existing bootstrap is explicitly developer-only, loopback-bound, and rejected for non-developer profiles | Automated configuration and Compose checks | In progress |
-| G1 Governance | One lifecycle taxonomy and an accepted minimum authority set | [ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) and accepted authority set | Accepted |
-| G2 Metamodel | Plane, capability, module, deployment unit, provider and profile relationships are unambiguous | Accepted metamodel and ADR-0002 | Accepted |
-| G3 First slice | One bounded intent-to-PR journey with explicit exclusions and quality hypotheses | Accepted vertical-slice architecture | Accepted |
-| G4 Trust contracts | Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record are versioned and non-overlapping | Schemas and accepted ADR-0003 | Accepted design baseline |
-| G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [Accepted first-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Accepted |
-| G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | Accepted [threat model](../architecture/threat-model.md) and [first-slice data-flow review](../architecture/first-slice-data-flow.md); implementation evidence pending | In progress |
-| G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | Profile specification and test plan | Open |
-| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | Passing required checks | In progress |
-| G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | Scenario/result schemas, ADR-0005 and Trial test plan | Proposed |
-| G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | Threat review, safety conformance plan and ADR-0005 | Proposed |
+Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F0`. These values are independent from document lifecycle and capability maturity. The [F0 readiness evidence and ownership plan](f0-readiness-plan.md) defines evidence timing, ownership, and acceptance records.
 
-Only G0 safety hardening and work required to close G1–G10 are authorized before readiness acceptance.
+| Gate | Required outcome | Evidence | Gate status |
+|---|---|---|---|
+| G0 Development safety | Existing bootstrap is explicitly developer-only, loopback-bound, and rejected for non-developer profiles | [Accepted evidence at `9db0afb`](g0-development-safety-evidence.md) | Accepted for F0 |
+| G1 Governance | One lifecycle taxonomy and an accepted minimum authority set | [ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) and accepted authority set | Accepted for F0 |
+| G2 Metamodel | Plane, capability, module, deployment unit, provider and profile relationships are unambiguous | Accepted metamodel and ADR-0002 | Accepted for F0 |
+| G3 First slice | One bounded intent-to-PR journey with explicit exclusions and quality hypotheses | Accepted vertical-slice architecture | Accepted for F0 |
+| G4 Trust contracts | Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record are versioned and non-overlapping | Schemas and accepted ADR-0003 | Accepted for F0 |
+| G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [Accepted first-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Accepted for F0 |
+| G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | [Accepted evidence at `7ff31e3`](g6-threat-privacy-evidence.md) | Accepted for F0 |
+| G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Accepted evidence at `e3c6355`](g7-deployment-evidence.md) | Accepted for F0 |
+| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | [Accepted corrected evidence at `ea8c94f`](g8-architecture-fitness-evidence.md) | Accepted for F0 |
+| G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Accepted evidence at `ee0eff9`](g9-user-intent-assurance-evidence.md) | Accepted for F0 |
+| G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | [Accepted evidence at `0784c62`](g10-offensive-assurance-safety-evidence.md) | Accepted for F0 |
+
+G0 through G10 are accepted for their pre-M1 scope. Functional M1 implementation remains denied until the complete F0 evidence manifest and a human-approved ADR explicitly authorize the bounded M1 implementation.
 
 ## Findings and disposition
 
 | Finding | Required disposition |
 |---|---|
-| No Accepted architecture baseline | Resolved by ADR-0006 for the bounded first slice; broader future-state documents remain Proposed |
+| No Accepted architecture baseline | Resolved by ADR-0006 for the bounded first slice and ADR-0008 for the canonical target baseline; capability maturity and implementation authorization remain separate |
 | Conflicting lifecycle vocabularies | Separate document status, technology maturity and evidence labels |
 | Missing capability contracts | Specify only capabilities needed for the first vertical slice, then expand incrementally |
 | Execution Envelope and Context Package overlap | Define separate authority and information objects with one-way derivation |
@@ -82,4 +84,4 @@ Production deployment, autonomous merge, billing, certification, accreditation, 
 
 Human acceptance is required from product, architecture, security/privacy, engineering, and operations owners. An AI agent may prepare evidence and identify contradictions but cannot mark its own architecture Accepted.
 
-[ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) records the accepted minimum architecture set. The [implementation baseline](implementation-baseline.md) prevents that accepted target design from being confused with verified repository state while the remaining readiness gates are open.
+[ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) records the accepted minimum architecture set. The [implementation baseline](implementation-baseline.md) prevents that accepted target design from being confused with verified repository state while functional implementation remains incomplete. Gate reviewers SHALL use the acceptance record defined by the [F0 readiness plan](f0-readiness-plan.md).

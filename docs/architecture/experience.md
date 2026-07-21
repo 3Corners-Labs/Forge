@@ -1,6 +1,6 @@
 # Experience and explainability
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Experience Architecture
 
 ## Forge Workbench

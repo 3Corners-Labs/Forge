@@ -1,6 +1,6 @@
 # Software supply-chain architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Engineering and Security Architecture
 Version: 0.1
 

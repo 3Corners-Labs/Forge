@@ -1,0 +1,7 @@
+organization:
+  name: Forge G0 Negative Test
+runtime:
+  mode: compose
+  profile: connected-self-hosted
+intelligence:
+  enabled: false

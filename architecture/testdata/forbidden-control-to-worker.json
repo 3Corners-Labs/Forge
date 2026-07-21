@@ -1,0 +1,1 @@
+{"name":"control plane imports worker implementation","importerModule":"cli","imports":["github.com/3corners/forge/internal/worker"],"expectedViolations":["undeclared-internal-dependency","control-plane-cannot-import-worker"]}

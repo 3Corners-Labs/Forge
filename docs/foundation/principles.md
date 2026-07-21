@@ -1,6 +1,6 @@
 # Forge enduring principles
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 Version: 0.1
 Source: `forge.principles.manuscript.v0.1`

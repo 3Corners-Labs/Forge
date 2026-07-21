@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.3corners.dev/forge/deployment/v1/profile.schema.json",
+  "title": "Forge deployment profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "display_name",
+    "maturity",
+    "purpose",
+    "implementation_scope",
+    "dimensions",
+    "deployment_units",
+    "controls",
+    "resource_envelope",
+    "conformance_tests",
+    "unsupported_claims"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "forge.deployment.profile/v1"
+    },
+    "profile_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maturity": {
+      "enum": [
+        "Research",
+        "Trial",
+        "Supported",
+        "Reference"
+      ]
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementation_scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "connectivity",
+        "tenancy",
+        "operations",
+        "assurance",
+        "provider_ownership"
+      ],
+      "properties": {
+        "connectivity": {
+          "enum": [
+            "connected",
+            "restricted",
+            "disconnected"
+          ]
+        },
+        "tenancy": {
+          "enum": [
+            "single",
+            "pooled-multi-tenant",
+            "partitioned-multi-tenant",
+            "dedicated"
+          ]
+        },
+        "operations": {
+          "enum": [
+            "developer",
+            "customer",
+            "partner",
+            "forge"
+          ]
+        },
+        "assurance": {
+          "enum": [
+            "baseline",
+            "enterprise",
+            "sovereign",
+            "regulated"
+          ]
+        },
+        "provider_ownership": {
+          "enum": [
+            "developer-selected",
+            "forge-managed",
+            "customer-selected",
+            "customer-controlled"
+          ]
+        }
+      }
+    },
+    "deployment_units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "owner",
+          "required",
+          "current_state"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "current_state": {
+            "enum": [
+              "implemented",
+              "partial",
+              "planned"
+            ]
+          }
+        }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "owner",
+          "assumption",
+          "before_m1_tests",
+          "m1_exit_tests",
+          "before_trial_tests"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "assumption": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before_m1_tests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "m1_exit_tests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "before_trial_tests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "resource_envelope": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "integer",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "conformance_tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "phase",
+          "command",
+          "expected"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "phase": {
+            "enum": [
+              "before-m1",
+              "m1-exit",
+              "before-trial"
+            ]
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "unsupported_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

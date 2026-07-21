@@ -1,0 +1,236 @@
+{
+  "schema_version": "forge.deployment.profile/v1",
+  "profile_id": "developer-trial",
+  "display_name": "Developer Trial",
+  "maturity": "Trial",
+  "purpose": "Safe local contribution and validation of the bounded M1 intent-to-pull-request slice.",
+  "implementation_scope": "The current bootstrap implements only a subset; this manifest defines the complete M1 Developer Trial envelope.",
+  "dimensions": {
+    "connectivity": "connected",
+    "tenancy": "single",
+    "operations": "developer",
+    "assurance": "baseline",
+    "provider_ownership": "developer-selected"
+  },
+  "deployment_units": [
+    {
+      "id": "forge-control-plane",
+      "owner": "Forge Engineering",
+      "required": true,
+      "current_state": "partial"
+    },
+    {
+      "id": "forge-worker",
+      "owner": "Forge Execution Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "evidence-sink",
+      "owner": "Forge Assurance Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "source-control-adapter",
+      "owner": "Forge Integration Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "developer-dependencies",
+      "owner": "Forge Platform Engineering",
+      "required": true,
+      "current_state": "implemented"
+    }
+  ],
+  "controls": {
+    "identity": {
+      "owner": "Forge Identity and Security Architecture",
+      "assumption": "A local reference identity provider can issue attributable test identities without becoming the domain contract.",
+      "before_m1_tests": [
+        "Profile declares identity owner, assurance assumptions, and synthetic-user restriction."
+      ],
+      "m1_exit_tests": [
+        "Authenticated CLI scope is server-derived and negative identity paths fail closed."
+      ],
+      "before_trial_tests": [
+        "Identity issuance, expiry, revocation, and audit tests pass on a clean host."
+      ]
+    },
+    "storage": {
+      "owner": "Forge Data and Platform Engineering",
+      "assumption": "Local relational and object storage hold only Developer Trial data and use no production durability claim.",
+      "before_m1_tests": [
+        "Storage ownership, local-volume use, and unsupported durability are explicit."
+      ],
+      "m1_exit_tests": [
+        "Capability-owned records do not use cross-capability shared-table writes."
+      ],
+      "before_trial_tests": [
+        "Backup, restore, cleanup, and logical-deletion reconciliation tests pass."
+      ]
+    },
+    "repository": {
+      "owner": "Forge Delivery Engineering",
+      "assumption": "Repository access uses a task-scoped developer credential reference and one configured Forge repository.",
+      "before_m1_tests": [
+        "Repository binding and credential scope have accepted contract tests."
+      ],
+      "m1_exit_tests": [
+        "Worker and publication adapter cannot exceed the bound repository and branch."
+      ],
+      "before_trial_tests": [
+        "Credential expiry, revocation, ambiguous publication, and cleanup tests pass."
+      ]
+    },
+    "worker_isolation": {
+      "owner": "Forge Execution and Security Engineering",
+      "assumption": "A separate local worker process can enforce filesystem, process, network, secret, time, and resource limits.",
+      "before_m1_tests": [
+        "Isolation mechanism and negative test plan are accepted before worker implementation."
+      ],
+      "m1_exit_tests": [
+        "Escape, egress, quota, timeout, cancellation, and credential-cleanup tests pass."
+      ],
+      "before_trial_tests": [
+        "Isolation suite passes on every declared supported Developer host."
+      ]
+    },
+    "network": {
+      "owner": "Forge Platform and Security Engineering",
+      "assumption": "Bootstrap services bind loopback and worker egress is denied unless an exact destination is authorized.",
+      "before_m1_tests": [
+        "Compose loopback and production-shaped rejection checks pass."
+      ],
+      "m1_exit_tests": [
+        "Worker and adapter destination allow-lists fail closed."
+      ],
+      "before_trial_tests": [
+        "Clean-host egress and DNS/redirect negative tests pass."
+      ]
+    },
+    "secrets": {
+      "owner": "Forge Security Engineering",
+      "assumption": "Static Compose credentials remain development-only; M1 task credentials are short-lived references resolved only in the worker.",
+      "before_m1_tests": [
+        "Development credential markers and secret-reference contracts are checked."
+      ],
+      "m1_exit_tests": [
+        "Secrets are absent from prompts, logs, telemetry, evidence, and durable workflow state."
+      ],
+      "before_trial_tests": [
+        "Seeded-secret and revocation tests pass across every output channel."
+      ]
+    },
+    "evidence": {
+      "owner": "Forge Assurance Engineering",
+      "assumption": "Consequential publication blocks unless integrity-verifiable evidence is durably ready.",
+      "before_m1_tests": [
+        "Evidence schema, integrity decision, and unavailable-sink tests are specified."
+      ],
+      "m1_exit_tests": [
+        "Mutation and unavailable-sink tests pass for the exact candidate digest."
+      ],
+      "before_trial_tests": [
+        "Independent evidence verification and disclosure tests pass."
+      ]
+    },
+    "telemetry": {
+      "owner": "Forge Reliability Engineering",
+      "assumption": "Developer telemetry is local, payload-minimized, and separate from audit evidence.",
+      "before_m1_tests": [
+        "Debug-exporter status and prohibited payload classes are explicit."
+      ],
+      "m1_exit_tests": [
+        "Source, prompts, secrets, and personal data are absent from routine telemetry."
+      ],
+      "before_trial_tests": [
+        "Seeded-data, retention, and evidence-promotion tests pass."
+      ]
+    },
+    "backup_restore": {
+      "owner": "Forge Reliability and Data Engineering",
+      "assumption": "No recovery objective is supported until backup and restore behaviour is validated.",
+      "before_m1_tests": [
+        "Backup scope and restore-reconciliation plan are documented."
+      ],
+      "m1_exit_tests": [
+        "Committed delivery state survives worker loss and manual recovery is possible."
+      ],
+      "before_trial_tests": [
+        "Backup and restore preserve tenant scope, deletion, and evidence integrity."
+      ]
+    },
+    "upgrade_rollback": {
+      "owner": "Forge Platform Engineering",
+      "assumption": "The Developer Trial has no compatibility guarantee until versioned migration and rollback tests exist.",
+      "before_m1_tests": [
+        "Upgrade and rollback ownership, inputs, and failure behaviour are documented."
+      ],
+      "m1_exit_tests": [
+        "Candidate changes remain branch-scoped and reversible."
+      ],
+      "before_trial_tests": [
+        "Clean upgrade and rollback rehearsals pass without rebuilding accepted artefacts."
+      ]
+    },
+    "capacity_recovery": {
+      "owner": "Forge Reliability Engineering",
+      "assumption": "The first-slice validation envelope is a hypothesis, not an SLO or support commitment.",
+      "before_m1_tests": [
+        "Capacity, timeout, concurrency, and recovery hypotheses are recorded."
+      ],
+      "m1_exit_tests": [
+        "Bounded concurrency, timeout, retry, and manual recovery criteria pass."
+      ],
+      "before_trial_tests": [
+        "Measured results are recorded for the declared Developer host envelope."
+      ]
+    }
+  },
+  "resource_envelope": {
+    "active_delivery_runs": 5,
+    "worker_executions": 2,
+    "repository_files": 100000,
+    "repository_size_gib": 5,
+    "context_manifest_items": 2000,
+    "context_metadata_mib": 10,
+    "hard_execution_hours": 2
+  },
+  "conformance_tests": [
+    {
+      "id": "developer-bootstrap-safety",
+      "phase": "before-m1",
+      "command": "go test ./internal/config ./internal/cli",
+      "expected": "Non-developer and unsafe bootstrap configurations fail before side effects."
+    },
+    {
+      "id": "developer-architecture",
+      "phase": "before-m1",
+      "command": "python3 scripts/check_architecture.py",
+      "expected": "Profile, schema, Compose, lifecycle, and navigation checks pass."
+    },
+    {
+      "id": "developer-full-verification",
+      "phase": "before-trial",
+      "command": "task verify",
+      "expected": "The complete local verification contract passes from a clean checkout."
+    },
+    {
+      "id": "developer-m1-journey",
+      "phase": "m1-exit",
+      "command": "forge journey run forge.m1.intent-to-pr.allowed",
+      "expected": "The accepted public CLI journey passes for the exact candidate revision."
+    }
+  ],
+  "unsupported_claims": [
+    "Production readiness",
+    "Production support",
+    "Production SLA or recovery objective",
+    "Multi-tenant isolation",
+    "Production credential handling",
+    "Forge SaaS conformance",
+    "Connected self-hosted conformance"
+  ]
+}

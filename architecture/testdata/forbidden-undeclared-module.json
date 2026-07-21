@@ -1,0 +1,1 @@
+{"name":"CLI imports an undeclared internal module","importerModule":"cli","imports":["github.com/3corners/forge/internal/evidence"],"expectedViolations":["unknown-internal-module"]}

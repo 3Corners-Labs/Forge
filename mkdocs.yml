@@ -11,8 +11,15 @@ nav:
       - Engineering Constitution: foundation/constitution.md
   - Context Routing: context/README.md
   - Architecture Readiness: governance/architecture-readiness.md
+  - F0 Readiness Plan: governance/f0-readiness-plan.md
+  - G0 Development Safety Evidence: governance/g0-development-safety-evidence.md
+  - G6 Threat and Privacy Evidence: governance/g6-threat-privacy-evidence.md
+  - G7 Deployment Evidence: governance/g7-deployment-evidence.md
+  - G8 Architecture Fitness Evidence: governance/g8-architecture-fitness-evidence.md
+  - G9 User Intent Assurance Evidence: governance/g9-user-intent-assurance-evidence.md
+  - G10 Offensive Assurance Safety Evidence: governance/g10-offensive-assurance-safety-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md
-  - Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
+  - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
       - Metamodel: architecture/metamodel.md
@@ -53,6 +60,8 @@ nav:
       - ADR-0005 Journey and Security Assurance: decisions/0005-user-journey-and-security-assurance.md
       - ADR-0006 Minimum Architecture Baseline: decisions/0006-accept-minimum-architecture-baseline.md
       - ADR-0007 Self-Building Sequence: decisions/0007-sequence-self-building-before-full-advisory.md
+      - ADR-0008 Canonical Documentation Baseline: decisions/0008-accept-canonical-documentation-baseline.md
+      - ADR-0009 M1 Public CLI Boundary: decisions/0009-m1-public-cli-boundary.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md

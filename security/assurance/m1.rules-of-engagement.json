@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "forge.security-rules-of-engagement.v1",
+  "id": "forge.security-roe.m1-contract-only",
+  "version": "1.0.0",
+  "status": "authorized",
+  "owners": {
+    "requester": "Forge Security and Quality Architecture",
+    "approver": "Sijbren Beukenkamp",
+    "operator": "Forge Engineering",
+    "emergencyContact": "Sijbren Beukenkamp"
+  },
+  "purpose": {
+    "businessPurpose": "Validate M1 contracts, configuration, dependencies, and isolation boundaries without active offensive execution",
+    "threatReferences": ["docs/architecture/threat-model.md#priority-threat-scenarios", "docs/governance/f0-readiness-plan.md#g10--offensive-assurance-safety"]
+  },
+  "authorization": {
+    "environment": "local-fixture",
+    "targetOwnershipProof": "security/assurance/m1-target-set.json",
+    "startsAt": "2026-07-21T00:00:00Z",
+    "expiresAt": "2026-10-19T00:00:00Z",
+    "targetSetDigest": "sha256:e6a8c672f0d289d7a3619efa8fd3d4fe01429c9596348fa005de4ed6af7c1b75",
+    "runnerConfigurationDigest": "sha256:573e21e3bd0bfdaba33ce8ad04e3ac6772de1753f0418f8ac9c7a30058ec5745"
+  },
+  "scope": {
+    "targets": ["fixture://forge-m1-contracts"],
+    "exclusions": ["production", "third-party assets", "network targets", "customer data", "provider control planes"],
+    "thirdPartyTargetsAllowed": false,
+    "productionTargetsAllowed": false
+  },
+  "techniques": {
+    "permitted": ["schema-validation", "configuration-analysis", "dependency-metadata-analysis", "isolation-contract-test"],
+    "prohibited": ["active-dast", "autonomous-exploitation", "credential-attack", "denial-of-service", "persistence", "social-engineering", "network-scanning", "payload-delivery"]
+  },
+  "limits": {
+    "activeNetworkRequests": 0,
+    "requestsPerSecond": 0,
+    "concurrency": 1,
+    "durationSeconds": 600,
+    "costUnits": 0,
+    "payloadBytes": 0
+  },
+  "stopControls": {
+    "killSwitchEngaged": true,
+    "failClosed": true,
+    "stopConditions": ["scope mismatch", "configuration digest mismatch", "target digest mismatch", "unexpected network request", "attempted active technique", "evidence redaction failure"],
+    "maximumTerminationSeconds": 0
+  },
+  "runner": {
+    "enabled": false,
+    "mode": "contract-only",
+    "scopeEnforcement": "external-deterministic-controller",
+    "generatedContentMayConfigure": false,
+    "autonomous": false
+  },
+  "evidence": {
+    "classification": "Internal",
+    "recipients": ["Forge Security", "Forge Architecture", "Forge Quality"],
+    "retentionClass": "m1-security-assurance-candidate",
+    "redactionRequired": true,
+    "coverageDisclosureRequired": true
+  },
+  "cleanup": ["Delete temporary fixture copies", "Verify no process or network activity was started", "Preserve only minimized structural results"],
+  "incident": ["Keep the kill switch engaged", "Notify the emergency contact", "Preserve minimized evidence", "Require new authorization before any retry"]
+}

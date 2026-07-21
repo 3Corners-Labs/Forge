@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "forge.journey-scenario.v1",
+  "id": "forge.journey.m1.denied-intent-capture",
+  "version": "1.0.0",
+  "title": "Unauthorized observer is denied before repository discovery",
+  "owner": "Forge Product, Experience, and Quality Architecture",
+  "lifecycle": "accepted",
+  "riskClass": "critical",
+  "intentReferences": [
+    "docs/architecture/first-slice-data-flow.md#privacy-and-security-scenarios",
+    "docs/decisions/0009-m1-public-cli-boundary.md"
+  ],
+  "persona": {
+    "id": "synthetic-observer-denied",
+    "role": "observer",
+    "entitlements": ["forge.capability.experience"],
+    "deniedCapabilities": ["forge.capability.intent", "forge.capability.context", "forge.capability.execution", "forge.capability.release"],
+    "locale": "en-NL",
+    "accessibilityProfile": "terminal-keyboard-and-screen-reader"
+  },
+  "interface": {
+    "type": "cli",
+    "publicEntryPointReference": "forge delivery start",
+    "contractReference": "docs/decisions/0009-m1-public-cli-boundary.md"
+  },
+  "environmentProfile": "developer-trial",
+  "fixtureReferences": ["assurance/journeys/m1/fixtures/denied-observer.json"],
+  "preconditions": [
+    "The synthetic identity is authenticated but has no membership in fixture-workspace",
+    "The named repository may or may not exist; the response cannot reveal that fact",
+    "The Developer Trial profile is active"
+  ],
+  "steps": [
+    {
+      "id": "submit-unauthorized-intent",
+      "action": "Run forge delivery start --workspace fixture-workspace --project forge --repository forge --intent-file <fixture-intent> --output json",
+      "checkpoint": "The public CLI returns the normalized forbidden error without resource-existence detail"
+    },
+    {
+      "id": "inspect-denial",
+      "action": "Inspect disclosure-safe evidence through the public CLI projection",
+      "checkpoint": "The denial is recorded and no repository, context, worker, or publication side effect exists"
+    }
+  ],
+  "expectedOutcomes": [
+    {
+      "id": "safe-denial",
+      "category": "authorization",
+      "assertion": "The request returns stable code forbidden before repository discovery",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "no-existence-disclosure",
+      "category": "privacy",
+      "assertion": "The response and evidence do not reveal whether the workspace, project, or repository exists",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "no-side-effect",
+      "category": "operational",
+      "assertion": "No delivery run, context package, worker task, branch, or pull request is created",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "sensitive-value-redacted",
+      "category": "privacy",
+      "assertion": "The seeded sensitive value is absent from CLI output, telemetry, and routine evidence",
+      "oracle": "deterministic"
+    }
+  ],
+  "forbiddenOutcomes": [
+    "The request is permitted or treated as indeterminate success",
+    "Workspace, project, or repository existence is disclosed",
+    "Repository discovery or context retrieval occurs",
+    "A delivery run, worker, branch, or pull request is created",
+    "The seeded sensitive value appears in output or evidence",
+    "The scenario or candidate changes its expected outcomes"
+  ],
+  "retryPolicy": {
+    "maximumAttempts": 1,
+    "retryableConditions": []
+  },
+  "quarantinePolicy": {
+    "status": "not-quarantined",
+    "owner": "Forge Quality Architecture",
+    "maximumDurationHours": 24,
+    "releaseConditions": ["Authorization root cause is recorded", "The denial oracle passes three consecutive clean runs", "Security and Quality owners remove quarantine"]
+  },
+  "evidencePolicy": {
+    "requiredTypes": ["policy-denial", "cli-error", "no-side-effect-assertion", "redaction-assertion"],
+    "classification": "Internal",
+    "retentionClass": "m1-assurance-candidate",
+    "redactionRequired": true
+  }
+}

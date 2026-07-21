@@ -47,3 +47,39 @@ func TestLoadRequiresRuntimeProfile(t *testing.T) {
 		t.Fatal("expected missing runtime.profile to be rejected")
 	}
 }
+
+func TestValidateDeveloperBootstrap(t *testing.T) {
+	var cfg Config
+	cfg.Runtime.Mode = DeveloperRuntimeMode
+	cfg.Runtime.Profile = DeveloperRuntimeProfile
+	if err := cfg.ValidateDeveloperBootstrap(); err != nil {
+		t.Fatalf("expected developer configuration to pass: %v", err)
+	}
+}
+
+func TestValidateDeveloperBootstrapRejectsNonDeveloperConfiguration(t *testing.T) {
+	tests := []struct {
+		name         string
+		mode         string
+		profile      string
+		intelligence bool
+	}{
+		{name: "connected self-hosted", mode: "compose", profile: "connected-self-hosted"},
+		{name: "restricted self-hosted", mode: "compose", profile: "restricted-self-hosted"},
+		{name: "disconnected self-hosted", mode: "compose", profile: "disconnected-self-hosted"},
+		{name: "Forge SaaS", mode: "compose", profile: "forge-saas"},
+		{name: "unsupported runtime", mode: "kubernetes", profile: "developer"},
+		{name: "ungoverned intelligence", mode: "compose", profile: "developer", intelligence: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var cfg Config
+			cfg.Runtime.Mode = test.mode
+			cfg.Runtime.Profile = test.profile
+			cfg.Intelligence.Enabled = test.intelligence
+			if err := cfg.ValidateDeveloperBootstrap(); err == nil {
+				t.Fatal("expected non-developer configuration to be rejected")
+			}
+		})
+	}
+}

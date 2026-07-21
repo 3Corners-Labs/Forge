@@ -1,6 +1,6 @@
 # Architecture overview
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 ## Scope

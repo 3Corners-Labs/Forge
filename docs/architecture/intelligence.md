@@ -1,6 +1,6 @@
 # Intelligence, model, and resource governance
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Intelligence Architecture
 
 This design consolidates the existing intelligence model, model selection policy, LLM bootstrap, token stewardship, and compute stewardship documents.

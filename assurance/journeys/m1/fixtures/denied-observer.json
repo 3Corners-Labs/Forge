@@ -1,0 +1,17 @@
+{
+  "fixtureVersion": "forge.m1-fixture.v1",
+  "identityProfileId": "forge.identity.synthetic.observer-denied",
+  "principal": "synthetic-observer-denied",
+  "memberships": [],
+  "entitlements": ["forge.capability.experience"],
+  "deniedCapabilities": ["forge.capability.intent"],
+  "workspace": "fixture-workspace",
+  "project": "forge",
+  "repository": "forge",
+  "intent": {
+    "objective": "Attempt to create a delivery outside authorized membership",
+    "constraints": ["No repository discovery", "No mutation"],
+    "acceptanceCriteria": ["Request is denied safely"]
+  },
+  "seededSensitiveValues": ["FORGE_TEST_SECRET_DO_NOT_RECORD"]
+}

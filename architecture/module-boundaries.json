@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "forge.module-boundaries.v1",
+  "owner": "Forge Architecture",
+  "modules": [
+    {"id":"cmd-forge","path":"cmd/forge","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["cli"]},
+    {"id":"cli","path":"internal/cli","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["config","doctor","platform"]},
+    {"id":"config","path":"internal/config","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"doctor","path":"internal/doctor","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"platform","path":"internal/platform","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"cmd-forge-worker","path":"cmd/forge-worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker"]},
+    {"id":"worker","path":"internal/worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker-contracts"]},
+    {"id":"worker-contracts","path":"internal/contracts/worker","deploymentUnit":"shared-contract","maturity":"Research","planned":true,"allowedInternalDependencies":[]}
+  ],
+  "isolationRules": [
+    {"id":"control-plane-cannot-import-worker","fromUnit":"forge-control-plane","deniedToUnits":["forge-worker"]},
+    {"id":"worker-cannot-import-control-plane","fromUnit":"forge-worker","deniedToUnits":["forge-control-plane"]},
+    {"id":"shared-contract-cannot-import-runtime","fromUnit":"shared-contract","deniedToUnits":["forge-control-plane","forge-worker"]}
+  ]
+}

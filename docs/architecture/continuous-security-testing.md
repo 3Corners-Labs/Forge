@@ -1,6 +1,6 @@
 # Continuous security testing
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security and Quality Architecture
 Version: 0.1
 

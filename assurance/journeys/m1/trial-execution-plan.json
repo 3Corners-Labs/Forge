@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "forge.journey-execution-plan.v1",
+  "id": "forge.journey-plan.m1-intent-to-pr",
+  "owner": "Forge Quality Architecture",
+  "implementationOwner": "Forge Engineering",
+  "status": "accepted",
+  "publicEntryPoint": "forge delivery start",
+  "resultSchema": "schemas/forge/assurance/v1/journey-result.schema.json",
+  "applicationRevisionBinding": {
+    "required": true,
+    "format": "sha256 OCI application artifact digest",
+    "resultField": "subject.applicationArtifactDigest"
+  },
+  "runnerBinding": {
+    "required": true,
+    "format": "sha256 immutable runner artifact digest",
+    "resultField": "execution.runnerDigest",
+    "candidateControlled": false
+  },
+  "scenarioBindings": [
+    {
+      "scenario": "assurance/journeys/m1/allowed-intent-to-pr.scenario.json",
+      "identityProfileId": "forge.identity.synthetic.developer-permitted",
+      "fixture": "assurance/journeys/m1/fixtures/allowed-developer.json",
+      "fixtureSha256": "576dcdb93961313e3c467401a5a648ba3d1c86bfa26b1978ae6e59ef999da0d6"
+    },
+    {
+      "scenario": "assurance/journeys/m1/denied-intent-to-pr.scenario.json",
+      "identityProfileId": "forge.identity.synthetic.observer-denied",
+      "fixture": "assurance/journeys/m1/fixtures/denied-observer.json",
+      "fixtureSha256": "995eef03824988e510f48f485feb911eae06e4e9ea688b58e494f8088103a940"
+    }
+  ],
+  "phaseEvidence": {
+    "beforeM1": "Scenario contracts, fixtures, bindings, and structural checks accepted",
+    "m1Exit": "Both scenarios pass through the implemented public CLI with immutable scenario, application, runner, identity, fixture, and result bindings",
+    "beforeTrial": "Repeatability, negative authorization, privacy, cost, duration, and quarantine metrics accepted"
+  },
+  "executionState": "not-executable-before-m1"
+}

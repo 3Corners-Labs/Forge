@@ -1,6 +1,6 @@
 # Extensibility and integration
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Platform Architecture
 
 This design consolidates the existing extension model, interface-contract, integration-pattern, technology-decision, and provider-independence concepts.

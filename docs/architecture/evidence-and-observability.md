@@ -1,6 +1,6 @@
 # Evidence and observability architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Assurance and Reliability Architecture
 Version: 0.1
 

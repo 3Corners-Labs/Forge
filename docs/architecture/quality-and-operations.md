@@ -1,6 +1,6 @@
 # Quality, resilience, and operations
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Quality and Reliability Architecture
 
 This design consolidates the existing quality engineering, continuous validation, test automation, observability, resilience, localization, accessibility, and operational-model concepts.

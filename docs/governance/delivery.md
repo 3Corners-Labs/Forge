@@ -1,6 +1,6 @@
 # Delivery governance
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Engineering
 
 Every material change follows this minimum lifecycle:

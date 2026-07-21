@@ -29,9 +29,9 @@ func Execute() error {
 	case "init":
 		return runInit(os.Args[2:])
 	case "up":
-		return runUp()
+		return runCompose("up")
 	case "down":
-		return platform.Compose("down")
+		return runCompose("down")
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
@@ -59,20 +59,21 @@ func runInit(args []string) error {
 	return os.WriteFile(*path, []byte(content), 0o644)
 }
 
-func runUp() error {
+func runCompose(action string) error {
 	path, err := filepath.Abs("forge.yaml")
 	if err != nil {
 		return err
 	}
+	return runComposeWithConfig(path, action, platform.Compose)
+}
+
+func runComposeWithConfig(path, action string, invoke func(string) error) error {
 	cfg, err := config.Load(path)
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
-	if cfg.Runtime.Mode != "compose" {
-		return fmt.Errorf("runtime mode %q is not implemented", cfg.Runtime.Mode)
+	if err := cfg.ValidateDeveloperBootstrap(); err != nil {
+		return err
 	}
-	if cfg.Runtime.Profile != "developer" {
-		return fmt.Errorf("compose bootstrap is developer-only; refusing runtime profile %q", cfg.Runtime.Profile)
-	}
-	return platform.Compose("up")
+	return invoke(action)
 }

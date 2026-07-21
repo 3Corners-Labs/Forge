@@ -1,6 +1,6 @@
 # Runtime and durable workflow architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Delivery and Execution Architecture
 Version: 0.1
 

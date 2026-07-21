@@ -1,0 +1,7 @@
+{
+  "targetSetVersion": "forge.security-target-set.v1",
+  "targets": ["fixture://forge-m1-contracts"],
+  "ownership": "Forge repository-local synthetic fixture",
+  "environment": "local-fixture",
+  "networkReachable": false
+}

@@ -1,6 +1,6 @@
 # Deployment architecture
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Platform Engineering
 Version: 0.2
 

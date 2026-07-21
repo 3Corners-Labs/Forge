@@ -1,6 +1,6 @@
 # Knowledge, context, and memory
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Knowledge Architecture
 
 This design consolidates the repository-as-truth, knowledge-as-code, context-as-code, project-memory, and information-classification concepts already present in Forge documentation.

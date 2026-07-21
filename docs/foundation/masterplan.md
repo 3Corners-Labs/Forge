@@ -1,6 +1,6 @@
 # Forge mega masterplan
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 Version: 0.3
 
