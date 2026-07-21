@@ -7,6 +7,8 @@
     {"id":"config","path":"internal/config","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
     {"id":"doctor","path":"internal/doctor","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
     {"id":"platform","path":"internal/platform","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"failure-contract","path":"internal/contracts/failure","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"trust-contract","path":"internal/contracts/trust","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":["failure-contract"]},
     {"id":"cmd-forge-worker","path":"cmd/forge-worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker"]},
     {"id":"worker","path":"internal/worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker-contracts"]},
     {"id":"worker-contracts","path":"internal/contracts/worker","deploymentUnit":"shared-contract","maturity":"Research","planned":true,"allowedInternalDependencies":[]}

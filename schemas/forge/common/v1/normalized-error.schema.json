@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/common/v1/normalized-error.schema.json",
+  "title": "Forge Normalized Error v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "code", "safeMessage", "correlationId", "retry"],
+  "properties": {
+    "schemaVersion": {"const": "forge.normalized-error.v1"},
+    "code": {
+      "enum": [
+        "invalid_request",
+        "unauthenticated",
+        "forbidden",
+        "indeterminate",
+        "conflict",
+        "expired",
+        "budget_exhausted",
+        "dependency_unavailable",
+        "verification_failed",
+        "evidence_unavailable",
+        "manual_recovery_required"
+      ]
+    },
+    "safeMessage": {"type": "string", "minLength": 1},
+    "correlationId": {"type": "string", "minLength": 1},
+    "retry": {
+      "enum": ["none", "reauthenticate", "reconcile", "new-authority", "bounded", "manual"]
+    },
+    "details": {"type": "object", "additionalProperties": true}
+  }
+}

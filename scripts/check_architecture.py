@@ -387,6 +387,35 @@ def check_trust_schemas() -> None:
             fail(f"{path.relative_to(ROOT)} must be a closed top-level object schema")
 
 
+def check_common_contract_schemas() -> None:
+    path = ROOT / "schemas/forge/common/v1/normalized-error.schema.json"
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if document.get("type") != "object" or document.get("additionalProperties") is not False:
+        fail("normalized error must be a closed top-level object schema")
+    if document.get("properties", {}).get("schemaVersion", {}).get("const") != "forge.normalized-error.v1":
+        fail("normalized error has an unsupported schema version")
+    expected_codes = {
+        "invalid_request",
+        "unauthenticated",
+        "forbidden",
+        "indeterminate",
+        "conflict",
+        "expired",
+        "budget_exhausted",
+        "dependency_unavailable",
+        "verification_failed",
+        "evidence_unavailable",
+        "manual_recovery_required",
+    }
+    actual_codes = set(document.get("properties", {}).get("code", {}).get("enum", []))
+    if actual_codes != expected_codes:
+        fail("normalized error code set changed")
+    expected_retry = {"none", "reauthenticate", "reconcile", "new-authority", "bounded", "manual"}
+    actual_retry = set(document.get("properties", {}).get("retry", {}).get("enum", []))
+    if actual_retry != expected_retry:
+        fail("normalized error retry set changed")
+
+
 def check_deployment_profiles() -> None:
     schema_path = ROOT / "schemas/forge/deployment/v1/profile.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -987,6 +1016,7 @@ def main() -> int:
         check_m1_authorization_governance,
         check_capability_ids,
         check_trust_schemas,
+        check_common_contract_schemas,
         check_deployment_profiles,
         check_assurance_schemas,
         check_journey_contracts,
