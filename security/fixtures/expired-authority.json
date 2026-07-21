@@ -1,0 +1,7 @@
+{
+  "fixtureVersion": "forge.security-fixture.v1",
+  "authorityState": "expired",
+  "requestedActions": ["context:read", "tool:invoke", "publication:create"],
+  "expectedCode": "expired",
+  "expectedOutcome": "No protected action executes and no credential resolves"
+}

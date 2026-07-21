@@ -13,6 +13,7 @@ nav:
   - Architecture Readiness: governance/architecture-readiness.md
   - F0 Readiness Plan: governance/f0-readiness-plan.md
   - G0 Development Safety Evidence: governance/g0-development-safety-evidence.md
+  - G6 Threat and Privacy Evidence: governance/g6-threat-privacy-evidence.md
   - G7 Deployment Evidence: governance/g7-deployment-evidence.md
   - G8 Architecture Fitness Evidence: governance/g8-architecture-fitness-evidence.md
   - G9 User Intent Assurance Evidence: governance/g9-user-intent-assurance-evidence.md

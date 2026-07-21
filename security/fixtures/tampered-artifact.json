@@ -1,0 +1,8 @@
+{
+  "fixtureVersion": "forge.security-fixture.v1",
+  "approvedDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "observedDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "mutableTagOnly": true,
+  "expectedCode": "conflict",
+  "expectedOutcome": "Verification, approval, promotion, and publication are invalidated"
+}

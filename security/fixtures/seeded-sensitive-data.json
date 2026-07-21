@@ -1,0 +1,9 @@
+{
+  "fixtureVersion": "forge.security-fixture.v1",
+  "classification": "Restricted",
+  "synthetic": true,
+  "secretMarker": "FORGE_TEST_SECRET_7f9c_DO_NOT_RECORD",
+  "personalData": {"name":"Synthetic Person 7f9c","email":"synthetic-7f9c.invalid@example.invalid"},
+  "requiredSafeRepresentation": "[REDACTED]",
+  "forbiddenDestinations": ["telemetry", "routine-evidence", "model-provider", "tool-output", "pull-request-description"]
+}

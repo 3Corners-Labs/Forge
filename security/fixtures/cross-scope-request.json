@@ -1,0 +1,8 @@
+{
+  "fixtureVersion": "forge.security-fixture.v1",
+  "authenticatedMemberships": ["tenant-a/workspace-a/project-a"],
+  "requestedScope": "tenant-b/workspace-b/project-b",
+  "expectedCode": "forbidden",
+  "expectedDisclosure": "No tenant, workspace, project, repository, or content existence detail",
+  "forbiddenSideEffects": ["repository-discovery", "context-retrieval", "worker-start", "evidence-content-copy"]
+}

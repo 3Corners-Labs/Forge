@@ -742,6 +742,105 @@ def check_required_ci() -> None:
         fail("architecture enforcement ownership is incomplete: " + ", ".join(missing))
 
 
+def check_threat_privacy_readiness() -> None:
+    plan_path = ROOT / "security/threat-controls/m1.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    if plan.get("schemaVersion") != "forge.threat-control-plan.v1" or plan.get("status") != "reviewed":
+        fail("M1 threat-control plan must be a reviewed v1 contract")
+    expected_threats = {
+        "approval-replay",
+        "candidate-self-attestation",
+        "confused-deputy",
+        "cross-tenant-leakage",
+        "denial-of-wallet",
+        "evidence-tampering",
+        "malicious-repository",
+        "offensive-testing-scope-escape",
+        "operator-misuse",
+        "poisoned-knowledge",
+        "prompt-injection",
+        "provider-leakage",
+        "scenario-oracle-capture",
+        "supply-chain-compromise",
+        "synthetic-user-data-leakage",
+        "tool-abuse",
+        "untrusted-scanner-template",
+    }
+    mappings = plan.get("mappings", [])
+    by_id = {mapping["id"]: mapping for mapping in mappings}
+    if len(by_id) != len(mappings) or set(by_id) != expected_threats:
+        fail("M1 threat-control mapping does not exactly cover the accepted priority threats")
+    phases: set[str] = set()
+    test_ids: set[str] = set()
+    for mapping in mappings:
+        for field in ("threat", "owner", "controls", "enforcementPoints", "negativeTests", "evidenceObligations"):
+            if not mapping.get(field):
+                fail(f"threat {mapping['id']} lacks {field}")
+        for test in mapping["negativeTests"]:
+            identifier = test.get("id")
+            if not identifier or identifier in test_ids:
+                fail(f"duplicate or missing threat negative-test ID: {identifier}")
+            test_ids.add(identifier)
+            phase = test.get("phase")
+            if phase not in {"before-m1", "m1-exit", "before-trial"}:
+                fail(f"threat test {identifier} has invalid evidence phase")
+            phases.add(phase)
+            fixture = test.get("fixture")
+            if not fixture or not (ROOT / fixture).is_file():
+                fail(f"threat test {identifier} references missing fixture {fixture}")
+            if not test.get("expected") or test.get("disclosureSafe") is not True:
+                fail(f"threat test {identifier} lacks a disclosure-safe expected result")
+    if phases != {"before-m1", "m1-exit", "before-trial"}:
+        fail("threat tests must assign evidence across all three phases")
+
+    privacy_path = ROOT / "security/privacy/developer-trial-decisions.json"
+    privacy = json.loads(privacy_path.read_text(encoding="utf-8"))
+    if privacy.get("profile") != "developer-trial" or privacy.get("status") != "reviewed":
+        fail("Developer Trial security/privacy decisions must be reviewed and profile-specific")
+    expected_decisions = {
+        "cancellation",
+        "context_classification",
+        "evidence_integrity",
+        "identity_assurance",
+        "repository_credentials",
+        "retention",
+        "revocation",
+        "source_control_destination",
+        "telemetry_minimization",
+        "tenant_topology",
+        "worker_isolation",
+    }
+    decisions = privacy.get("decisions", {})
+    if set(decisions) != expected_decisions:
+        fail("Developer Trial security/privacy decision set is incomplete")
+    for topic, decision in decisions.items():
+        for field in ("decision", "enforcement", "m1Evidence", "beforeTrialEvidence"):
+            if not decision.get(field):
+                fail(f"Developer Trial decision {topic} lacks {field}")
+    unresolved = privacy.get("unresolvedProductionConstraints", [])
+    if len(unresolved) < len(expected_decisions):
+        fail("production-shaped security/privacy constraints are not explicit")
+
+    seeded_path = ROOT / "security/fixtures/seeded-sensitive-data.json"
+    seeded = json.loads(seeded_path.read_text(encoding="utf-8"))
+    if seeded.get("synthetic") is not True or seeded.get("classification") != "Restricted":
+        fail("seeded data fixture must be synthetic and Restricted")
+    if "DO_NOT_RECORD" not in seeded.get("secretMarker", ""):
+        fail("seeded secret fixture lacks a deterministic leak marker")
+    personal = seeded.get("personalData", {})
+    if ".invalid" not in personal.get("email", ""):
+        fail("seeded personal-data fixture must use a reserved invalid domain")
+    required_destinations = {
+        "model-provider",
+        "pull-request-description",
+        "routine-evidence",
+        "telemetry",
+        "tool-output",
+    }
+    if set(seeded.get("forbiddenDestinations", [])) != required_destinations:
+        fail("seeded data fixture does not cover every forbidden destination")
+
+
 def check_principles_integrity() -> None:
     digest = hashlib.sha256(PRINCIPLES_SOURCE.read_bytes()).hexdigest()
     if digest != PRINCIPLES_SHA256:
@@ -816,6 +915,7 @@ def main() -> int:
         check_offensive_assurance_safety,
         check_module_boundaries,
         check_required_ci,
+        check_threat_privacy_readiness,
         check_principles_integrity,
         check_developer_compose,
     )

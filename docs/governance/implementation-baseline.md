@@ -27,6 +27,7 @@ Forge currently provides a small developer bootstrap:
 | M1 journey assurance candidates | Reviewed allowed and denied public-CLI scenarios, synthetic fixtures, and an execution plan that remains disabled until M1 | `assurance/journeys/m1` | Research |
 | Offensive assurance safety candidate | Closed rules-of-engagement schema, disabled contract-only M1 configuration, digest-bound target/configuration, and negative safety fixtures | `schemas/forge/security/v1`, `security/assurance` | Research |
 | Architecture module boundaries | Current module graph, planned worker boundary, negative dependency fixtures, and CI-control validation | `architecture/module-boundaries.json`, `architecture/testdata`, `scripts/check_architecture.py` | Trial |
+| M1 threat and privacy candidates | Complete priority-threat mappings, phase-assigned negative contracts, Developer Trial decisions, and synthetic leakage fixtures | `security/threat-controls`, `security/privacy`, `security/fixtures` | Research |
 | Deployment profile candidates | Closed profile schema plus Developer Trial and connected self-hosted reference manifests with phased conformance plans | `schemas/forge/deployment/v1`, `profiles` | Research |
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 
