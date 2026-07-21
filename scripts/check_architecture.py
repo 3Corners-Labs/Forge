@@ -313,6 +313,86 @@ def check_trust_schemas() -> None:
             fail(f"{path.relative_to(ROOT)} must be a closed top-level object schema")
 
 
+def check_deployment_profiles() -> None:
+    schema_path = ROOT / "schemas/forge/deployment/v1/profile.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    for field in ("$schema", "$id", "title", "type"):
+        if field not in schema:
+            fail(f"{schema_path.relative_to(ROOT)} is missing {field}")
+    if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+        fail("deployment profile schema must be a closed top-level object schema")
+
+    profile_paths = sorted((ROOT / "profiles").glob("*.profile.json"))
+    expected_profiles = {
+        "developer-trial": "Trial",
+        "connected-self-hosted-reference": "Research",
+    }
+    required_controls = {
+        "identity",
+        "storage",
+        "repository",
+        "worker_isolation",
+        "network",
+        "secrets",
+        "evidence",
+        "telemetry",
+        "backup_restore",
+        "upgrade_rollback",
+        "capacity_recovery",
+    }
+    found_profiles: dict[str, str] = {}
+    test_ids: set[str] = set()
+    for path in profile_paths:
+        profile = json.loads(path.read_text(encoding="utf-8"))
+        profile_id = profile.get("profile_id")
+        maturity = profile.get("maturity")
+        if not isinstance(profile_id, str) or not isinstance(maturity, str):
+            fail(f"{path.relative_to(ROOT)} is missing profile_id or maturity")
+        if profile_id in found_profiles:
+            fail(f"duplicate deployment profile ID: {profile_id}")
+        found_profiles[profile_id] = maturity
+        dimensions = profile.get("dimensions", {})
+        required_dimensions = {
+            "connectivity",
+            "tenancy",
+            "operations",
+            "assurance",
+            "provider_ownership",
+        }
+        if set(dimensions) != required_dimensions:
+            fail(f"{path.relative_to(ROOT)} does not resolve every profile dimension")
+        controls = profile.get("controls", {})
+        if set(controls) != required_controls:
+            fail(f"{path.relative_to(ROOT)} has incomplete control ownership")
+        for control_name, control in controls.items():
+            if not control.get("owner") or not control.get("assumption"):
+                fail(f"{path.relative_to(ROOT)} control {control_name} lacks owner or assumption")
+            for phase in ("before_m1_tests", "m1_exit_tests", "before_trial_tests"):
+                tests = control.get(phase)
+                if not isinstance(tests, list) or not tests:
+                    fail(f"{path.relative_to(ROOT)} control {control_name} lacks {phase}")
+        phases = set()
+        for test in profile.get("conformance_tests", []):
+            identifier = test.get("id")
+            if not identifier or identifier in test_ids:
+                fail(f"duplicate or missing deployment conformance test ID: {identifier}")
+            test_ids.add(identifier)
+            phases.add(test.get("phase"))
+            if not test.get("command") or not test.get("expected"):
+                fail(f"{path.relative_to(ROOT)} test {identifier} lacks command or expected result")
+        if phases != {"before-m1", "m1-exit", "before-trial"}:
+            fail(f"{path.relative_to(ROOT)} must define tests for all evidence phases")
+        unsupported = profile.get("unsupported_claims", [])
+        if not unsupported:
+            fail(f"{path.relative_to(ROOT)} must declare unsupported claims")
+
+    if found_profiles != expected_profiles:
+        fail(
+            "deployment profile set or maturity differs: "
+            f"expected {expected_profiles}, found {found_profiles}"
+        )
+
+
 def check_assurance_schemas() -> None:
     schema_directory = ROOT / "schemas/forge/assurance/v1"
     required = {
@@ -403,6 +483,7 @@ def main() -> int:
         check_f0_readiness_governance,
         check_capability_ids,
         check_trust_schemas,
+        check_deployment_profiles,
         check_assurance_schemas,
         check_principles_integrity,
         check_developer_compose,

@@ -1,0 +1,234 @@
+{
+  "schema_version": "forge.deployment.profile/v1",
+  "profile_id": "connected-self-hosted-reference",
+  "display_name": "Connected self-hosted production-shaped reference",
+  "maturity": "Research",
+  "purpose": "Define a customer-operated production-shaped conformance target without claiming implementation or support.",
+  "implementation_scope": "Specification and executable test plan only; no production deployment unit is implemented or supported.",
+  "dimensions": {
+    "connectivity": "connected",
+    "tenancy": "single",
+    "operations": "customer",
+    "assurance": "enterprise",
+    "provider_ownership": "customer-selected"
+  },
+  "deployment_units": [
+    {
+      "id": "public-interface",
+      "owner": "Forge Experience Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "forge-control-plane",
+      "owner": "Forge Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "forge-worker",
+      "owner": "Forge Execution Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "evidence-sink",
+      "owner": "Forge Assurance Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "provider-adapters",
+      "owner": "Forge Integration Engineering",
+      "required": true,
+      "current_state": "planned"
+    },
+    {
+      "id": "operations-plane",
+      "owner": "Forge Reliability Engineering",
+      "required": true,
+      "current_state": "planned"
+    }
+  ],
+  "controls": {
+    "identity": {
+      "owner": "Forge Identity and Security Architecture",
+      "assumption": "Customer identity federation and workload identity meet a separately accepted assurance profile.",
+      "before_m1_tests": [
+        "Federation, workload identity, delegation, and revocation requirements are specified."
+      ],
+      "m1_exit_tests": [
+        "Provider-neutral identity contracts pass with a test double."
+      ],
+      "before_trial_tests": [
+        "Customer-operated identity conformance and recovery tests pass."
+      ]
+    },
+    "storage": {
+      "owner": "Forge Data and Platform Engineering",
+      "assumption": "Customer-selected durable stores implement capability ownership, encryption, migration, backup, and deletion contracts.",
+      "before_m1_tests": [
+        "Storage, residency, retention, and migration requirements are specified."
+      ],
+      "m1_exit_tests": [
+        "Portable storage contracts pass with test doubles."
+      ],
+      "before_trial_tests": [
+        "Durability, restore, migration, deletion, and residency tests pass."
+      ]
+    },
+    "repository": {
+      "owner": "Forge Delivery Engineering",
+      "assumption": "Customer-controlled source credentials are short-lived, repository-bound, and unavailable outside isolated workers and publication adapters.",
+      "before_m1_tests": [
+        "Repository and credential contracts are provider-neutral."
+      ],
+      "m1_exit_tests": [
+        "Source-control adapter contract tests pass."
+      ],
+      "before_trial_tests": [
+        "Customer-provider credential, revocation, and ambiguous-side-effect tests pass."
+      ]
+    },
+    "worker_isolation": {
+      "owner": "Forge Execution and Security Engineering",
+      "assumption": "The selected topology enforces tenant, filesystem, process, network, secret, compute, and time isolation.",
+      "before_m1_tests": [
+        "Production-shaped isolation requirements and tests are topology-neutral."
+      ],
+      "m1_exit_tests": [
+        "Worker boundary contract tests pass."
+      ],
+      "before_trial_tests": [
+        "Escape, exfiltration, resource, cancellation, and cleanup tests pass on the selected topology."
+      ]
+    },
+    "network": {
+      "owner": "Forge Platform and Security Engineering",
+      "assumption": "Ingress, service communication, and egress are authenticated, policy-enforced, observable, and deny by default.",
+      "before_m1_tests": [
+        "Network trust boundaries and destination policy are specified."
+      ],
+      "m1_exit_tests": [
+        "Destination and policy contracts fail closed."
+      ],
+      "before_trial_tests": [
+        "Ingress, egress, DNS, redirect, and segmentation tests pass."
+      ]
+    },
+    "secrets": {
+      "owner": "Forge Security Engineering",
+      "assumption": "Customer-selected secret and key providers issue short-lived workload-scoped references without exposing material to domain state.",
+      "before_m1_tests": [
+        "Secret and key provider contracts and recovery ownership are specified."
+      ],
+      "m1_exit_tests": [
+        "Secret-reference and disclosure tests pass with provider doubles."
+      ],
+      "before_trial_tests": [
+        "Rotation, revocation, outage, recovery, and leakage tests pass."
+      ]
+    },
+    "evidence": {
+      "owner": "Forge Assurance Engineering",
+      "assumption": "Evidence uses restricted writers, integrity verification, retention, disclosure policy, and independent validation.",
+      "before_m1_tests": [
+        "Integrity, signing-key, retention, and unavailable-sink decisions are specified."
+      ],
+      "m1_exit_tests": [
+        "Evidence contract tests pass."
+      ],
+      "before_trial_tests": [
+        "Tamper, key-compromise, disclosure, retention, and recovery tests pass."
+      ]
+    },
+    "telemetry": {
+      "owner": "Forge Reliability Engineering",
+      "assumption": "Telemetry is tenant-safe, minimized, retained separately, and promoted to evidence only through an authorized integrity step.",
+      "before_m1_tests": [
+        "Telemetry ownership, residency, retention, and prohibited data are specified."
+      ],
+      "m1_exit_tests": [
+        "Telemetry minimization contracts pass."
+      ],
+      "before_trial_tests": [
+        "Isolation, redaction, retention, backpressure, and evidence-promotion tests pass."
+      ]
+    },
+    "backup_restore": {
+      "owner": "Forge Reliability and Data Engineering",
+      "assumption": "Customer operations own encrypted backup, key recovery, restore reconciliation, and tested RTO/RPO.",
+      "before_m1_tests": [
+        "Backup scope, recovery ownership, and RTO/RPO hypotheses are specified."
+      ],
+      "m1_exit_tests": [
+        "Recovery contracts and state checkpoints pass."
+      ],
+      "before_trial_tests": [
+        "Full restore preserves isolation, deletion, keys, evidence, and workflow state."
+      ]
+    },
+    "upgrade_rollback": {
+      "owner": "Forge Platform Engineering",
+      "assumption": "Signed immutable artefacts, compatible migrations, staged rollout, rollback, and revocation are customer-operable.",
+      "before_m1_tests": [
+        "Upgrade, migration, compatibility, rollback, and revocation requirements are specified."
+      ],
+      "m1_exit_tests": [
+        "Version and compatibility contracts pass."
+      ],
+      "before_trial_tests": [
+        "Upgrade and rollback rehearsals pass with the same signed artefacts."
+      ]
+    },
+    "capacity_recovery": {
+      "owner": "Forge Reliability Engineering",
+      "assumption": "A supported envelope requires measured capacity, SLOs, admission, noisy-neighbour, provider-failure, and disaster-recovery evidence.",
+      "before_m1_tests": [
+        "Required measurements and failure scenarios are specified."
+      ],
+      "m1_exit_tests": [
+        "Bounded resource and recovery contracts pass."
+      ],
+      "before_trial_tests": [
+        "Capacity, failover, provider outage, and disaster-recovery tests meet accepted targets."
+      ]
+    }
+  },
+  "resource_envelope": {
+    "status": "hypothesis-required",
+    "capacity_commitment": false,
+    "slo_commitment": false,
+    "rto_rpo_commitment": false
+  },
+  "conformance_tests": [
+    {
+      "id": "reference-profile-contract",
+      "phase": "before-m1",
+      "command": "python3 scripts/check_architecture.py",
+      "expected": "The profile manifest resolves all dimensions, controls, phases, and unsupported claims."
+    },
+    {
+      "id": "reference-provider-portability",
+      "phase": "m1-exit",
+      "command": "go test ./... -run ProviderContract",
+      "expected": "Domain behaviour passes against replaceable provider test doubles."
+    },
+    {
+      "id": "reference-production-shaped-suite",
+      "phase": "before-trial",
+      "command": "forge profile verify connected-self-hosted-reference",
+      "expected": "All selected topology, identity, isolation, evidence, recovery, and operations checks pass before any support decision."
+    }
+  ],
+  "unsupported_claims": [
+    "Implemented production profile",
+    "Supported production profile",
+    "Production readiness",
+    "Production SLA",
+    "Accepted RTO or RPO",
+    "Validated capacity envelope",
+    "SaaS conformance",
+    "Disconnected operation"
+  ]
+}

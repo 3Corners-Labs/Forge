@@ -57,7 +57,7 @@ Evidence that depends on functionality not yet authorized for implementation SHA
 | G9 | Forge Product, Experience, and Quality Architecture | Product, Security/Privacy, Engineering |
 | G10 | Forge Security and Quality Architecture | Security/Privacy, Architecture, Engineering, Operations |
 
-Sijbren Beukenkamp remains the temporary named accountable reviewer for the required roles under ADR-0006 and ADR-0008. That temporary concentration does not create independent separation of duties. Each gate SHALL name an individual delivery owner before it can become Ready for review; this plan does not infer those delivery assignments.
+Sijbren Beukenkamp is the temporary named delivery owner and accountable human reviewer for G0 through G10 under explicit instruction and the multi-role authority recorded by ADR-0006 and ADR-0008. That temporary concentration does not create independent separation of duties and remains a recorded residual risk until distinct owners and reviewers are appointed.
 
 An AI contributor may prepare evidence, tests, contradictions, and recommendations. It cannot accept a gate, assign itself an accountable role, or provide the sole evidence for its own consequential output.
 

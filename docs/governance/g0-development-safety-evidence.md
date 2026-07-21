@@ -65,11 +65,11 @@ Before M1 evidence in this document is implemented and reproducible. M1 must lat
 | Field | Value |
 |---|---|
 | Gate | G0 Development safety |
-| Gate status | In progress |
-| Candidate revision | Working tree based on e86d752 |
-| Delivery owner | Individual assignment required |
+| Gate status | Ready for review |
+| Candidate revision | 9db0afb |
+| Delivery owner | Sijbren Beukenkamp, temporary |
 | Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
 | Residual risks | Direct Compose invocation remains a developer operation; Docker/container isolation is not claimed; clean-host conformance remains Before Trial evidence |
-| Required decision | Name the individual delivery owner and accept or reject G0 at the exact committed revision |
+| Required decision | Accept or reject G0 at candidate revision 9db0afb |
 
-G0 SHALL remain In progress until the candidate is committed, verification is regenerated for that revision, an individual delivery owner is named, and the accountable human review records Accepted for F0.
+G0 SHALL remain Ready for review until the accountable human review records Accepted for F0.

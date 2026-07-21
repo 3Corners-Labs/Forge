@@ -13,6 +13,7 @@ nav:
   - Architecture Readiness: governance/architecture-readiness.md
   - F0 Readiness Plan: governance/f0-readiness-plan.md
   - G0 Development Safety Evidence: governance/g0-development-safety-evidence.md
+  - G7 Deployment Evidence: governance/g7-deployment-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
