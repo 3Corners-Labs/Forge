@@ -82,4 +82,4 @@ Production deployment, autonomous merge, billing, certification, accreditation, 
 
 Human acceptance is required from product, architecture, security/privacy, engineering, and operations owners. An AI agent may prepare evidence and identify contradictions but cannot mark its own architecture Accepted.
 
-The [minimum architecture acceptance packet](minimum-architecture-acceptance.md) identifies the smallest coherent human decision set. The [implementation baseline](implementation-baseline.md) prevents target architecture from being confused with verified repository state while that review remains open.
+[ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) records the accepted minimum architecture set. The [implementation baseline](implementation-baseline.md) prevents that accepted target design from being confused with verified repository state while the remaining readiness gates are open.

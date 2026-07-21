@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owner: Forge Product and Architecture
-Version: 0.2
+Version: 0.3
 
 ## 1. Executive proposition
 
@@ -372,9 +372,11 @@ Weighted evaluation considers architectural fit, operational simplicity, securit
 
 ## 18. Roadmap
 
+> **Implementation sequencing:** accepted [ADR-0007](../decisions/0007-sequence-self-building-before-full-advisory.md) places the bounded self-building kernel before the general advisory product. The stages below retain the product-level capability progression; the canonical implementation sequence and F0 readiness gate are defined in the [implementation roadmap](../roadmap.md).
+
 ### M0: Coherent architecture baseline
 
-- review and accept one constitution and masterplan;
+- preserve the Accepted constitution and review, revise, or accept this masterplan;
 - complete source-content migration without loss;
 - establish capability owners, quality scenarios, threat model, and ADR register;
 - automate documentation, contract, and architecture fitness checks.

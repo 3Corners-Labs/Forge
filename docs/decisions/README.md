@@ -17,3 +17,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0004](0004-composable-deployment-profiles.md) | Model deployment profiles as compositions | Accepted |
 | [ADR-0005](0005-user-journey-and-security-assurance.md) | Separate user journey and continuous security assurance | Accepted |
 | [ADR-0006](0006-accept-minimum-architecture-baseline.md) | Accept the minimum architecture baseline | Accepted |
+| [ADR-0007](0007-sequence-self-building-before-full-advisory.md) | Sequence the self-building kernel before full advisory capability | Accepted |

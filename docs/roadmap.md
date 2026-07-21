@@ -2,7 +2,7 @@
 
 Status: Proposed
 Owner: Forge Product and Architecture
-Version: 0.2
+Version: 0.3
 
 ## Purpose
 
@@ -17,7 +17,7 @@ It describes target delivery sequencing, not implemented state or calendar commi
 - A capability becomes a separate deployment unit only through measured evidence and an Accepted ADR.
 - Models, tools, frameworks, providers, and protocols remain replaceable adapters.
 - Every milestone preserves identity, policy, bounded context, evidence, human accountability, and separation of duties.
-- Target behaviour remains Research until a Trial is explicitly authorized and verified.
+- Capabilities remain Research until a Trial is explicitly authorized. Trial evidence may justify promotion to Supported or Reference only through a separate accountable lifecycle decision.
 - Production support requires a declared conformance envelope, not merely successful deployment.
 - A later milestone SHALL NOT weaken evidence or controls accepted by an earlier milestone.
 
@@ -44,6 +44,57 @@ The accepted implementation boundary is defined by:
 - [First-slice data flow and privacy analysis](architecture/first-slice-data-flow.md);
 - [Forge platform threat model](architecture/threat-model.md).
 
+## F0 — Foundation readiness gate
+
+F0 is a pre-implementation gate, not a product milestone. M1 remains the first implementation milestone and the first minimum platform outcome.
+
+### Objective
+
+Preserve and complete the architecture-foundation work required to begin M1 without confusing accepted design, implementation maturity, and verification evidence.
+
+### Deliverables and current status
+
+| Foundation work | Current status | Evidence | Required disposition |
+|---|---|---|---|
+| Accept the constitution, minimum capability boundary, trust model, and foundational ADRs | Minimum M1 scope Accepted | [ADR-0006](decisions/0006-accept-minimum-architecture-baseline.md) | Keep the broader capability catalogue Proposed; accept capabilities incrementally when a milestone requires them |
+| Close the mandatory readiness gates | In progress | [Architecture readiness register](governance/architecture-readiness.md) | Close G0 and G6–G10 with the required design, test, safety, and ownership evidence before M1 functional implementation |
+| Reconcile document status, capability maturity, and evidence labels | Partially complete | Accepted [documentation lifecycle](governance/document-lifecycle.md) | Apply the lifecycle consistently and label roadmap evidence without treating Accepted design as implemented capability |
+| Accept or revise the metamodel, trust-object, and deployment-profile decisions | Partially complete | ADR-0002, ADR-0003, and ADR-0004 are Accepted | Complete the G7 profile specification and test plan; do not treat profile composition as production support |
+| Define non-functional requirements and deployment profiles | In progress | First-slice validation hypotheses and Proposed deployment architecture | Approve the Developer Trial envelope and one production-shaped reference-profile test plan before implementation depends on them |
+| Establish documentation, contract, dependency, isolation, and architecture fitness checks | In progress | Required CI architecture checks and G8 | Complete the minimum dependency and isolation fitness functions before M1; M2 expands them into supply-chain assurance |
+| Define accepted journey, exploratory scenario, and offensive-test rules-of-engagement contracts | Partially complete | Accepted ADR-0005 and Proposed assurance schemas | Accept the minimum allowed and denied M1 journey plan and the G10 safety contract; broad active testing remains excluded from M1 |
+| Replace development defaults that could be mistaken for production posture | In progress | Developer-only profile marker, loopback checks, and runtime-profile rejection | Close G0 with tests proving that development credentials, services, exporters, and bindings cannot run as a non-developer profile |
+| Review and accept or revise the product masterplan | Open outside the M1 minimum | Proposed [Forge mega masterplan](foundation/masterplan.md) | Reconcile this roadmap’s sequencing and scope before accepting the masterplan or expanding beyond the ADR-0006 boundary |
+| Complete source-content migration without loss | In progress | [Content migration map](governance/content-migration.md) and source map | Preserve provenance, finish concept-level verification, and prevent source removal until migration rules pass |
+| Establish capability owners, quality scenarios, threat coverage, and the ADR register | Partially complete for M1 | Accepted first-slice contracts, threat model, ADR register, and validation hypotheses | Assign implementation and operational owners and close missing quality scenarios before authorizing each Trial |
+
+### Dependencies
+
+- Accepted constitution, documentation lifecycle, metamodel, ADR-0001 through ADR-0007, and first-slice architecture.
+- Accountable Product, Architecture, Security/Privacy, Engineering, and Operations review.
+- Current repository and implementation evidence from the implementation baseline and CI.
+
+### Acceptance criteria
+
+- The architecture readiness register explicitly authorizes M1 functional implementation; every mandatory gate is Accepted for its scope and none remains Open, Proposed, or In progress.
+- Minimum dependency, isolation, schema, source-integrity, documentation, developer-profile, journey, and safety checks pass in required CI.
+- Trial decisions identify identity, repository credentials, retention, evidence integrity, worker isolation, public-interface journeys, and deployment assumptions.
+- The masterplan and roadmap either agree or retain an explicit accepted decision explaining each remaining difference.
+- Source content remains discoverable with provenance, and no source is removed before its migration disposition is verified.
+- Capability owners and accountable reviewers are named for the M1 Trial.
+
+### Estimated complexity
+
+**Large.** F0 is primarily architecture, governance, contract, safety, and validation work, but it crosses every trust boundary used by M1.
+
+### Risks
+
+- Treating document acceptance as proof that controls are implemented.
+- Turning readiness into an unbounded documentation programme rather than closing the minimum M1 gaps.
+- Silently deferring mandatory checks to later milestones.
+- Losing source intent during consolidation.
+- Allowing one temporary multi-role reviewer arrangement to become permanent without review.
+
 ## Milestone progression
 
 | Milestone | Outcome | Capability posture at exit |
@@ -56,7 +107,13 @@ The accepted implementation boundary is defined by:
 | M6 | Forge builds its first business application | Application Environment Factory and Workplace lighthouse |
 | M7 | One production-shaped customer-controlled profile is Supported | Production platform core |
 | M8 | SaaS, dedicated, restricted, and disconnected profiles conform | Enterprise deployment and governance platform |
-| M9 | Forge proves generality and earns bounded autonomy | Complete continuously improving platform |
+| M9 | Forge proves generality and earns bounded autonomy | Published enterprise capability and support envelope |
+
+## Sequencing decision
+
+The Proposed masterplan originally places broad read-only observation and advisory capability before Forge prepares changes to itself. This roadmap deliberately starts with the narrower accepted intent-to-pull-request kernel required by the user and ADR-0006.
+
+M1 includes only the repository inspection, bounded context, planning, and explanation needed to prepare one governed Forge change. M4 remains responsible for the general Software System Twin and multi-audience advisory product. [ADR-0007](decisions/0007-sequence-self-building-before-full-advisory.md) records this distinction so the roadmap does not silently contradict the masterplan.
 
 ---
 
@@ -87,7 +144,7 @@ Forge prepares changes only. It cannot merge, release, change production policy,
 
 ### Dependencies
 
-- Applicable readiness gates G0 and G6–G10 closed or explicitly scoped by an Accepted implementation authorization.
+- F0 accepted as complete and the architecture readiness register explicitly authorizes M1 functional implementation.
 - Accepted constitution, metamodel, first-slice architecture, trust-object separation, capability contracts, threat model, and data-flow analysis.
 - Approved identity, repository credential, evidence-integrity, retention, and worker-isolation Trial decisions.
 - Developer profile capable of running deterministic tests without production credentials.
@@ -123,7 +180,7 @@ Forge prepares changes only. It cannot merge, release, change production policy,
 
 ### Objective
 
-Make every Forge build, verification result, development environment, and promoted artefact reproducible, attributable, and recoverable before broadening intelligent behaviour.
+Make every Forge build, verification result, development environment, and promoted artefact within the declared Trial envelope reproducible, attributable, and recoverable before broadening intelligent behaviour.
 
 ### Deliverables
 
@@ -137,7 +194,7 @@ Make every Forge build, verification result, development environment, and promot
 - Separate telemetry and evidence pipelines with controlled promotion from telemetry to evidence.
 - Secret, source, dependency, filesystem, image, configuration, and IaC checks on every applicable build.
 - Backup, restore, migration, rollback, and interrupted-build rehearsal for the Developer Trial.
-- Architecture and documentation fitness checks running as required CI gates.
+- Expansion of the minimum F0 architecture, documentation, dependency, and isolation fitness checks into full supply-chain and release assurance.
 
 ### Dependencies
 
@@ -298,6 +355,7 @@ Turn Forge from a single governed change path into a coordinated application-dev
 - M2 previews and supply-chain foundation.
 - M1 durable workflow, approval, evidence, and source-control publication.
 - Accepted agentic-delivery, journey-assurance, experience, and passive-security Trial specifications.
+- Accepted M1 journey contracts from F0, expanded here into multi-role, interrupted, accessibility, exploratory, and quarantine behaviour.
 
 ### Acceptance criteria
 
@@ -398,6 +456,7 @@ Make Forge supportable for one production-shaped, customer-controlled connected 
 - M6 application and Forge operational evidence.
 - M2 supply-chain and recovery foundation.
 - Accepted production deployment, identity, cryptography, data, retention, support, and security-testing ADRs.
+- Accepted F0 offensive-assurance safety contract, expanded here into active DAST and vulnerability-regression operation.
 - Named accountable production, security, privacy, and operations owners separated where policy requires.
 
 ### Acceptance criteria

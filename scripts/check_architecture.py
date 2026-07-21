@@ -132,6 +132,52 @@ def check_decision_register() -> None:
         fail("decision status mismatch: " + "; ".join(mismatches))
 
 
+def check_roadmap_structure() -> None:
+    path = ROOT / "docs/roadmap.md"
+    text = path.read_text(encoding="utf-8")
+    required_foundation_intent = (
+        "## F0 — Foundation readiness gate",
+        "Accept the constitution, minimum capability boundary, trust model, and foundational ADRs",
+        "Close the mandatory readiness gates",
+        "Reconcile document status, capability maturity, and evidence labels",
+        "Define non-functional requirements and deployment profiles",
+        "Complete source-content migration without loss",
+        "Replace development defaults that could be mistaken for production posture",
+        "decisions/0007-sequence-self-building-before-full-advisory.md",
+    )
+    missing_intent = [item for item in required_foundation_intent if item not in text]
+    if missing_intent:
+        fail("roadmap lost required foundation intent: " + ", ".join(missing_intent))
+
+    milestone_matches = list(
+        re.finditer(r"^## M([1-9]) — .+$", text, re.MULTILINE)
+    )
+    found_numbers = [int(match.group(1)) for match in milestone_matches]
+    if found_numbers != list(range(1, 10)):
+        fail(f"roadmap milestones must be M1 through M9 in order, found {found_numbers}")
+    required_sections = (
+        "### Objective",
+        "### Deliverables",
+        "### Dependencies",
+        "### Acceptance criteria",
+        "### Estimated complexity",
+        "### Risks",
+    )
+    for index, match in enumerate(milestone_matches):
+        end = (
+            milestone_matches[index + 1].start()
+            if index + 1 < len(milestone_matches)
+            else text.find("\n## Cross-milestone success measures", match.end())
+        )
+        section = text[match.start():end if end != -1 else len(text)]
+        missing_sections = [item for item in required_sections if item not in section]
+        if missing_sections:
+            fail(
+                f"roadmap M{match.group(1)} is missing sections: "
+                + ", ".join(missing_sections)
+            )
+
+
 def check_capability_ids() -> None:
     path = ROOT / "docs/architecture/capabilities.md"
     text = path.read_text(encoding="utf-8")
@@ -232,6 +278,7 @@ def main() -> int:
         check_local_markdown_links,
         check_navigation_coverage,
         check_decision_register,
+        check_roadmap_structure,
         check_capability_ids,
         check_trust_schemas,
         check_assurance_schemas,

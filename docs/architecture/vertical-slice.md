@@ -73,7 +73,7 @@ flowchart LR
 - An Evidence Record references objects; it does not copy secrets or unrestricted source content.
 - A tool, model, repository or context item cannot expand the envelope.
 
-Initial schemas live under `schemas/forge/trust/v1/` and remain Proposed until ADR-0003 is Accepted.
+Initial schemas live under `schemas/forge/trust/v1/` and form the Accepted design baseline under ADR-0003. Their presence does not claim implemented conformance.
 
 ## Initial validation envelope
 
