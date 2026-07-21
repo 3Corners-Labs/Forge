@@ -277,6 +277,80 @@ def check_f0_readiness_governance() -> None:
         fail("roadmap must link the F0 readiness plan")
 
 
+def check_m1_authorization_governance() -> None:
+    manifest_path = ROOT / "docs/governance/f0-acceptance-manifest.md"
+    adr_path = ROOT / "docs/decisions/0010-authorize-bounded-m1-implementation.md"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    adr = adr_path.read_text(encoding="utf-8")
+    register = (ROOT / "docs/governance/architecture-readiness.md").read_text(encoding="utf-8")
+
+    def document_status(text: str, path: Path) -> str:
+        match = re.search(r"^Status: (.+)$", text, re.MULTILINE)
+        if not match:
+            fail(f"{path.relative_to(ROOT)} has no status")
+        return match.group(1)
+
+    manifest_status = document_status(manifest, manifest_path)
+    adr_status = document_status(adr, adr_path)
+    if manifest_status != adr_status or manifest_status not in {"Proposed", "Accepted"}:
+        fail("F0 manifest and ADR-0010 must have matching Proposed or Accepted status")
+
+    baseline_commit = "93efcfcae8e946310ebd07294d744f38a3083b0e"
+    baseline_tree = "eeea9e5e0d95534cebc8ac253672d00b818027c8"
+    for text, path in ((manifest, manifest_path), (adr, adr_path)):
+        if baseline_commit not in text or baseline_tree not in text:
+            fail(f"{path.relative_to(ROOT)} does not bind the immutable F0 baseline")
+
+    for identifier in range(11):
+        if f"| G{identifier} |" not in manifest:
+            fail(f"F0 acceptance manifest is missing G{identifier}")
+    required_manifest_sections = (
+        "## Immutable F0 baseline",
+        "## Gate evidence manifest",
+        "## Verification evidence",
+        "## Authorized M1 envelope",
+        "## Explicit exclusions",
+        "## Deferred evidence",
+        "## Residual risks",
+        "## Accountable review record",
+    )
+    missing = [section for section in required_manifest_sections if section not in manifest]
+    if missing:
+        fail("F0 acceptance manifest lacks sections: " + ", ".join(missing))
+
+    required_adr_content = (
+        "forge delivery start",
+        "Developer Trial profile only",
+        "## Explicitly unauthorized",
+        "## Delivery controls",
+        "## Stop conditions",
+        "## M1 exit evidence",
+        "## Rollback and recovery",
+        "active or autonomous offensive testing",
+        "merge a pull request",
+        "Workplace-specific",
+        "Supported",
+    )
+    missing = [item for item in required_adr_content if item not in adr]
+    if missing:
+        fail("ADR-0010 lacks required authorization boundaries: " + ", ".join(missing))
+
+    if manifest_status == "Proposed":
+        if "M1 functional implementation remains denied" not in register:
+            fail("Proposed M1 authorization must leave implementation denied")
+        if "| Pending | — |" not in manifest or "| Pending | — |" not in adr:
+            fail("Proposed authorization documents must preserve pending human review")
+    else:
+        if "explicitly authorizes M1 functional implementation" not in register:
+            fail("Accepted ADR-0010 must be reflected in the readiness register")
+        if "| Pending | — |" in manifest or "| Pending | — |" in adr:
+            fail("Accepted authorization documents cannot retain pending review outcomes")
+
+    roadmap = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    if "governance/f0-acceptance-manifest.md" not in roadmap or "decisions/0010-authorize-bounded-m1-implementation.md" not in roadmap:
+        fail("roadmap must link the final F0 manifest and ADR-0010")
+
+
 def check_capability_ids() -> None:
     path = ROOT / "docs/architecture/capabilities.md"
     text = path.read_text(encoding="utf-8")
@@ -910,6 +984,7 @@ def main() -> int:
         check_decision_register,
         check_roadmap_structure,
         check_f0_readiness_governance,
+        check_m1_authorization_governance,
         check_capability_ids,
         check_trust_schemas,
         check_deployment_profiles,

@@ -12,6 +12,7 @@ nav:
   - Context Routing: context/README.md
   - Architecture Readiness: governance/architecture-readiness.md
   - F0 Readiness Plan: governance/f0-readiness-plan.md
+  - F0 Final Acceptance Manifest: governance/f0-acceptance-manifest.md
   - G0 Development Safety Evidence: governance/g0-development-safety-evidence.md
   - G6 Threat and Privacy Evidence: governance/g6-threat-privacy-evidence.md
   - G7 Deployment Evidence: governance/g7-deployment-evidence.md
@@ -62,6 +63,7 @@ nav:
       - ADR-0007 Self-Building Sequence: decisions/0007-sequence-self-building-before-full-advisory.md
       - ADR-0008 Canonical Documentation Baseline: decisions/0008-accept-canonical-documentation-baseline.md
       - ADR-0009 M1 Public CLI Boundary: decisions/0009-m1-public-cli-boundary.md
+      - ADR-0010 Bounded M1 Authorization: decisions/0010-authorize-bounded-m1-implementation.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
