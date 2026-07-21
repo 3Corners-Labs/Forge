@@ -48,7 +48,7 @@ The accepted implementation boundary is defined by:
 
 F0 is a pre-implementation gate, not a product milestone. M1 remains the first implementation milestone and the first minimum platform outcome.
 
-G0 through G10 are Accepted for F0 at protected-main baseline `93efcfcae8e946310ebd07294d744f38a3083b0e`. Final F0 acceptance and M1 implementation authority remain pending the Proposed [F0 final acceptance manifest](governance/f0-acceptance-manifest.md) and [ADR-0010](decisions/0010-authorize-bounded-m1-implementation.md).
+G0 through G10 are Accepted for F0 at protected-main baseline `93efcfcae8e946310ebd07294d744f38a3083b0e`. Sijbren Beukenkamp accepted the [F0 final acceptance manifest](governance/f0-acceptance-manifest.md) and [ADR-0010](decisions/0010-authorize-bounded-m1-implementation.md) at review revision `773312e`. Bounded M1 authority becomes operationally effective when the Accepted packet reaches protected `main`.
 
 ### Objective
 

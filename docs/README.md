@@ -14,7 +14,7 @@ This directory is the canonical entry point for Forge product and architecture k
 5. [Context router](context/README.md)
 6. [Architecture readiness](governance/architecture-readiness.md)
 7. [F0 readiness evidence and ownership plan](governance/f0-readiness-plan.md)
-8. [Proposed F0 final acceptance manifest](governance/f0-acceptance-manifest.md) and [Proposed M1 authorization ADR](decisions/0010-authorize-bounded-m1-implementation.md)
+8. [Accepted F0 final acceptance manifest](governance/f0-acceptance-manifest.md) and [Accepted M1 authorization ADR](decisions/0010-authorize-bounded-m1-implementation.md)
 9. F0 gate evidence: [G0 development safety](governance/g0-development-safety-evidence.md), [G6 threat and privacy](governance/g6-threat-privacy-evidence.md), [G7 deployment evidence](governance/g7-deployment-evidence.md), [G8 architecture fitness](governance/g8-architecture-fitness-evidence.md), [G9 user intent assurance](governance/g9-user-intent-assurance-evidence.md), [G10 offensive assurance safety](governance/g10-offensive-assurance-safety-evidence.md)
 10. [Verified implementation baseline](governance/implementation-baseline.md)
 11. [Historical minimum architecture acceptance packet](governance/minimum-architecture-acceptance.md) (Superseded by ADR-0006)

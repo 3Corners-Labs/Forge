@@ -1,6 +1,6 @@
 # ADR-0010: Authorize the bounded M1 implementation
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture Board
 Date: 2026-07-21
 
@@ -14,7 +14,7 @@ The remaining decision is whether those controls are sufficient to begin the bou
 
 ## Decision
 
-Once this ADR and the F0 final acceptance manifest are both Accepted at the same protected-main revision, authorize implementation of **M1 — Minimum self-building kernel** within the boundary below.
+Authorize implementation of **M1 — Minimum self-building kernel** within the boundary below. This authorization becomes operationally effective when this Accepted ADR and the Accepted F0 final acceptance manifest reach protected `main` together.
 
 ### Authorized outcome
 
@@ -143,7 +143,7 @@ Passing M1 does not authorize merge, release, production deployment, or promotio
 
 ## Consequences
 
-- Engineering may begin functional M1 work only after this Proposed decision becomes Accepted with the F0 manifest.
+- Engineering may begin functional M1 work after this Accepted decision and the Accepted F0 manifest reach protected `main` together.
 - M1 can deliver vertical increments across several capabilities, but cannot bypass their ownership or collapse their canonical records.
 - The accepted F0 contracts become implementation constraints and M1-exit test obligations.
 - Capability maturity remains Research unless a separate evidence-based lifecycle decision promotes a bounded Trial.
@@ -153,17 +153,17 @@ Passing M1 does not authorize merge, release, production deployment, or promotio
 
 | Role | Reviewer | Outcome | Date |
 |---|---|---|---|
-| Product | Sijbren Beukenkamp, temporary | Pending | — |
-| Architecture | Sijbren Beukenkamp, temporary | Pending | — |
-| Security and Privacy | Sijbren Beukenkamp, temporary | Pending | — |
-| Engineering | Sijbren Beukenkamp, temporary | Pending | — |
-| Operations | Sijbren Beukenkamp, temporary | Pending | — |
+| Product | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Architecture | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Security and Privacy | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Engineering | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Operations | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
 
-Acceptance SHALL name the exact reviewed Git revision and explicitly approve both this decision and the F0 final acceptance manifest. The AI contributor prepared the draft but cannot provide accountable acceptance.
+Sijbren Beukenkamp accepted this decision and the F0 final acceptance manifest as drafted at revision `773312e` and explicitly authorized the bounded M1 implementation on 2026-07-21. The AI contributor prepared the draft but did not provide accountable acceptance.
 
 ## Validation
 
-- ADR and manifest statuses SHALL match and remain Proposed until accountable acceptance.
+- ADR and manifest statuses SHALL match; both became Accepted following accountable review of revision `773312e`.
 - Architecture checks SHALL verify the immutable F0 baseline, complete gate set, required exclusions, and absence of a premature implementation-ready claim.
 - The authorization revision SHALL pass `task verify` and protected `validate` and `verify` checks.
 - M1 implementation SHALL demonstrate every exit criterion without redefining the accepted oracle.

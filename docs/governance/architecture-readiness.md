@@ -6,7 +6,7 @@ Version: 0.3
 
 ## Decision
 
-Forge is **not implementation-ready** beyond safety hardening of the existing development bootstrap and architecture-as-code work.
+Forge is implementation-ready only for the bounded M1 scope authorized by ADR-0010. No later milestone, production action, profile, or capability-maturity promotion is authorized.
 
 Functional capability implementation may begin only after the mandatory gates below are accepted. This register turns the enterprise architecture review into a traceable remediation plan.
 
@@ -39,9 +39,9 @@ Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F
 | G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Accepted evidence at `ee0eff9`](g9-user-intent-assurance-evidence.md) | Accepted for F0 |
 | G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | [Accepted evidence at `0784c62`](g10-offensive-assurance-safety-evidence.md) | Accepted for F0 |
 
-G0 through G10 are accepted for their pre-M1 scope. M1 functional implementation remains denied until the complete F0 evidence manifest and a human-approved ADR explicitly authorize the bounded M1 implementation.
+G0 through G10 are accepted for their pre-M1 scope. ADR-0010 explicitly authorizes M1 functional implementation within the Accepted F0 manifest, Developer Trial profile, and stated exclusions. The authority becomes operationally effective when the Accepted packet reaches protected `main`.
 
-The [Proposed F0 final acceptance manifest](f0-acceptance-manifest.md) and [Proposed ADR-0010](../decisions/0010-authorize-bounded-m1-implementation.md) form the final authorization packet. Their presence does not change the implementation boundary until both are Accepted at the same protected-main revision.
+The [Accepted F0 final acceptance manifest](f0-acceptance-manifest.md) and [Accepted ADR-0010](../decisions/0010-authorize-bounded-m1-implementation.md) form the final authorization packet. Their boundaries, stop conditions, deferred evidence, and residual risks govern every M1 iteration.
 
 ## Findings and disposition
 

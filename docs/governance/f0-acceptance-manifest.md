@@ -1,22 +1,22 @@
 # F0 final acceptance manifest
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture Board
 Version: 0.1
 
 ## Purpose
 
-Bind the complete F0 evidence set to one immutable repository baseline and present the accountable decision required to authorize the bounded M1 implementation. This manifest is review material until its status and ADR-0010 are both Accepted.
+Bind the complete F0 evidence set to one immutable repository baseline and record the accountable decision authorizing the bounded M1 implementation.
 
-## Candidate decision
+## Decision
 
-F0 is ready for final accountable acceptance. G0 through G10 are Accepted for F0, required local and protected-CI checks passed, the implementation baseline remains current, and residual risks and deferred evidence have owners.
+F0 is Accepted. G0 through G10 are Accepted for F0, required local and protected-CI checks passed, the implementation baseline remains current, and residual risks and deferred evidence have owners.
 
-This Proposed manifest does not itself authorize functional implementation. M1 authority becomes effective only when:
+Together with Accepted [ADR-0010](../decisions/0010-authorize-bounded-m1-implementation.md), this manifest authorizes the bounded M1 implementation. That authority becomes operationally effective when:
 
-1. this manifest is Accepted at an exact reviewed revision;
-2. [ADR-0010](../decisions/0010-authorize-bounded-m1-implementation.md) is Accepted at that same revision;
-3. the revision reaches protected `main` through the required checks and review path.
+1. this manifest and ADR-0010 remain Accepted together;
+2. the acceptance records continue to bind reviewed revision `773312e`;
+3. the Accepted revision reaches protected `main` through the required checks and review path.
 
 ## Immutable F0 baseline
 
@@ -28,6 +28,7 @@ This Proposed manifest does not itself authorize functional implementation. M1 a
 | F0 baseline tree | `eeea9e5e0d95534cebc8ac253672d00b818027c8` |
 | Source PR | `https://github.com/3Corners-Labs/Forge/pull/10` |
 | Reviewed PR head | `3aed6e8ba00b6fc2f5df7e6aa407ca553bb631ec` |
+| Authorization review revision | `773312e` |
 | Merge method | Squash through protected branch |
 | Merge time | 2026-07-21T12:25:48Z |
 
@@ -127,15 +128,15 @@ The following remain unauthorized:
 
 | Role | Reviewer | Outcome | Date |
 |---|---|---|---|
-| Delivery owner | Sijbren Beukenkamp | Pending | — |
-| Product | Sijbren Beukenkamp, temporary | Pending | — |
-| Architecture | Sijbren Beukenkamp, temporary | Pending | — |
-| Security and Privacy | Sijbren Beukenkamp, temporary | Pending | — |
-| Engineering | Sijbren Beukenkamp, temporary | Pending | — |
-| Operations | Sijbren Beukenkamp, temporary | Pending | — |
+| Delivery owner | Sijbren Beukenkamp | Accept | 2026-07-21 |
+| Product | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Architecture | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Security and Privacy | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Engineering | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
+| Operations | Sijbren Beukenkamp, temporary | Accept | 2026-07-21 |
 
-The AI contributor may prepare this manifest and its verification evidence but cannot provide the accountable acceptance. Acceptance SHALL record the exact reviewed Git revision and explicitly state `F0 Accepted; bounded M1 implementation authorized under ADR-0010`.
+Sijbren Beukenkamp accepted this manifest and ADR-0010 as drafted at revision `773312e` on 2026-07-21 and stated: `F0 Accepted; bounded M1 implementation authorized under ADR-0010`. The AI contributor prepared the manifest and verification evidence but did not provide accountable acceptance.
 
-## Candidate outcome
+## Outcome
 
-**Ready for accountable review.** Until the review record is complete and both documents are Accepted on protected `main`, F0 is not finally accepted and M1 functional implementation remains denied.
+**F0 Accepted; bounded M1 implementation authorized under ADR-0010.** The authority becomes operationally effective when this Accepted packet reaches protected `main`. All explicit exclusions, stop conditions, residual risks, and deferred evidence remain binding.
