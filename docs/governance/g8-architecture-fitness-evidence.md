@@ -76,13 +76,13 @@ M1 exit SHALL run the dependency and isolation rules against the implemented wor
 | Field | Value |
 |---|---|
 | Gate | G8 Architecture fitness functions |
-| Gate status | Ready for review |
-| Candidate revision | Commit containing the corrected CODEOWNERS evidence |
+| Gate status | Accepted for F0 |
+| Candidate revision | ea8c94f |
 | Delivery owner | Sijbren Beukenkamp, temporary |
 | Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
-| Review outcome | Corrective review authorized on 2026-07-21; exact revision pending |
+| Review outcome | Corrective evidence accepted for F0 on 2026-07-21 |
 | External evidence | GitHub `main` protection verified on 2026-07-21; strict required checks `verify` and `validate` |
-| Required decision | Record acceptance against the exact corrected CODEOWNERS revision |
+| Required decision | Complete |
 | Residual risks | Worker modules do not yet exist; repository administrators retain platform-level ownership; the second collaborator's organizational independence is not established |
 
-G8 SHALL remain Ready for review until the corrected CODEOWNERS revision is committed and its acceptance is recorded.
+Sijbren Beukenkamp accepted the corrected pre-M1 G8 evidence at revision `ea8c94f` on 2026-07-21. M1-exit and Before-Trial evidence remains assigned to its declared later phase.
