@@ -1,6 +1,6 @@
 # Forge architecture metamodel
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 Version: 0.1
 

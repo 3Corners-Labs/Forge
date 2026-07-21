@@ -51,6 +51,7 @@ nav:
       - ADR-0003 Authority and Context: decisions/0003-separate-authority-and-context.md
       - ADR-0004 Deployment Profiles: decisions/0004-composable-deployment-profiles.md
       - ADR-0005 Journey and Security Assurance: decisions/0005-user-journey-and-security-assurance.md
+      - ADR-0006 Minimum Architecture Baseline: decisions/0006-accept-minimum-architecture-baseline.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md

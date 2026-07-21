@@ -1,6 +1,6 @@
 # Trustworthy intent-to-PR vertical slice
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 Version: 0.1
 

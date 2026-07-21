@@ -11,8 +11,9 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 
 | ADR | Decision | Status |
 |---|---|---|
-| [ADR-0001](0001-modular-platform.md) | Begin as a modular platform | Proposed |
-| [ADR-0002](0002-architecture-metamodel.md) | Adopt one architecture metamodel | Proposed |
-| [ADR-0003](0003-separate-authority-and-context.md) | Separate authority objects from context objects | Proposed |
-| [ADR-0004](0004-composable-deployment-profiles.md) | Model deployment profiles as compositions | Proposed |
-| [ADR-0005](0005-user-journey-and-security-assurance.md) | Separate user journey and continuous security assurance | Proposed |
+| [ADR-0001](0001-modular-platform.md) | Begin as a modular platform | Accepted |
+| [ADR-0002](0002-architecture-metamodel.md) | Adopt one architecture metamodel | Accepted |
+| [ADR-0003](0003-separate-authority-and-context.md) | Separate authority objects from context objects | Accepted |
+| [ADR-0004](0004-composable-deployment-profiles.md) | Model deployment profiles as compositions | Accepted |
+| [ADR-0005](0005-user-journey-and-security-assurance.md) | Separate user journey and continuous security assurance | Accepted |
+| [ADR-0006](0006-accept-minimum-architecture-baseline.md) | Accept the minimum architecture baseline | Accepted |

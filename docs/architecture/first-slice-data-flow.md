@@ -1,6 +1,6 @@
 # First-slice data flow and privacy analysis
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security and Privacy Architecture
 Version: 0.1
 

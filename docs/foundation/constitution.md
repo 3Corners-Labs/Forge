@@ -1,6 +1,6 @@
 # Forge engineering constitution
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 Version: 1.1
 

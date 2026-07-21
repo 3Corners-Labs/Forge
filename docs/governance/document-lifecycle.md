@@ -1,6 +1,6 @@
 # Documentation lifecycle
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 
 ## Status values

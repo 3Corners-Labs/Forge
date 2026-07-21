@@ -1,3 +1,3 @@
 # ADR index
 
-No accepted ADRs yet. Accepted RFC outcomes will be recorded here.
+This is the historical ADR location. Accepted decisions are registered in [`docs/decisions/`](../decisions/README.md).

@@ -1,6 +1,6 @@
 # ADR-0001: Begin as a modular platform
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 Date: 2026-07-20
 

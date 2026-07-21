@@ -1,6 +1,6 @@
 # Forge platform threat model
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security Architecture
 Version: 0.1
 

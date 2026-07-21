@@ -8,7 +8,7 @@ status: Draft
 
 # Forge Engineering Constitution
 
-> **Historical Draft:** this document is preserved as consolidation source. The current Proposed review target is [`foundation/constitution.md`](foundation/constitution.md); neither document is normative until explicitly Accepted.
+> **Historical Draft:** this document is preserved as consolidation source. The current Accepted constitution is [`foundation/constitution.md`](foundation/constitution.md); this historical document is not normative.
 
 ## Purpose
 

@@ -1,6 +1,6 @@
 # ADR-0005: Separate user journey and continuous security assurance
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product, Quality, and Security Architecture
 Date: 2026-07-20
 

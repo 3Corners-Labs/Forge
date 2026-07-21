@@ -1,6 +1,6 @@
 # ADR-0003: Separate authority objects from context objects
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Security and Knowledge Architecture
 Date: 2026-07-20
 

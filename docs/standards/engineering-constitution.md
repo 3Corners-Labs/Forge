@@ -7,7 +7,7 @@ owner: Architecture
 
 # Engineering Constitution
 
-This is a historical Proposed concise constitution retained for migration. The current Proposed review target is [`foundation/constitution.md`](../foundation/constitution.md). No constitution is normative until explicitly Accepted.
+This is a historical Proposed concise constitution retained for migration. The current Accepted constitution is [`foundation/constitution.md`](../foundation/constitution.md); this historical document is not normative.
 
 ## Principles
 

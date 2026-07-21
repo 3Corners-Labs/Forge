@@ -1,6 +1,6 @@
 # ADR-0002: Adopt one architecture metamodel
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture
 Date: 2026-07-20
 

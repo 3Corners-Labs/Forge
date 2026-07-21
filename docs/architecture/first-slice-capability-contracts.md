@@ -1,6 +1,6 @@
 # First-slice capability contracts
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Product and Architecture
 Version: 0.1
 

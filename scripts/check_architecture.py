@@ -103,6 +103,35 @@ def check_navigation_coverage() -> None:
         fail("canonical documents missing from MkDocs navigation: " + ", ".join(sorted(missing)))
 
 
+def check_decision_register() -> None:
+    decision_directory = ROOT / "docs/decisions"
+    register = (decision_directory / "README.md").read_text(encoding="utf-8")
+    entries = {
+        filename: status
+        for filename, status in re.findall(
+            r"\| \[ADR-\d+\]\((\d{4}-[^)]+\.md)\) \| [^|]+ \| ([A-Za-z]+) \|",
+            register,
+        )
+    }
+    decision_files = {
+        path.name for path in decision_directory.glob("[0-9][0-9][0-9][0-9]-*.md")
+    }
+    if set(entries) != decision_files:
+        fail(
+            "decision register differs from decision files: "
+            f"registered {sorted(entries)}, found {sorted(decision_files)}"
+        )
+    mismatches: list[str] = []
+    for filename, registered_status in entries.items():
+        text = (decision_directory / filename).read_text(encoding="utf-8")
+        match = re.search(r"^Status: (.+)$", text, re.MULTILINE)
+        if not match or match.group(1) != registered_status:
+            actual = match.group(1) if match else "missing"
+            mismatches.append(f"{filename}: register={registered_status}, document={actual}")
+    if mismatches:
+        fail("decision status mismatch: " + "; ".join(mismatches))
+
+
 def check_capability_ids() -> None:
     path = ROOT / "docs/architecture/capabilities.md"
     text = path.read_text(encoding="utf-8")
@@ -202,6 +231,7 @@ def main() -> int:
         check_document_metadata,
         check_local_markdown_links,
         check_navigation_coverage,
+        check_decision_register,
         check_capability_ids,
         check_trust_schemas,
         check_assurance_schemas,

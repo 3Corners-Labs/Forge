@@ -1,6 +1,6 @@
 # ADR-0004: Model deployment profiles as compositions
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Platform and Security Architecture
 Date: 2026-07-20
 
