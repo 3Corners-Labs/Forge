@@ -1,6 +1,6 @@
 # F0 readiness evidence and ownership plan
 
-Status: Proposed
+Status: Accepted
 Owner: Forge Architecture Board
 Version: 0.1
 
@@ -12,7 +12,7 @@ F0 authorizes only safety hardening, architecture-as-code, contract tests, test 
 
 ## Authority and scope
 
-The Accepted constitution, ADR-0001 through ADR-0008, architecture readiness register, first-slice architecture, capability contracts, threat model, data-flow analysis, and roadmap govern this plan.
+The Accepted constitution, ADR-0001 through ADR-0009, architecture readiness register, first-slice architecture, capability contracts, threat model, data-flow analysis, and roadmap govern this plan.
 
 This plan clarifies evidence timing and ownership. It does not remove a control or weaken an accepted exit criterion. If closing a gate requires changing an accepted capability boundary, trust invariant, implementation sequence, or assurance obligation, work stops until an ADR records the decision.
 

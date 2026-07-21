@@ -35,11 +35,11 @@ Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F
 | G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [Accepted first-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Accepted for F0 |
 | G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | [Accepted evidence at `7ff31e3`](g6-threat-privacy-evidence.md) | Accepted for F0 |
 | G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Accepted evidence at `e3c6355`](g7-deployment-evidence.md) | Accepted for F0 |
-| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | [Executable fitness evidence and verified branch protection](g8-architecture-fitness-evidence.md) | Ready for review |
+| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | [Accepted evidence at `f406f13`](g8-architecture-fitness-evidence.md) | Accepted for F0 |
 | G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Accepted evidence at `ee0eff9`](g9-user-intent-assurance-evidence.md) | Accepted for F0 |
 | G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | [Accepted evidence at `0784c62`](g10-offensive-assurance-safety-evidence.md) | Accepted for F0 |
 
-Only G0 safety hardening and work required to close G1–G10 are authorized before readiness acceptance.
+G0 through G10 are accepted for their pre-M1 scope. Functional M1 implementation remains denied until the complete F0 evidence manifest and a human-approved ADR explicitly authorize the bounded M1 implementation.
 
 ## Findings and disposition
 
@@ -84,4 +84,4 @@ Production deployment, autonomous merge, billing, certification, accreditation, 
 
 Human acceptance is required from product, architecture, security/privacy, engineering, and operations owners. An AI agent may prepare evidence and identify contradictions but cannot mark its own architecture Accepted.
 
-[ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) records the accepted minimum architecture set. The [implementation baseline](implementation-baseline.md) prevents that accepted target design from being confused with verified repository state while the remaining readiness gates are open. Gate reviewers SHALL use the acceptance record defined by the [F0 readiness plan](f0-readiness-plan.md).
+[ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) records the accepted minimum architecture set. The [implementation baseline](implementation-baseline.md) prevents that accepted target design from being confused with verified repository state while functional implementation remains incomplete. Gate reviewers SHALL use the acceptance record defined by the [F0 readiness plan](f0-readiness-plan.md).
