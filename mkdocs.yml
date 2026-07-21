@@ -11,12 +11,16 @@ nav:
       - Engineering Constitution: foundation/constitution.md
   - Context Routing: context/README.md
   - Architecture Readiness: governance/architecture-readiness.md
+  - Implementation Baseline: governance/implementation-baseline.md
+  - Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
       - Metamodel: architecture/metamodel.md
       - Capabilities: architecture/capabilities.md
       - Identity and Tenancy: architecture/identity-and-tenancy.md
       - First Vertical Slice: architecture/vertical-slice.md
+      - First-Slice Contracts: architecture/first-slice-capability-contracts.md
+      - First-Slice Data Flow: architecture/first-slice-data-flow.md
       - Agentic Delivery: architecture/agentic-delivery.md
       - Runtime and Workflow: architecture/runtime-and-workflow.md
       - Experience and Explainability: architecture/experience.md

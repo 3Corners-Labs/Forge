@@ -11,6 +11,8 @@ status: Draft
 
 > **Architecture consolidation in progress:** this document remains intact as source material for the proposed [Forge mega masterplan](docs/foundation/masterplan.md). No source content is removed during the first migration stage; see the [content migration map](docs/governance/content-migration.md).
 
+> **Implemented state:** target capabilities described below are not implementation claims. See the [verified implementation baseline](docs/governance/implementation-baseline.md).
+
 > **An enterprise AI engineering platform for building trustworthy, governed and vendor-independent AI applications.**
 
 ---
@@ -824,5 +826,4 @@ People remain accountable.
 _End of README.md_
 
 The remaining documents in the Engineering Handbook expand on the concepts introduced here and serve as the normative reference for implementing, operating and evolving the Forge platform.
-
 

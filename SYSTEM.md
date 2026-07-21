@@ -572,13 +572,13 @@ The System Overview provides the conceptual architecture for Forge.
 
 Implementation details are intentionally delegated to:
 
-- ARCHITECTURE.md
-- CONTEXT_ENGINEERING.md
-- MEMORY_MODEL.md
-- POLICY_MODEL.md
-- SECURITY_MODEL.md
-- TOOL_MODEL.md
+- [Architecture overview](docs/architecture/overview.md)
+- [Knowledge, context, and memory](docs/architecture/knowledge.md)
+- [Policy and authorization](docs/architecture/policy-and-authorization.md)
+- [Trust and security](docs/architecture/security.md)
+- [Runtime and workflow](docs/architecture/runtime-and-workflow.md)
+- [Extensibility and tool integration](docs/architecture/extensibility.md)
 
-These documents collectively define the normative implementation architecture.
+These Proposed documents describe target architecture and do not authorize implementation until accepted through repository governance.
 
 _End of SYSTEM_OVERVIEW.md_

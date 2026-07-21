@@ -9,7 +9,7 @@ status: Draft
 
 # Architecture
 
-> The Architecture document is the normative technical reference for the Forge platform.
+> **Historical Draft:** this document is preserved as consolidation source and is not normative. Current Proposed architecture is organized under [`docs/architecture/`](architecture/overview.md), and only Accepted documents have authority.
 
 ## Purpose
 
@@ -1091,15 +1091,15 @@ Forge is designed to be:
 - Evolvable rather than static.
 - Reusable rather than application-specific.
 
-This document serves as the normative architectural reference for all subsequent implementation guidance.
+This historical Draft remains a migration source for the split Proposed architecture documents. It SHALL NOT be used as an implementation authority.
 
-Related documents:
+Current consolidation destinations:
 
-- CONTEXT_ENGINEERING.md
-- MEMORY_MODEL.md
-- POLICY_MODEL.md
-- SECURITY_MODEL.md
-- TOOL_MODEL.md
-- GOVERNANCE_MODEL.md
+- [Knowledge, context, and memory](architecture/knowledge.md)
+- [Intelligence governance](architecture/intelligence.md)
+- [Policy and authorization](architecture/policy-and-authorization.md)
+- [Trust and security](architecture/security.md)
+- [Extensibility and tool integration](architecture/extensibility.md)
+- [Documentation and delivery governance](governance/document-lifecycle.md)
 
 _End of ARCHITECTURE.md_

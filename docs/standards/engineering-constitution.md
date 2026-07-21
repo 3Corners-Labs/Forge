@@ -7,7 +7,7 @@ owner: Architecture
 
 # Engineering Constitution
 
-This is the single normative constitution for Forge. It becomes binding only after explicit human approval.
+This is a historical Proposed concise constitution retained for migration. The current Proposed review target is [`foundation/constitution.md`](../foundation/constitution.md). No constitution is normative until explicitly Accepted.
 
 ## Principles
 

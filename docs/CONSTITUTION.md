@@ -8,7 +8,7 @@ status: Draft
 
 # Forge Engineering Constitution
 
-> This Constitution defines the immutable engineering principles governing the design, development, operation and evolution of the Forge platform.
+> **Historical Draft:** this document is preserved as consolidation source. The current Proposed review target is [`foundation/constitution.md`](foundation/constitution.md); neither document is normative until explicitly Accepted.
 
 ## Purpose
 

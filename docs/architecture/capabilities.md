@@ -56,7 +56,7 @@ Before functional implementation, every participating capability SHALL define:
 - maturity and support envelope;
 - conformance tests and required evidence.
 
-The first-slice contracts are defined in [Trustworthy intent-to-PR vertical slice](vertical-slice.md). Other capabilities remain Research and SHALL NOT be represented as implemented.
+The first-slice boundary is defined in [Trustworthy intent-to-PR vertical slice](vertical-slice.md), with its detailed logical contracts in [First-slice capability contracts](first-slice-capability-contracts.md). Other capabilities remain Research and SHALL NOT be represented as implemented.
 
 User Journey Assurance is specified separately from generic Verification because it owns accepted role-based product scenarios and expected outcomes, not test-runner infrastructure or release approval. Continuous Security Testing is separate because offensive tooling requires stricter scope, safety and finding-governance contracts. Both may initially run on shared execution and verification infrastructure.
 

@@ -8,6 +8,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,7 @@ METADATA_DIRECTORIES = (
     "docs/reference-applications",
     "docs/context",
 )
+NAVIGATION_DIRECTORIES = METADATA_DIRECTORIES
 PRINCIPLES_SOURCE = ROOT / "docs/source-material/3corners-forge-principles-v0.1.md"
 PRINCIPLES_SHA256 = "7805ca4e13f1254e81f15e06a8a1d787862a4909aed276302f78f41354c3cee8"
 PRINCIPLES_ADDENDUM = ROOT / "docs/source-material/3corners-forge-principles-addendum-v0.1.md"
@@ -58,6 +60,47 @@ def check_document_metadata() -> None:
                 fail(f"{path.relative_to(ROOT)} has missing or invalid Status metadata")
             if not owner or not owner.group(1).strip():
                 fail(f"{path.relative_to(ROOT)} has missing Owner metadata")
+
+
+def check_local_markdown_links() -> None:
+    excluded = {PRINCIPLES_SOURCE}
+    link_pattern = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+    failures: list[str] = []
+    for path in (ROOT / "docs").rglob("*.md"):
+        if path in excluded:
+            continue
+        text = path.read_text(encoding="utf-8")
+        for raw_target in link_pattern.findall(text):
+            target = raw_target.strip().strip("<>").split()[0]
+            parsed = urlparse(target)
+            if parsed.scheme or target.startswith("#"):
+                continue
+            decoded_path = unquote(parsed.path)
+            if not decoded_path:
+                continue
+            if decoded_path.startswith("/"):
+                resolved = ROOT / decoded_path.lstrip("/")
+            else:
+                resolved = path.parent / decoded_path
+            if not resolved.exists():
+                failures.append(
+                    f"{path.relative_to(ROOT)} -> {target}"
+                )
+    if failures:
+        fail("broken local Markdown links: " + "; ".join(sorted(failures)))
+
+
+def check_navigation_coverage() -> None:
+    navigation = (ROOT / "mkdocs.yml").read_text(encoding="utf-8")
+    missing: list[str] = []
+    for relative_directory in NAVIGATION_DIRECTORIES:
+        directory = ROOT / relative_directory
+        for path in directory.rglob("*.md"):
+            relative_to_docs = path.relative_to(ROOT / "docs").as_posix()
+            if relative_to_docs not in navigation:
+                missing.append(relative_to_docs)
+    if missing:
+        fail("canonical documents missing from MkDocs navigation: " + ", ".join(sorted(missing)))
 
 
 def check_capability_ids() -> None:
@@ -157,6 +200,8 @@ def main() -> int:
     checks = (
         check_operating_contract,
         check_document_metadata,
+        check_local_markdown_links,
+        check_navigation_coverage,
         check_capability_ids,
         check_trust_schemas,
         check_assurance_schemas,

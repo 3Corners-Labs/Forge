@@ -7,23 +7,24 @@ owner: Engineering
 
 # Repository Map
 
+> **Historical migration source:** this map predates the current `docs/decisions/` and documentation navigation. Use [`docs/README.md`](README.md) for current documentation organization and the [implementation baseline](governance/implementation-baseline.md) for implemented repository state.
+
 This map describes documentation responsibilities without asserting implementation structure.
 
 | Area | Responsibility |
 |---|---|
 | `README.md` | Concise entry point, scope, and maturity |
 | `SYSTEM.md` | Instructions for AI-assisted engineering |
-| `docs/standards/` | Canonical engineering constitution and standards |
-| `docs/ARCHITECTURE.md` | Normative logical architecture after acceptance |
-| `docs/SYSTEM_OVERVIEW.md` | Accessible architectural orientation |
-| `docs/CAPABILITY_CATALOG.md` | Capability responsibilities and maturity |
-| `docs/SECURITY.md` | Security architecture baseline |
-| `docs/adr/` | Accepted architecture decisions and index |
+| `docs/foundation/` | Proposed vision, principles, masterplan, and constitutional review target |
+| `docs/architecture/` | Proposed target architecture and capability contracts |
+| `docs/governance/` | Readiness, delivery, lifecycle, migration, and acceptance controls |
+| `docs/decisions/` | Proposed and future Accepted architecture decisions and index |
+| `docs/adr/` | Historical ADR location pending migration |
 | `docs/rfc/` | Proposals under review and index |
-| `docs/architecture/decisions/` | Supporting decision material; accepted decisions belong in `docs/adr/` |
-| `docs/architecture/diagrams/` | Reusable diagrams whose source is reviewable |
-| `docs/architecture/threat-models/` | Approved threat models and data-flow analyses |
-| `docs/architecture/fitness-functions/` | Automated architectural constraints |
+| `docs/context/` | Task-specific authoritative context routing |
+| `docs/reference/` | Shared terminology |
+| `docs/reference-applications/` | Product dossiers that validate but do not define Forge core |
+| `docs/source-material/` | Immutable, non-normative source manuscripts and retrieval maps |
 
 ## Ownership rules
 

@@ -27,7 +27,7 @@ Do not recursively load all documentation. Follow links only when the current ta
 |---|---|---|
 | Product vision or scope | `foundation/vision.md`, `foundation/principles.md`, `foundation/masterplan.md` | `reference-applications/` for a named application |
 | Architecture challenge or design | `foundation/constitution.md`, `architecture/overview.md`, relevant capability document | accepted ADRs and quality scenarios |
-| Implementation readiness | `governance/architecture-readiness.md`, `architecture/vertical-slice.md`, `decisions/README.md` | metamodel, security and deployment documents |
+| Implementation readiness | `governance/architecture-readiness.md`, `governance/implementation-baseline.md`, `governance/minimum-architecture-acceptance.md`, `architecture/vertical-slice.md`, `architecture/first-slice-capability-contracts.md`, `architecture/first-slice-data-flow.md`, `decisions/README.md` | metamodel, security and deployment documents |
 | Agent or delivery workflow | `foundation/constitution.md`, `architecture/agentic-delivery.md`, `governance/delivery.md` | security and execution documents for elevated actions |
 | Knowledge, context, or memory | `foundation/constitution.md`, `architecture/knowledge.md` | intelligence, security, and source map |
 | Models, routing, or AI resources | `foundation/constitution.md`, `architecture/intelligence.md` | security, deployment, evaluation evidence |

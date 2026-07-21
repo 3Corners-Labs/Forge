@@ -27,6 +27,8 @@ Merge, production release, autonomous remediation, multi-agent optimization and 
 
 ## Participating capability contracts
 
+The detailed command, query, event, ownership, error, consistency, and conformance baseline is defined in [First-slice capability contracts](first-slice-capability-contracts.md).
+
 | Capability | Owns | Receives | Produces | Explicitly does not own |
 |---|---|---|---|---|
 | Tenant and workspace | workspace membership, project/repository binding | authenticated principal | immutable tenant/workspace/project context | external identity lifecycle |
@@ -108,6 +110,8 @@ Failure to meet a hypothesis triggers measurement and architecture review, not p
 | Evidence sink unavailable | Block consequential publication unless policy explicitly permits deferred evidence with a durable local outbox |
 
 ## Security and privacy minimum
+
+The complete initial inventory, processing gates, trust boundaries, minimization rules, and privacy follow-ups are defined in [First-slice data flow and privacy analysis](first-slice-data-flow.md).
 
 - Tenant and workspace identifiers are server-derived and immutable within the run.
 - Credentials are short-lived references resolved only inside the authorized worker boundary.

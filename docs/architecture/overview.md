@@ -5,7 +5,7 @@ Owner: Forge Architecture
 
 ## Scope
 
-This document describes the target logical architecture. The current repository only contains an early CLI and local development bootstrap; target capabilities SHALL NOT be represented as implemented until verified in code and tests.
+This document describes the target logical architecture. The current repository only contains an early CLI and local development bootstrap; target capabilities SHALL NOT be represented as implemented until verified in code and tests. The current evidence boundary is maintained in the [implementation baseline](../governance/implementation-baseline.md).
 
 ## Architectural style
 

@@ -26,12 +26,12 @@ Functional capability implementation may begin only after the mandatory gates be
 | Gate | Required outcome | Evidence | Status |
 |---|---|---|---|
 | G0 Development safety | Existing bootstrap is explicitly developer-only, loopback-bound, and rejected for non-developer profiles | Automated configuration and Compose checks | In progress |
-| G1 Governance | One lifecycle taxonomy and an accepted minimum authority set | Reviewed constitution, principles, lifecycle and ADR-0001 | Open |
+| G1 Governance | One lifecycle taxonomy and an accepted minimum authority set | [Minimum architecture acceptance packet](minimum-architecture-acceptance.md) and reviewed authority set | Open |
 | G2 Metamodel | Plane, capability, module, deployment unit, provider and profile relationships are unambiguous | Metamodel and mapping table | Proposed |
 | G3 First slice | One bounded intent-to-PR journey with explicit exclusions and quality hypotheses | Vertical-slice architecture | Proposed |
 | G4 Trust contracts | Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record are versioned and non-overlapping | Schemas and ADR | Proposed |
-| G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | Capability specifications | Open |
-| G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | Threat model and data-flow review | Open |
+| G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [First-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Proposed |
+| G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | [Threat model](../architecture/threat-model.md) and [first-slice data-flow review](../architecture/first-slice-data-flow.md) | Proposed |
 | G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | Profile specification and test plan | Open |
 | G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | Passing required checks | In progress |
 | G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | Scenario/result schemas, ADR-0005 and Trial test plan | Proposed |
@@ -81,3 +81,5 @@ Production deployment, autonomous merge, billing, certification, accreditation, 
 ## Review ownership
 
 Human acceptance is required from product, architecture, security/privacy, engineering, and operations owners. An AI agent may prepare evidence and identify contradictions but cannot mark its own architecture Accepted.
+
+The [minimum architecture acceptance packet](minimum-architecture-acceptance.md) identifies the smallest coherent human decision set. The [implementation baseline](implementation-baseline.md) prevents target architecture from being confused with verified repository state while that review remains open.
