@@ -2,32 +2,8 @@ name: Architecture
 
 on:
   pull_request:
-    paths:
-      - "docs/**"
-      - "schemas/**"
-      - "assurance/**"
-      - "security/assurance/**"
-      - "scripts/check_architecture.py"
-      - "AGENTS.md"
-      - "CLAUDE.md"
-      - "README.md"
-      - "SYSTEM.md"
-      - "mkdocs.yml"
-      - ".github/workflows/architecture.yml"
-      - ".github/pull_request_template.md"
   push:
     branches: [main]
-    paths:
-      - "docs/**"
-      - "schemas/**"
-      - "assurance/**"
-      - "security/assurance/**"
-      - "scripts/check_architecture.py"
-      - "AGENTS.md"
-      - "CLAUDE.md"
-      - "README.md"
-      - "SYSTEM.md"
-      - "mkdocs.yml"
 
 permissions:
   contents: read
@@ -35,6 +11,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Validate architecture as code

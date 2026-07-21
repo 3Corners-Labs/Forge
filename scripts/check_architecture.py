@@ -604,6 +604,144 @@ def check_offensive_assurance_safety() -> None:
             fail(f"{path.relative_to(ROOT)} did not fail with {expected}; found {sorted(actual)}")
 
 
+def check_module_boundaries() -> None:
+    manifest_path = ROOT / "architecture/module-boundaries.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schemaVersion") != "forge.module-boundaries.v1":
+        fail("module-boundary manifest has an unsupported schema version")
+    modules = manifest.get("modules", [])
+    by_id = {module["id"]: module for module in modules}
+    if len(by_id) != len(modules):
+        fail("module-boundary manifest contains duplicate module IDs")
+    by_path = {module["path"]: module for module in modules}
+    if len(by_path) != len(modules):
+        fail("module-boundary manifest contains duplicate module paths")
+    allowed_maturities = {"Research", "Trial", "Supported", "Deprecated"}
+    for module in modules:
+        if module.get("maturity") not in allowed_maturities:
+            fail(f"module {module['id']} has invalid maturity")
+        for dependency in module.get("allowedInternalDependencies", []):
+            if dependency not in by_id:
+                fail(f"module {module['id']} allows unknown dependency {dependency}")
+        path_exists = (ROOT / module["path"]).is_dir()
+        if module.get("planned") is True and path_exists:
+            fail(f"planned module {module['id']} exists but is still represented as unimplemented")
+        if module.get("planned") is not True and not path_exists:
+            fail(f"implemented module {module['id']} has no source directory")
+
+    isolation_rules: dict[str, set[str]] = {}
+    for rule in manifest.get("isolationRules", []):
+        identifier = rule["id"]
+        if identifier in isolation_rules:
+            fail(f"duplicate module isolation rule {identifier}")
+        isolation_rules[identifier] = set(rule["deniedToUnits"])
+    expected_rules = {
+        "control-plane-cannot-import-worker",
+        "worker-cannot-import-control-plane",
+        "shared-contract-cannot-import-runtime",
+    }
+    if set(isolation_rules) != expected_rules:
+        fail("module isolation rule set changed")
+
+    module_prefix = "github.com/3corners/forge/"
+
+    def target_module(import_path: str) -> dict | None:
+        if not import_path.startswith(module_prefix):
+            return None
+        relative = import_path.removeprefix(module_prefix)
+        candidates = [module for path, module in by_path.items() if relative == path or relative.startswith(path + "/")]
+        if not candidates:
+            return {"id": "unknown", "path": relative, "deploymentUnit": "unknown"}
+        return max(candidates, key=lambda module: len(module["path"]))
+
+    def dependency_violations(importer: dict, imports: list[str]) -> set[str]:
+        result: set[str] = set()
+        allowed = set(importer.get("allowedInternalDependencies", []))
+        for import_path in imports:
+            target = target_module(import_path)
+            if target is None:
+                continue
+            if target["id"] == "unknown":
+                result.add("unknown-internal-module")
+                continue
+            if target["id"] != importer["id"] and target["id"] not in allowed:
+                result.add("undeclared-internal-dependency")
+            source_unit = importer["deploymentUnit"]
+            target_unit = target["deploymentUnit"]
+            for rule in manifest["isolationRules"]:
+                if rule["fromUnit"] == source_unit and target_unit in rule["deniedToUnits"]:
+                    result.add(rule["id"])
+        return result
+
+    go_import_pattern = re.compile(r'"(github\.com/3corners/forge/[^"\s]+)"')
+    for module in modules:
+        if module.get("planned") is True:
+            continue
+        imports: list[str] = []
+        for path in (ROOT / module["path"]).rglob("*.go"):
+            imports.extend(go_import_pattern.findall(path.read_text(encoding="utf-8")))
+        violations = dependency_violations(module, imports)
+        if violations:
+            fail(f"module {module['id']} violates boundaries: {sorted(violations)}")
+
+    fixture_directory = ROOT / "architecture/testdata"
+    expected_fixture_names = {
+        "forbidden-control-to-worker.json",
+        "forbidden-undeclared-module.json",
+        "forbidden-worker-to-control.json",
+    }
+    fixture_paths = sorted(fixture_directory.glob("*.json"))
+    if {path.name for path in fixture_paths} != expected_fixture_names:
+        fail("module-boundary negative fixture set changed")
+    for path in fixture_paths:
+        fixture = json.loads(path.read_text(encoding="utf-8"))
+        importer = by_id[fixture["importerModule"]]
+        actual = dependency_violations(importer, fixture["imports"])
+        expected = set(fixture["expectedViolations"])
+        if actual != expected:
+            fail(f"{path.relative_to(ROOT)} expected {sorted(expected)}, found {sorted(actual)}")
+
+
+def check_required_ci() -> None:
+    architecture_workflow = (ROOT / ".github/workflows/architecture.yml").read_text(encoding="utf-8")
+    if "pull_request:" not in architecture_workflow:
+        fail("architecture workflow must run for every pull request")
+    if re.search(r"^\s+paths(?:-ignore)?:", architecture_workflow, re.MULTILINE):
+        fail("architecture workflow must not be path-filtered")
+    required_architecture_markers = (
+        "permissions:\n  contents: read",
+        "timeout-minutes: 10",
+        "run: python3 scripts/check_architecture.py",
+        "mkdocs build --strict",
+    )
+    missing = [marker for marker in required_architecture_markers if marker not in architecture_workflow]
+    if missing:
+        fail("architecture workflow lacks required controls: " + ", ".join(missing))
+
+    ci_workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    required_ci_markers = (
+        'test -z "$(gofmt -l cmd internal)"',
+        "go vet ./...",
+        "go test ./... -race -coverprofile=coverage.out",
+        "go build -trimpath -o dist/forge ./cmd/forge",
+    )
+    missing = [marker for marker in required_ci_markers if marker not in ci_workflow]
+    if missing:
+        fail("CI workflow lacks required verification: " + ", ".join(missing))
+
+    codeowners = (ROOT / ".github/CODEOWNERS").read_text(encoding="utf-8")
+    required_owners = (
+        "/architecture/ @3corners/architecture @3corners/engineering",
+        "/assurance/ @3corners/architecture @3corners/engineering",
+        "/security/ @3corners/architecture @3corners/engineering",
+        "/scripts/check_architecture.py @3corners/architecture @3corners/engineering",
+        "/.github/workflows/architecture.yml @3corners/architecture @3corners/engineering",
+    )
+    missing = [marker for marker in required_owners if marker not in codeowners]
+    if missing:
+        fail("architecture enforcement ownership is incomplete: " + ", ".join(missing))
+
+
 def check_principles_integrity() -> None:
     digest = hashlib.sha256(PRINCIPLES_SOURCE.read_bytes()).hexdigest()
     if digest != PRINCIPLES_SHA256:
@@ -676,6 +814,8 @@ def main() -> int:
         check_assurance_schemas,
         check_journey_contracts,
         check_offensive_assurance_safety,
+        check_module_boundaries,
+        check_required_ci,
         check_principles_integrity,
         check_developer_compose,
     )

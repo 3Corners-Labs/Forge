@@ -14,6 +14,7 @@ nav:
   - F0 Readiness Plan: governance/f0-readiness-plan.md
   - G0 Development Safety Evidence: governance/g0-development-safety-evidence.md
   - G7 Deployment Evidence: governance/g7-deployment-evidence.md
+  - G8 Architecture Fitness Evidence: governance/g8-architecture-fitness-evidence.md
   - G9 User Intent Assurance Evidence: governance/g9-user-intent-assurance-evidence.md
   - G10 Offensive Assurance Safety Evidence: governance/g10-offensive-assurance-safety-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md

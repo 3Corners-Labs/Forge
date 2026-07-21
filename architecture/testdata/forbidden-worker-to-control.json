@@ -1,0 +1,1 @@
+{"name":"worker imports control-plane configuration","importerModule":"worker","imports":["github.com/3corners/forge/internal/config"],"expectedViolations":["undeclared-internal-dependency","worker-cannot-import-control-plane"]}

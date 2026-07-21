@@ -17,3 +17,6 @@
 /docs/reference-applications/ @3corners/architecture
 /.github/ @3corners/engineering
 /deploy/ @3corners/platform
+/architecture/ @3corners/architecture @3corners/engineering
+/scripts/check_architecture.py @3corners/architecture @3corners/engineering
+/.github/workflows/architecture.yml @3corners/architecture @3corners/engineering
