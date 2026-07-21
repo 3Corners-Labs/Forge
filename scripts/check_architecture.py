@@ -731,15 +731,18 @@ def check_required_ci() -> None:
 
     codeowners = (ROOT / ".github/CODEOWNERS").read_text(encoding="utf-8")
     required_owners = (
-        "/architecture/ @3corners/architecture @3corners/engineering",
-        "/assurance/ @3corners/architecture @3corners/engineering",
-        "/security/ @3corners/architecture @3corners/engineering",
-        "/scripts/check_architecture.py @3corners/architecture @3corners/engineering",
-        "/.github/workflows/architecture.yml @3corners/architecture @3corners/engineering",
+        "* @cyberbeuk @3c-unified-git",
+        "/architecture/ @cyberbeuk @3c-unified-git",
+        "/assurance/ @cyberbeuk @3c-unified-git",
+        "/security/ @cyberbeuk @3c-unified-git",
+        "/scripts/check_architecture.py @cyberbeuk @3c-unified-git",
+        "/.github/workflows/architecture.yml @cyberbeuk @3c-unified-git",
     )
     missing = [marker for marker in required_owners if marker not in codeowners]
     if missing:
         fail("architecture enforcement ownership is incomplete: " + ", ".join(missing))
+    if "@3corners/" in codeowners:
+        fail("CODEOWNERS must not rely on unverified organization-team aliases")
 
 
 def check_threat_privacy_readiness() -> None:

@@ -57,6 +57,8 @@ An initial read on 2026-07-21 returned `404 Branch not protected`. Sijbren Beuke
 
 The verified `main` settings require strict, up-to-date `verify` and `validate` checks; one approving review with code-owner review; resolved conversations; enforcement for administrators; and denial of force pushes and deletion. These settings use the normal protected path and do not authorize administrative bypass.
 
+PR #10 exposed that the inherited CODEOWNERS file referenced organization teams that do not exist. The candidate replaces those aliases with the two actual writable repository collaborators, `cyberbeuk` and `3c-unified-git`, and the architecture checker now rejects reintroduction of unverified `@3corners/` team aliases. This makes required ownership effective rather than documentary.
+
 ## Verification commands
 
 ~~~text
@@ -74,13 +76,13 @@ M1 exit SHALL run the dependency and isolation rules against the implemented wor
 | Field | Value |
 |---|---|
 | Gate | G8 Architecture fitness functions |
-| Gate status | Accepted for F0 |
-| Candidate revision | f406f13 |
+| Gate status | Ready for review |
+| Candidate revision | Commit containing the corrected CODEOWNERS evidence |
 | Delivery owner | Sijbren Beukenkamp, temporary |
 | Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
-| Review outcome | Accepted for F0 on 2026-07-21 |
+| Review outcome | Corrective review authorized on 2026-07-21; exact revision pending |
 | External evidence | GitHub `main` protection verified on 2026-07-21; strict required checks `verify` and `validate` |
-| Required decision | Complete |
-| Residual risks | Worker modules do not yet exist; repository administrators retain platform-level ownership; one person fills multiple review roles |
+| Required decision | Record acceptance against the exact corrected CODEOWNERS revision |
+| Residual risks | Worker modules do not yet exist; repository administrators retain platform-level ownership; the second collaborator's organizational independence is not established |
 
-Sijbren Beukenkamp accepted the pre-M1 G8 evidence at revision `f406f13` on 2026-07-21. M1-exit and Before-Trial evidence remains assigned to its declared later phase.
+G8 SHALL remain Ready for review until the corrected CODEOWNERS revision is committed and its acceptance is recorded.

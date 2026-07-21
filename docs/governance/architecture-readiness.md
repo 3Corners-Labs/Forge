@@ -35,11 +35,11 @@ Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F
 | G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [Accepted first-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Accepted for F0 |
 | G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | [Accepted evidence at `7ff31e3`](g6-threat-privacy-evidence.md) | Accepted for F0 |
 | G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Accepted evidence at `e3c6355`](g7-deployment-evidence.md) | Accepted for F0 |
-| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | [Accepted evidence at `f406f13`](g8-architecture-fitness-evidence.md) | Accepted for F0 |
+| G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | [Corrected effective CODEOWNERS evidence](g8-architecture-fitness-evidence.md) | Ready for review |
 | G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Accepted evidence at `ee0eff9`](g9-user-intent-assurance-evidence.md) | Accepted for F0 |
 | G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | [Accepted evidence at `0784c62`](g10-offensive-assurance-safety-evidence.md) | Accepted for F0 |
 
-G0 through G10 are accepted for their pre-M1 scope. Functional M1 implementation remains denied until the complete F0 evidence manifest and a human-approved ADR explicitly authorize the bounded M1 implementation.
+G0 through G7 and G9 through G10 are accepted for their pre-M1 scope. G8 corrective evidence is Ready for review. Functional M1 implementation remains denied until G8, the complete F0 evidence manifest, and a human-approved ADR explicitly authorize the bounded M1 implementation.
 
 ## Findings and disposition
 

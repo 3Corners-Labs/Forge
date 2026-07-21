@@ -1,22 +1,22 @@
-* @3corners/engineering
-/AGENTS.md @3corners/architecture
-/CLAUDE.md @3corners/architecture
-/README.md @3corners/architecture
-/SYSTEM.md @3corners/architecture
-/mkdocs.yml @3corners/architecture
-/docs/foundation/ @3corners/architecture
-/docs/architecture/ @3corners/architecture
-/docs/decisions/ @3corners/architecture
-/docs/governance/ @3corners/architecture
-/docs/context/ @3corners/architecture
-/docs/source-material/ @3corners/architecture
-/schemas/ @3corners/architecture @3corners/engineering
-/assurance/ @3corners/architecture @3corners/engineering
-/security/ @3corners/architecture @3corners/engineering
-/docs/reference/ @3corners/architecture
-/docs/reference-applications/ @3corners/architecture
-/.github/ @3corners/engineering
-/deploy/ @3corners/platform
-/architecture/ @3corners/architecture @3corners/engineering
-/scripts/check_architecture.py @3corners/architecture @3corners/engineering
-/.github/workflows/architecture.yml @3corners/architecture @3corners/engineering
+* @cyberbeuk @3c-unified-git
+/AGENTS.md @cyberbeuk @3c-unified-git
+/CLAUDE.md @cyberbeuk @3c-unified-git
+/README.md @cyberbeuk @3c-unified-git
+/SYSTEM.md @cyberbeuk @3c-unified-git
+/mkdocs.yml @cyberbeuk @3c-unified-git
+/docs/foundation/ @cyberbeuk @3c-unified-git
+/docs/architecture/ @cyberbeuk @3c-unified-git
+/docs/decisions/ @cyberbeuk @3c-unified-git
+/docs/governance/ @cyberbeuk @3c-unified-git
+/docs/context/ @cyberbeuk @3c-unified-git
+/docs/source-material/ @cyberbeuk @3c-unified-git
+/schemas/ @cyberbeuk @3c-unified-git
+/assurance/ @cyberbeuk @3c-unified-git
+/security/ @cyberbeuk @3c-unified-git
+/docs/reference/ @cyberbeuk @3c-unified-git
+/docs/reference-applications/ @cyberbeuk @3c-unified-git
+/.github/ @cyberbeuk @3c-unified-git
+/deploy/ @cyberbeuk @3c-unified-git
+/architecture/ @cyberbeuk @3c-unified-git
+/scripts/check_architecture.py @cyberbeuk @3c-unified-git
+/.github/workflows/architecture.yml @cyberbeuk @3c-unified-git
