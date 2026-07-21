@@ -65,11 +65,12 @@ Before M1 evidence in this document is implemented and reproducible. M1 must lat
 | Field | Value |
 |---|---|
 | Gate | G0 Development safety |
-| Gate status | Ready for review |
+| Gate status | Accepted for F0 |
 | Candidate revision | 9db0afb |
 | Delivery owner | Sijbren Beukenkamp, temporary |
-| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
+| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
+| Review outcome | Accepted for F0 on 2026-07-21 |
 | Residual risks | Direct Compose invocation remains a developer operation; Docker/container isolation is not claimed; clean-host conformance remains Before Trial evidence |
-| Required decision | Accept or reject G0 at candidate revision 9db0afb |
+| Required decision | Complete |
 
-G0 SHALL remain Ready for review until the accountable human review records Accepted for F0.
+Sijbren Beukenkamp accepted the pre-M1 G0 evidence at revision `9db0afb` on 2026-07-21. M1-exit and Before-Trial evidence remains assigned to its declared later phase.

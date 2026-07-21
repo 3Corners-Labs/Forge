@@ -19,3 +19,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0006](0006-accept-minimum-architecture-baseline.md) | Accept the minimum architecture baseline | Accepted |
 | [ADR-0007](0007-sequence-self-building-before-full-advisory.md) | Sequence the self-building kernel before full advisory capability | Accepted |
 | [ADR-0008](0008-accept-canonical-documentation-baseline.md) | Accept the canonical documentation baseline | Accepted |
+| [ADR-0009](0009-m1-public-cli-boundary.md) | Establish the M1 public CLI boundary | Accepted |

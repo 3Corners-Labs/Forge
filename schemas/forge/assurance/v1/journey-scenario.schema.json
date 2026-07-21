@@ -15,10 +15,14 @@
     "intentReferences",
     "persona",
     "interface",
+    "environmentProfile",
+    "fixtureReferences",
     "preconditions",
     "steps",
     "expectedOutcomes",
     "forbiddenOutcomes",
+    "retryPolicy",
+    "quarantinePolicy",
     "evidencePolicy"
   ],
   "properties": {
@@ -101,6 +105,17 @@
       "properties": {
         "maximumAttempts": {"type": "integer", "minimum": 1, "maximum": 3},
         "retryableConditions": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "quarantinePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "owner", "maximumDurationHours", "releaseConditions"],
+      "properties": {
+        "status": {"enum": ["not-quarantined", "quarantined"]},
+        "owner": {"type": "string", "minLength": 1},
+        "maximumDurationHours": {"type": "integer", "minimum": 1, "maximum": 168},
+        "releaseConditions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
       }
     },
     "evidencePolicy": {

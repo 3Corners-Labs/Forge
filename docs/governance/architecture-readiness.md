@@ -27,16 +27,16 @@ Gate progress uses `Open`, `In progress`, `Ready for review`, or `Accepted for F
 
 | Gate | Required outcome | Evidence | Gate status |
 |---|---|---|---|
-| G0 Development safety | Existing bootstrap is explicitly developer-only, loopback-bound, and rejected for non-developer profiles | Automated configuration and Compose checks | Ready for review |
+| G0 Development safety | Existing bootstrap is explicitly developer-only, loopback-bound, and rejected for non-developer profiles | [Accepted evidence at `9db0afb`](g0-development-safety-evidence.md) | Accepted for F0 |
 | G1 Governance | One lifecycle taxonomy and an accepted minimum authority set | [ADR-0006](../decisions/0006-accept-minimum-architecture-baseline.md) and accepted authority set | Accepted for F0 |
 | G2 Metamodel | Plane, capability, module, deployment unit, provider and profile relationships are unambiguous | Accepted metamodel and ADR-0002 | Accepted for F0 |
 | G3 First slice | One bounded intent-to-PR journey with explicit exclusions and quality hypotheses | Accepted vertical-slice architecture | Accepted for F0 |
 | G4 Trust contracts | Execution Envelope, Context Package, Policy Decision, Approval Record and Evidence Record are versioned and non-overlapping | Schemas and accepted ADR-0003 | Accepted for F0 |
 | G5 Capability contracts | First-slice capabilities define ownership, data, commands, events, errors, security and NFRs | [Accepted first-slice capability contracts](../architecture/first-slice-capability-contracts.md) | Accepted for F0 |
 | G6 Threat and privacy | Tenant isolation, data classification, misuse, privacy and supply-chain threats have controls and tests | Accepted [threat model](../architecture/threat-model.md) and [first-slice data-flow review](../architecture/first-slice-data-flow.md); implementation evidence pending | In progress |
-| G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Profile manifests and executable conformance plan](g7-deployment-evidence.md) | Ready for review |
+| G7 Deployment evidence | Developer and one production-shaped reference profile have explicit conformance requirements | [Accepted evidence at `e3c6355`](g7-deployment-evidence.md) | Accepted for F0 |
 | G8 Fitness functions | Architecture, schema, dependency, isolation, source integrity and documentation rules run in CI | Passing required checks | In progress |
-| G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | Scenario/result schemas, ADR-0005 and Trial test plan | In progress |
+| G9 User intent assurance | Accepted multi-role scenarios have independent ownership, public-interface semantics, expected outcomes and reproducible evidence | [Reviewed scenario oracles and execution plan](g9-user-intent-assurance-evidence.md) | Ready for review |
 | G10 Offensive assurance safety | Active and autonomous security tests have rules of engagement, external scope enforcement, impact controls, kill switch and finding governance | Threat review, safety conformance plan and ADR-0005 | In progress |
 
 Only G0 safety hardening and work required to close G1–G10 are authorized before readiness acceptance.

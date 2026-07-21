@@ -415,6 +415,95 @@ def check_assurance_schemas() -> None:
             fail(f"{path.relative_to(ROOT)} must be a closed top-level object schema")
 
 
+def check_journey_contracts() -> None:
+    scenario_directory = ROOT / "assurance/journeys/m1"
+    expected_scenarios = {
+        "forge.journey.m1.allowed-intent-capture",
+        "forge.journey.m1.denied-intent-capture",
+    }
+    schema = json.loads(
+        (ROOT / "schemas/forge/assurance/v1/journey-scenario.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    required_fields = set(schema["required"])
+    scenarios: dict[str, dict] = {}
+    for path in sorted(scenario_directory.glob("*.scenario.json")):
+        scenario = json.loads(path.read_text(encoding="utf-8"))
+        missing = required_fields - set(scenario)
+        if missing:
+            fail(f"{path.relative_to(ROOT)} lacks required fields: {sorted(missing)}")
+        identifier = scenario.get("id")
+        if identifier in scenarios:
+            fail(f"duplicate journey scenario ID: {identifier}")
+        scenarios[identifier] = scenario
+        if scenario.get("owner") == "Forge Engineering":
+            fail(f"{path.relative_to(ROOT)} oracle must be owned independently from implementation")
+        if scenario.get("lifecycle") not in {"reviewed", "accepted"}:
+            fail(f"{path.relative_to(ROOT)} must be reviewed before G9 review")
+        interface = scenario.get("interface", {})
+        if interface.get("type") != "cli" or interface.get("publicEntryPointReference") != "forge delivery start":
+            fail(f"{path.relative_to(ROOT)} must use the ADR-0009 public CLI boundary")
+        if scenario.get("environmentProfile") != "developer-trial":
+            fail(f"{path.relative_to(ROOT)} must use the Developer Trial profile")
+        for fixture_reference in scenario.get("fixtureReferences", []):
+            if not (ROOT / fixture_reference).is_file():
+                fail(f"{path.relative_to(ROOT)} references missing fixture {fixture_reference}")
+        expected_outcomes = scenario.get("expectedOutcomes", [])
+        if not expected_outcomes or any(item.get("oracle") != "deterministic" for item in expected_outcomes):
+            fail(f"{path.relative_to(ROOT)} must use deterministic M1 oracles")
+        if not scenario.get("forbiddenOutcomes"):
+            fail(f"{path.relative_to(ROOT)} must declare forbidden outcomes")
+        if scenario.get("retryPolicy", {}).get("maximumAttempts") != 1:
+            fail(f"{path.relative_to(ROOT)} must not mask M1 failures with retries")
+        quarantine = scenario.get("quarantinePolicy", {})
+        if not quarantine.get("owner") or not quarantine.get("releaseConditions"):
+            fail(f"{path.relative_to(ROOT)} lacks accountable quarantine governance")
+        evidence = scenario.get("evidencePolicy", {})
+        if evidence.get("redactionRequired") is not True:
+            fail(f"{path.relative_to(ROOT)} must require evidence redaction")
+        actions = " ".join(step.get("action", "") for step in scenario.get("steps", []))
+        if "forge delivery start" not in actions:
+            fail(f"{path.relative_to(ROOT)} does not execute the public CLI command")
+
+    if set(scenarios) != expected_scenarios:
+        fail(f"M1 journey set differs: expected {sorted(expected_scenarios)}, found {sorted(scenarios)}")
+    allowed = scenarios["forge.journey.m1.allowed-intent-capture"]
+    denied = scenarios["forge.journey.m1.denied-intent-capture"]
+    if allowed["persona"]["role"] == denied["persona"]["role"]:
+        fail("allowed and denied journeys must exercise different roles")
+    denied_assertions = " ".join(item["assertion"] for item in denied["expectedOutcomes"])
+    if "forbidden" not in denied_assertions or "before repository discovery" not in denied_assertions:
+        fail("denied journey must fail closed before repository discovery")
+
+    plan_path = scenario_directory / "trial-execution-plan.json"
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    if plan.get("publicEntryPoint") != "forge delivery start":
+        fail("M1 execution plan must bind the ADR-0009 public CLI boundary")
+    if plan.get("owner") == plan.get("implementationOwner"):
+        fail("M1 execution-plan owner must be independent from implementation")
+    if plan.get("executionState") != "not-executable-before-m1":
+        fail("M1 journey runner must remain disabled during F0")
+    if plan.get("resultSchema") != "schemas/forge/assurance/v1/journey-result.schema.json":
+        fail("M1 execution plan must bind the journey-result schema")
+    if not plan.get("applicationRevisionBinding", {}).get("required"):
+        fail("M1 execution plan must bind an immutable application revision")
+    runner = plan.get("runnerBinding", {})
+    if not runner.get("required") or runner.get("candidateControlled") is not False:
+        fail("M1 execution plan must bind an independent immutable runner")
+    bindings = plan.get("scenarioBindings", [])
+    if len(bindings) != 2:
+        fail("M1 execution plan must bind exactly two scenarios")
+    for binding in bindings:
+        fixture_path = ROOT / binding["fixture"]
+        actual_digest = hashlib.sha256(fixture_path.read_bytes()).hexdigest()
+        if binding.get("fixtureSha256") != actual_digest:
+            fail(f"fixture digest mismatch for {fixture_path.relative_to(ROOT)}")
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        if binding["identityProfileId"] != fixture["identityProfileId"]:
+            fail(f"identity binding mismatch for {binding['scenario']}")
+
+
 def check_principles_integrity() -> None:
     digest = hashlib.sha256(PRINCIPLES_SOURCE.read_bytes()).hexdigest()
     if digest != PRINCIPLES_SHA256:
@@ -485,6 +574,7 @@ def main() -> int:
         check_trust_schemas,
         check_deployment_profiles,
         check_assurance_schemas,
+        check_journey_contracts,
         check_principles_integrity,
         check_developer_compose,
     )

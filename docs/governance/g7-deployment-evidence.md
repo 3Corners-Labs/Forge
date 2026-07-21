@@ -81,11 +81,12 @@ task verify
 | Field | Value |
 |---|---|
 | Gate | G7 Deployment evidence |
-| Gate status | Ready for review |
-| Candidate revision | Commit containing this record |
+| Gate status | Accepted for F0 |
+| Candidate revision | e3c6355 |
 | Delivery owner | Sijbren Beukenkamp, temporary |
-| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
+| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
+| Review outcome | Accepted for F0 on 2026-07-21 |
 | Residual risks | Profile tests beyond the existing bootstrap are planned; topology and provider selections remain undecided; role concentration reduces independent challenge |
-| Required decision | Accept or reject G7 at the exact committed revision |
+| Required decision | Complete |
 
-G7 SHALL remain Ready for review until the accountable human review records Accepted for F0. A later topology or provider selection requires normal architecture review and an ADR when it materially constrains Forge.
+Sijbren Beukenkamp accepted the pre-M1 G7 evidence at revision `e3c6355` on 2026-07-21. M1-exit and Before-Trial evidence remains assigned to its declared later phase. A later topology or provider selection requires normal architecture review and an ADR when it materially constrains Forge.

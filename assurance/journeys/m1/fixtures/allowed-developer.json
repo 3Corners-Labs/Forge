@@ -1,0 +1,16 @@
+{
+  "fixtureVersion": "forge.m1-fixture.v1",
+  "identityProfileId": "forge.identity.synthetic.developer-permitted",
+  "principal": "synthetic-developer-allowed",
+  "memberships": ["fixture-workspace"],
+  "entitlements": ["forge.capability.experience", "forge.capability.intent"],
+  "workspace": "fixture-workspace",
+  "project": "forge",
+  "repository": "forge",
+  "intent": {
+    "objective": "Add a documentation-only marker to the fixture repository",
+    "constraints": ["No source publication", "No production access"],
+    "acceptanceCriteria": ["Intent is captured for plan review"]
+  },
+  "seededSensitiveValues": ["FORGE_TEST_SECRET_DO_NOT_RECORD"]
+}

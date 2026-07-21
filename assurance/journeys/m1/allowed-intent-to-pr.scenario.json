@@ -1,0 +1,94 @@
+{
+  "schemaVersion": "forge.journey-scenario.v1",
+  "id": "forge.journey.m1.allowed-intent-capture",
+  "version": "1.0.0",
+  "title": "Permitted developer starts a bounded delivery",
+  "owner": "Forge Product, Experience, and Quality Architecture",
+  "lifecycle": "reviewed",
+  "riskClass": "high",
+  "intentReferences": [
+    "docs/architecture/vertical-slice.md#included-journey",
+    "docs/decisions/0009-m1-public-cli-boundary.md"
+  ],
+  "persona": {
+    "id": "synthetic-developer-allowed",
+    "role": "developer",
+    "entitlements": ["forge.capability.experience", "forge.capability.intent"],
+    "deniedCapabilities": ["forge.capability.approval", "forge.capability.release"],
+    "locale": "en-NL",
+    "accessibilityProfile": "terminal-keyboard-and-screen-reader"
+  },
+  "interface": {
+    "type": "cli",
+    "publicEntryPointReference": "forge delivery start",
+    "contractReference": "docs/decisions/0009-m1-public-cli-boundary.md"
+  },
+  "environmentProfile": "developer-trial",
+  "fixtureReferences": ["assurance/journeys/m1/fixtures/allowed-developer.json"],
+  "preconditions": [
+    "The synthetic identity is authenticated and is a member of fixture-workspace",
+    "The fixture repository binding is available through a contract-test source-control adapter",
+    "The Developer Trial profile is active"
+  ],
+  "steps": [
+    {
+      "id": "submit-intent",
+      "action": "Run forge delivery start --workspace fixture-workspace --project forge --repository forge --intent-file <fixture-intent> --output json",
+      "checkpoint": "The public CLI returns a normalized success response with one delivery-run reference"
+    },
+    {
+      "id": "inspect-boundary",
+      "action": "Inspect the response and referenced evidence through the public CLI projection",
+      "checkpoint": "The run awaits plan review and no worker or publication action has occurred"
+    }
+  ],
+  "expectedOutcomes": [
+    {
+      "id": "intent-captured",
+      "category": "business",
+      "assertion": "Exactly one delivery run is created for the resolved workspace, project, repository, and supplied intent",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "authority-resolved",
+      "category": "authorization",
+      "assertion": "The authoritative scope is derived from the authenticated membership and the decision is permit",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "awaits-review",
+      "category": "operational",
+      "assertion": "The delivery state stops before execution and publication pending the required plan review",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "sensitive-value-redacted",
+      "category": "privacy",
+      "assertion": "The seeded sensitive value is absent from CLI output, telemetry, and routine evidence",
+      "oracle": "deterministic"
+    }
+  ],
+  "forbiddenOutcomes": [
+    "Caller input becomes authoritative tenant scope",
+    "A worker starts before a separately authorized plan transition",
+    "A branch or pull request is published",
+    "The seeded sensitive value appears in output or evidence",
+    "The scenario or candidate changes its expected outcomes"
+  ],
+  "retryPolicy": {
+    "maximumAttempts": 1,
+    "retryableConditions": []
+  },
+  "quarantinePolicy": {
+    "status": "not-quarantined",
+    "owner": "Forge Quality Architecture",
+    "maximumDurationHours": 72,
+    "releaseConditions": ["Root cause is recorded", "The deterministic oracle passes three consecutive clean runs", "Accountable owner removes quarantine"]
+  },
+  "evidencePolicy": {
+    "requiredTypes": ["policy-decision", "delivery-transition", "cli-result", "redaction-assertion"],
+    "classification": "Internal",
+    "retentionClass": "m1-assurance-candidate",
+    "redactionRequired": true
+  }
+}

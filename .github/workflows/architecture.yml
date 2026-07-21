@@ -5,6 +5,7 @@ on:
     paths:
       - "docs/**"
       - "schemas/**"
+      - "assurance/**"
       - "scripts/check_architecture.py"
       - "AGENTS.md"
       - "CLAUDE.md"
@@ -18,6 +19,7 @@ on:
     paths:
       - "docs/**"
       - "schemas/**"
+      - "assurance/**"
       - "scripts/check_architecture.py"
       - "AGENTS.md"
       - "CLAUDE.md"
