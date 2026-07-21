@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Engineering and Architecture
-Version: 0.1
+Version: 0.2
 Verified: 2026-07-21
 
 ## Purpose
@@ -17,14 +17,14 @@ Forge currently provides a small developer bootstrap:
 
 | Area | Implemented behaviour | Evidence | Maturity |
 |---|---|---|---|
-| CLI entry point | `init`, `doctor`, `up`, `down`, `version` commands | `cmd/forge`, `internal/cli` | Trial |
-| Configuration | Strict parsing of organization, runtime mode, runtime profile, and intelligence flag | `internal/config` and tests | Trial |
+| CLI entry point | `init`, `doctor`, `up`, `down`, `version` commands; `up` and `down` validate the Developer profile before invoking Docker | `cmd/forge`, `internal/cli` and tests | Trial |
+| Configuration | Strict parsing plus fail-closed Developer bootstrap validation for runtime mode, profile, and disabled intelligence | `internal/config` and tests | Trial |
 | Prerequisite diagnostics | Detects Git, Go, Docker, and Task executables | `internal/doctor` | Trial |
 | Local platform control | Invokes the developer Docker Compose profile | `internal/platform` | Trial |
 | Developer environment | Loopback-bound PostgreSQL, Keycloak, OpenBao, MinIO, OpenTelemetry Collector, Prometheus, Grafana, and Mailpit | `deploy/compose` | Trial |
 | Trust contract candidates | Closed JSON Schemas for Execution Envelope, Context Package, Policy Decision, Approval Record, and Evidence Record | `schemas/forge/trust/v1` | Research |
 | Assurance contract candidates | Closed JSON Schemas for journey scenarios and results | `schemas/forge/assurance/v1` | Research |
-| Architecture fitness checks | Validates document metadata, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose constraints | `scripts/check_architecture.py` | Trial |
+| Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 
 The default configuration sets `intelligence.enabled` to `false`. The current CLI does not authenticate users, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
 
@@ -56,7 +56,7 @@ As of the verified date:
 
 - repository architecture checks pass;
 - Go tests pass;
-- only the configuration package has substantive automated test coverage;
+- configuration and CLI developer-safety paths have substantive automated test coverage;
 - the worktree baseline is the revision recorded by Git, not this document alone.
 
 Verification results are observations, not permanent claims. They SHALL be regenerated for each candidate revision.

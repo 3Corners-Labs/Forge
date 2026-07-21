@@ -359,8 +359,22 @@ def check_principles_integrity() -> None:
 def check_developer_compose() -> None:
     path = ROOT / "deploy/compose/docker-compose.yml"
     text = path.read_text(encoding="utf-8")
-    if "x-forge-profile: developer-only" not in text:
-        fail("Compose bootstrap must declare developer-only profile")
+    required_compose_markers = (
+        "name: forge-development",
+        "x-forge-profile: developer-only",
+        "POSTGRES_PASSWORD: forge-dev-only",
+        'command: ["start-dev"]',
+        "KC_BOOTSTRAP_ADMIN_PASSWORD: admin-dev-only",
+        "-dev-root-token-id=dev-only-token",
+        "MINIO_ROOT_PASSWORD: minio-dev-only",
+        "GF_SECURITY_ADMIN_PASSWORD: admin-dev-only",
+        "postgres-data:",
+        "minio-data:",
+        "grafana-data:",
+    )
+    missing_markers = [marker for marker in required_compose_markers if marker not in text]
+    if missing_markers:
+        fail("developer Compose controls are missing: " + ", ".join(missing_markers))
     port_blocks = re.findall(r"^\s*ports:\s*\[([^\]]+)\]", text, re.MULTILINE)
     published_ports = []
     for block in port_blocks:
@@ -368,6 +382,13 @@ def check_developer_compose() -> None:
     unsafe = [port for port in published_ports if not port.startswith("127.0.0.1:")]
     if unsafe:
         fail(f"Compose ports must bind loopback only: {', '.join(unsafe)}")
+    telemetry = (ROOT / "observability/otel-collector/config.yaml").read_text(encoding="utf-8")
+    if "debug:" not in telemetry or "exporters: [debug]" not in telemetry:
+        fail("Developer Trial telemetry must keep its debug exporter visible to conformance checks")
+    negative_fixture = ROOT / "internal/cli/testdata/production-shaped.yaml"
+    fixture_text = negative_fixture.read_text(encoding="utf-8")
+    if "profile: connected-self-hosted" not in fixture_text:
+        fail("G0 requires a production-shaped negative CLI fixture")
 
 
 def main() -> int:

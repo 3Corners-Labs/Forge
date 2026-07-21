@@ -1,0 +1,7 @@
+organization:
+  name: Forge G0 Test
+runtime:
+  mode: compose
+  profile: developer
+intelligence:
+  enabled: false

@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+const (
+	DeveloperRuntimeMode    = "compose"
+	DeveloperRuntimeProfile = "developer"
+)
+
 type Config struct {
 	Organization struct{ Name string }
 	Runtime      struct{ Mode, Profile string }
@@ -88,4 +93,19 @@ func Load(path string) (Config, error) {
 		return cfg, errors.New("runtime.profile is required")
 	}
 	return cfg, nil
+}
+
+// ValidateDeveloperBootstrap rejects configuration that could make the local
+// Compose bootstrap appear usable as a non-developer deployment profile.
+func (cfg Config) ValidateDeveloperBootstrap() error {
+	if cfg.Runtime.Mode != DeveloperRuntimeMode {
+		return fmt.Errorf("developer bootstrap requires runtime mode %q; refusing %q", DeveloperRuntimeMode, cfg.Runtime.Mode)
+	}
+	if cfg.Runtime.Profile != DeveloperRuntimeProfile {
+		return fmt.Errorf("developer bootstrap requires runtime profile %q; refusing %q", DeveloperRuntimeProfile, cfg.Runtime.Profile)
+	}
+	if cfg.Intelligence.Enabled {
+		return errors.New("developer bootstrap does not implement governed intelligence; refusing intelligence.enabled=true")
+	}
+	return nil
 }
