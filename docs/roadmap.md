@@ -48,6 +48,8 @@ The accepted implementation boundary is defined by:
 
 F0 is a pre-implementation gate, not a product milestone. M1 remains the first implementation milestone and the first minimum platform outcome.
 
+G0 through G10 are Accepted for F0 at protected-main baseline `93efcfcae8e946310ebd07294d744f38a3083b0e`. Final F0 acceptance and M1 implementation authority remain pending the Proposed [F0 final acceptance manifest](governance/f0-acceptance-manifest.md) and [ADR-0010](decisions/0010-authorize-bounded-m1-implementation.md).
+
 ### Objective
 
 Preserve and complete the architecture-foundation work required to begin M1 without confusing accepted design, implementation maturity, and verification evidence.
@@ -57,13 +59,13 @@ Preserve and complete the architecture-foundation work required to begin M1 with
 | Foundation work | Current status | Evidence | Required disposition |
 |---|---|---|---|
 | Accept the constitution, minimum capability boundary, trust model, and foundational ADRs | Canonical target baseline Accepted | [ADR-0006](decisions/0006-accept-minimum-architecture-baseline.md) and [ADR-0008](decisions/0008-accept-canonical-documentation-baseline.md) | Keep unimplemented capabilities at Research; authorize Trials incrementally when a milestone requires them |
-| Close the mandatory readiness gates | In progress | [Architecture readiness register](governance/architecture-readiness.md) and [F0 readiness plan](governance/f0-readiness-plan.md) | Close G0 and G6–G10 with the required pre-M1 design, test-contract, safety, and ownership evidence before M1 functional implementation |
+| Close the mandatory readiness gates | Complete for pre-M1 scope | [Architecture readiness register](governance/architecture-readiness.md), [F0 readiness plan](governance/f0-readiness-plan.md), and gate evidence | Preserve the accepted evidence and complete the separate final authorization decision |
 | Reconcile document status, capability maturity, and evidence labels | Complete for the canonical baseline | Accepted [documentation lifecycle](governance/document-lifecycle.md), ADR-0008, and lifecycle fitness check | Maintain the separation without treating Accepted design as implemented capability |
-| Accept or revise the metamodel, trust-object, and deployment-profile decisions | Partially complete | ADR-0002, ADR-0003, and ADR-0004 are Accepted | Complete the G7 profile specification and test plan; do not treat profile composition as production support |
-| Define non-functional requirements and deployment profiles | In progress | First-slice validation hypotheses and Accepted deployment architecture | Approve the Developer Trial envelope and one production-shaped reference-profile test plan before implementation depends on them |
-| Establish documentation, contract, dependency, isolation, and architecture fitness checks | In progress | Required CI architecture checks and G8 | Complete the minimum dependency and isolation fitness functions before M1; M2 expands them into supply-chain assurance |
-| Define accepted journey, exploratory scenario, and offensive-test rules-of-engagement contracts | Partially complete | Accepted ADR-0005 and Research assurance schemas | Accept the minimum allowed and denied M1 journey plan and the G10 safety contract; broad active testing remains excluded from M1 |
-| Replace development defaults that could be mistaken for production posture | In progress | Developer-only profile marker, loopback checks, and runtime-profile rejection | Close G0 with tests proving that development credentials, services, exporters, and bindings cannot run as a non-developer profile |
+| Accept or revise the metamodel, trust-object, and deployment-profile decisions | Complete for F0 | ADR-0002, ADR-0003, ADR-0004, and accepted G7 evidence | Do not treat profile composition as production support |
+| Define non-functional requirements and deployment profiles | Complete for F0 | First-slice validation hypotheses, Accepted deployment architecture, and G7 evidence | Validate M1-exit and Before-Trial evidence in their assigned phases |
+| Establish documentation, contract, dependency, isolation, and architecture fitness checks | Complete for F0 | Required protected CI and accepted G8 evidence | Apply them to implemented M1 modules; M2 expands them into supply-chain assurance |
+| Define accepted journey, exploratory scenario, and offensive-test rules-of-engagement contracts | Complete for F0 | Accepted ADR-0005, G9 scenarios, and G10 safety contract | Execute M1 journeys at M1 exit; broad active testing remains excluded from M1 |
+| Replace development defaults that could be mistaken for production posture | Complete for F0 | Accepted G0 evidence, loopback checks, and runtime-profile rejection | Preserve the restriction and validate the implemented M1 public and worker paths |
 | Review and accept or revise the product masterplan | Accepted | Accepted [Forge mega masterplan](foundation/masterplan.md) and ADR-0008 | ADR-0007 remains authoritative for implementation sequencing and the bounded M1 scope |
 | Complete source-content migration without loss | In progress | [Content migration map](governance/content-migration.md) and source map | Preserve provenance, finish concept-level verification, and prevent source removal until migration rules pass |
 | Establish capability owners, quality scenarios, threat coverage, and the ADR register | Partially complete for M1 | Accepted first-slice contracts, threat model, ADR register, and validation hypotheses | Assign implementation and operational owners and close missing quality scenarios before authorizing each Trial |

@@ -198,6 +198,8 @@ A gate cannot be accepted from document presence, a passing candidate-controlled
 
 ## F0 final acceptance
 
+Final acceptance SHALL be recorded in the [F0 final acceptance manifest](f0-acceptance-manifest.md) at the same exact revision as the human-approved M1 authorization ADR.
+
 F0 is complete only when:
 
 1. G0 through G10 are `Accepted for F0` at one candidate revision;
