@@ -30,7 +30,7 @@ Make the pre-M1 security-assurance boundary machine-readable and fail closed whi
 - evidence classification, recipients, retention, redaction, and coverage disclosure;
 - cleanup and incident handling.
 
-`security/assurance/m1.rules-of-engagement.json` is a reviewed, contract-only M1 candidate. Its target set is one repository-local, non-network fixture. Its runner configuration is disabled, non-autonomous, externally scoped, unable to accept generated configuration, and held behind an engaged kill switch. Both referenced configurations are SHA-256 bound.
+`security/assurance/m1.rules-of-engagement.json` is an authorized, contract-only M1 record. Its target set is one repository-local, non-network fixture. Its runner configuration is disabled, non-autonomous, externally scoped, unable to accept generated configuration, and held behind an engaged kill switch. Both referenced configurations are SHA-256 bound.
 
 The permitted techniques are limited to schema validation, configuration analysis, dependency metadata analysis, and isolation contract tests. Active network requests, request rate, cost units, and payload bytes are all zero.
 
@@ -64,11 +64,12 @@ M1 exit SHALL prove that the implemented authority, worker, tool, and public CLI
 | Field | Value |
 |---|---|
 | Gate | G10 Offensive assurance safety |
-| Gate status | Ready for review |
-| Candidate revision | Commit containing this record |
+| Gate status | Accepted for F0 |
+| Candidate revision | 0784c62 |
 | Delivery owner | Sijbren Beukenkamp, temporary |
-| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
-| Required decision | Accept or reject the reviewed rules of engagement and pre-M1 G10 evidence at the exact committed revision |
+| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
+| Review outcome | Accepted for F0 on 2026-07-21 |
+| Required decision | Complete |
 | Residual risks | Runtime enforcement does not yet exist; protected-CI configuration still requires G8 review; one person fills multiple review roles |
 
-G10 SHALL remain Ready for review until the accountable human records `Accepted for F0`. Acceptance does not authorize an active or autonomous security-testing runner.
+Sijbren Beukenkamp accepted the rules of engagement and pre-M1 G10 evidence at revision `0784c62` on 2026-07-21. Acceptance does not authorize an active or autonomous security-testing runner.

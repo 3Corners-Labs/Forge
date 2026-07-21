@@ -20,8 +20,8 @@ Define independently owned, reproducible allowed and denied M1 journey oracles t
 
 | Scenario | Role | Required result | Lifecycle |
 |---|---|---|---|
-| `forge.journey.m1.allowed-intent-capture` | Permitted synthetic developer | Capture exactly one bounded intent and stop before execution or publication | Reviewed |
-| `forge.journey.m1.denied-intent-capture` | Unauthorized synthetic observer | Return `forbidden` before repository discovery with no existence disclosure or side effect | Reviewed |
+| `forge.journey.m1.allowed-intent-capture` | Permitted synthetic developer | Capture exactly one bounded intent and stop before execution or publication | Accepted |
+| `forge.journey.m1.denied-intent-capture` | Unauthorized synthetic observer | Return `forbidden` before repository discovery with no existence disclosure or side effect | Accepted |
 
 Both scenarios invoke `forge delivery start` and bind explicit persona, entitlements, denied capabilities, Developer Trial profile, synthetic fixture, steps, deterministic expected outcomes, forbidden outcomes, redacted evidence, single-attempt retry, and accountable quarantine handling.
 
@@ -74,11 +74,12 @@ M1 exit SHALL execute both accepted scenarios through the implemented public CLI
 | Field | Value |
 |---|---|
 | Gate | G9 User intent assurance |
-| Gate status | Ready for review |
-| Candidate revision | Commit containing this record |
+| Gate status | Accepted for F0 |
+| Candidate revision | ee0eff9 |
 | Delivery owner | Sijbren Beukenkamp, temporary |
-| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
-| Required decision | Accept or reject both reviewed scenario oracles, ADR-0009, and pre-M1 G9 evidence at the exact committed revision |
+| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
+| Review outcome | Accepted for F0 on 2026-07-21 |
+| Required decision | Complete |
 | Residual risks | The runner and public command are not implemented; one person fills multiple review roles; clean protected-CI evidence remains pending |
 
-G9 SHALL remain Ready for review until the accountable human promotes both scenario lifecycles to `accepted` and records `Accepted for F0` at the reviewed revision.
+Sijbren Beukenkamp accepted both scenario oracles, ADR-0009, and the pre-M1 G9 evidence at revision `ee0eff9` on 2026-07-21. Execution evidence remains assigned to M1 exit and Before Trial.

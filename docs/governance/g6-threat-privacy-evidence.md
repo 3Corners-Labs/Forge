@@ -81,11 +81,12 @@ task verify
 | Field | Value |
 |---|---|
 | Gate | G6 Threat and privacy readiness |
-| Gate status | Ready for review |
-| Candidate revision | Commit containing this record |
+| Gate status | Accepted for F0 |
+| Candidate revision | 7ff31e3 |
 | Delivery owner | Sijbren Beukenkamp, temporary |
-| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
-| Required decision | Accept or reject the reviewed threat-control plan, Developer Trial decisions, fixtures, and pre-M1 G6 evidence at the exact committed revision |
+| Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008 |
+| Review outcome | Accepted for F0 on 2026-07-21 |
+| Required decision | Complete |
 | Residual risks | Runtime controls are not implemented; cryptographic design remains Proposed; production constraints remain unresolved; one person fills multiple review roles |
 
-G6 SHALL remain Ready for review until the accountable human records `Accepted for F0`. Acceptance does not promote cryptography, a production profile, or any runtime capability.
+Sijbren Beukenkamp accepted the pre-M1 G6 evidence at revision `7ff31e3` on 2026-07-21. Acceptance does not promote cryptography, a production profile, or any runtime capability.

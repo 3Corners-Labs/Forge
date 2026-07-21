@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "title": "Unauthorized observer is denied before repository discovery",
   "owner": "Forge Product, Experience, and Quality Architecture",
-  "lifecycle": "reviewed",
+  "lifecycle": "accepted",
   "riskClass": "critical",
   "intentReferences": [
     "docs/architecture/first-slice-data-flow.md#privacy-and-security-scenarios",

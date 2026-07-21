@@ -2,7 +2,7 @@
   "schemaVersion": "forge.security-rules-of-engagement.v1",
   "id": "forge.security-roe.m1-contract-only",
   "version": "1.0.0",
-  "status": "reviewed",
+  "status": "authorized",
   "owners": {
     "requester": "Forge Security and Quality Architecture",
     "approver": "Sijbren Beukenkamp",

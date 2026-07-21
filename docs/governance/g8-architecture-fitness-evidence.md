@@ -51,11 +51,11 @@ When a required fitness check fails:
 5. if CI infrastructure fails without a candidate defect, preserve the failed run, retry only within normal GitHub controls, and escalate to Forge Engineering and Architecture;
 6. use a reviewed revert of the offending candidate as the safe rollback. Do not bypass the required check or use administrative merge privileges.
 
-## External enforcement gap
+## External enforcement
 
-On 2026-07-21, `gh api repos/3corners-labs/forge/branches/main/protection` returned `404 Branch not protected`. Repository-local checks and CODEOWNERS do not by themselves prevent an administrator or direct push from bypassing CI.
+An initial read on 2026-07-21 returned `404 Branch not protected`. Sijbren Beukenkamp then explicitly authorized the required protection, and the repository owner applied it through the GitHub branch-protection API.
 
-Before G8 can become Ready for review, `main` SHALL be protected so pull requests and the required CI/Architecture checks must pass, required review is enforced for owned files, conversations are resolved, force pushes and deletions are denied, and administrative bypass is not used. The resulting settings and exact required-check context names SHALL be captured as evidence.
+The verified `main` settings require strict, up-to-date `verify` and `validate` checks; one approving review with code-owner review; resolved conversations; enforcement for administrators; and denial of force pushes and deletion. These settings use the normal protected path and do not authorize administrative bypass.
 
 ## Verification commands
 
@@ -74,12 +74,12 @@ M1 exit SHALL run the dependency and isolation rules against the implemented wor
 | Field | Value |
 |---|---|
 | Gate | G8 Architecture fitness functions |
-| Gate status | In progress |
+| Gate status | Ready for review |
 | Candidate revision | Commit containing this record |
 | Delivery owner | Sijbren Beukenkamp, temporary |
 | Accountable reviewer | Sijbren Beukenkamp under ADR-0006 and ADR-0008; review pending |
-| Blocking evidence | GitHub `main` branch is not protected |
-| Required decision | Authorize and verify appropriate `main` branch protection, then review the exact G8 candidate |
-| Residual risks | Worker modules do not yet exist; external branch enforcement is absent; one person fills multiple review roles |
+| External evidence | GitHub `main` protection verified on 2026-07-21; strict required checks `verify` and `validate` |
+| Required decision | Accept or reject G8 at the exact commit containing the verified protection record |
+| Residual risks | Worker modules do not yet exist; repository administrators retain platform-level ownership; one person fills multiple review roles |
 
-G8 SHALL remain In progress while the protected-branch requirement is unmet.
+G8 SHALL remain Ready for review until the accountable human records `Accepted for F0` at the exact committed revision.

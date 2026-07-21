@@ -3,7 +3,7 @@
   "id": "forge.journey-plan.m1-intent-to-pr",
   "owner": "Forge Quality Architecture",
   "implementationOwner": "Forge Engineering",
-  "status": "reviewed",
+  "status": "accepted",
   "publicEntryPoint": "forge delivery start",
   "resultSchema": "schemas/forge/assurance/v1/journey-result.schema.json",
   "applicationRevisionBinding": {

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "title": "Permitted developer starts a bounded delivery",
   "owner": "Forge Product, Experience, and Quality Architecture",
-  "lifecycle": "reviewed",
+  "lifecycle": "accepted",
   "riskClass": "high",
   "intentReferences": [
     "docs/architecture/vertical-slice.md#included-journey",
