@@ -20,6 +20,7 @@ nav:
   - G9 User Intent Assurance Evidence: governance/g9-user-intent-assurance-evidence.md
   - G10 Offensive Assurance Safety Evidence: governance/g10-offensive-assurance-safety-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md
+  - M1 Iteration 1 Trust Contracts: governance/m1-i1-trust-contract-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
