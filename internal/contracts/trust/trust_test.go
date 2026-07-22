@@ -89,6 +89,28 @@ func TestExecutionEnvelopeAuthorizesOnlyActiveGrantedActions(t *testing.T) {
 	assertFailureCode(t, envelope.AuthorizeAction("prepare-change", testNow.Add(31*time.Minute), testCorrelationID), failure.Expired)
 }
 
+func TestExecutionEnvelopeIntegrityBindsEveryField(t *testing.T) {
+	t.Parallel()
+	value := validEnvelope()
+	value.ID = ""
+	bound, err := BindExecutionEnvelopeIntegrity(value, testCorrelationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bound.VerifyIntegrity(testCorrelationID); err != nil {
+		t.Fatal(err)
+	}
+	mutated := bound
+	mutated.Scope.ProjectID = "project-2"
+	assertFailureCode(t, mutated.VerifyIntegrity(testCorrelationID), failure.VerificationFailed)
+	mutated = bound
+	mutated.Limits.MaxConcurrency++
+	assertFailureCode(t, mutated.AuthorizeAction("prepare-change", testNow.Add(time.Minute), testCorrelationID), failure.VerificationFailed)
+	if _, err := BindExecutionEnvelopeIntegrity(bound, testCorrelationID); err == nil {
+		t.Fatal("already-bound envelope was rebound")
+	}
+}
+
 func TestChildEnvelopeCannotExpandParentAuthority(t *testing.T) {
 	t.Parallel()
 	parent := validEnvelope()
@@ -146,6 +168,23 @@ func TestContextPackageIsBoundToOneActiveEnvelope(t *testing.T) {
 	assertFailureCode(t, contextPackage.ValidateFor(envelope, testNow.Add(2*time.Minute), testCorrelationID), failure.Forbidden)
 	contextPackage = validContextPackage()
 	assertFailureCode(t, contextPackage.ValidateFor(envelope, testNow.Add(30*time.Second), testCorrelationID), failure.Expired)
+}
+
+func TestContextManifestDigestDetectsMutation(t *testing.T) {
+	t.Parallel()
+	value := validContextPackage()
+	value.ID = ""
+	value.ManifestDigest = ""
+	bound, err := BindContextPackageManifest(value, testCorrelationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bound.VerifyManifest(testCorrelationID); err != nil {
+		t.Fatal(err)
+	}
+	mutated := bound
+	mutated.Items[0].SourceRevision = "changed"
+	assertFailureCode(t, mutated.VerifyManifest(testCorrelationID), failure.VerificationFailed)
 }
 
 func TestApprovalRequiresExactActionAndDigest(t *testing.T) {

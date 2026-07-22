@@ -11,6 +11,7 @@ import (
 	"errors"
 	"slices"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/3corners/forge/internal/contracts/failure"
@@ -111,6 +112,8 @@ type Evaluator struct {
 	supportedObligations map[string]struct{}
 	decisionTTL          time.Duration
 	now                  func() time.Time
+	decisionMu           sync.RWMutex
+	decisions            map[string]trust.PolicyDecision
 }
 
 func NewEvaluator(set PolicySet, supportedObligations []string, decisionTTL time.Duration, now func() time.Time) (*Evaluator, error) {
@@ -150,6 +153,7 @@ func NewEvaluator(set PolicySet, supportedObligations []string, decisionTTL time
 		supportedObligations: supported,
 		decisionTTL:          decisionTTL,
 		now:                  now,
+		decisions:            make(map[string]trust.PolicyDecision),
 	}, nil
 }
 
@@ -219,6 +223,7 @@ func (evaluator *Evaluator) Evaluate(ctx context.Context, request EvaluateReques
 			failure.RetryNone,
 		)
 	}
+	evaluator.recordDecision(decision)
 	return decision, nil
 }
 
@@ -300,7 +305,48 @@ func (evaluator *Evaluator) EvaluateDelegation(ctx context.Context, request Eval
 			failure.RetryNone,
 		)
 	}
+	evaluator.recordDecision(decision)
 	return decision, nil
+}
+
+// ResolvePolicyDecision returns only decisions minted by this evaluator. It
+// lets enforcement capabilities consume a Policy-owned fact without importing
+// Policy implementation or trusting a caller-constructed decision object.
+func (evaluator *Evaluator) ResolvePolicyDecision(ctx context.Context, id string) (trust.PolicyDecision, bool, error) {
+	if evaluator == nil || evaluator.decisions == nil || evaluator.now == nil {
+		return trust.PolicyDecision{}, false, errors.New("policy decision source unavailable")
+	}
+	if ctx == nil || id == "" {
+		return trust.PolicyDecision{}, false, errors.New("policy decision lookup invalid")
+	}
+	if err := ctx.Err(); err != nil {
+		return trust.PolicyDecision{}, false, err
+	}
+	evaluator.decisionMu.RLock()
+	defer evaluator.decisionMu.RUnlock()
+	decision, found := evaluator.decisions[id]
+	return clonePolicyDecision(decision), found, nil
+}
+
+func (evaluator *Evaluator) recordDecision(decision trust.PolicyDecision) {
+	evaluator.decisionMu.Lock()
+	defer evaluator.decisionMu.Unlock()
+	evaluator.decisions[decision.ID] = clonePolicyDecision(decision)
+}
+
+func clonePolicyDecision(value trust.PolicyDecision) trust.PolicyDecision {
+	value.PolicyVersions = slices.Clone(value.PolicyVersions)
+	value.ReasonCodes = slices.Clone(value.ReasonCodes)
+	obligations := value.Obligations
+	value.Obligations = make([]map[string]any, len(obligations))
+	for index, obligation := range obligations {
+		value.Obligations[index] = cloneMap(obligation)
+	}
+	if value.ExpiresAt != nil {
+		expiresAt := *value.ExpiresAt
+		value.ExpiresAt = &expiresAt
+	}
+	return value
 }
 
 func (evaluator *Evaluator) resolve(rules []Rule) (string, []map[string]any, []string) {
