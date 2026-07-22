@@ -22,3 +22,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0009](0009-m1-public-cli-boundary.md) | Establish the M1 public CLI boundary | Accepted |
 | [ADR-0010](0010-authorize-bounded-m1-implementation.md) | Authorize the bounded M1 implementation | Accepted |
 | [ADR-0011](0011-bounded-autonomous-contributor-delivery.md) | Establish bounded autonomous contributor delivery | Accepted |
+| [ADR-0012](0012-assign-execution-envelope-issuance.md) | Assign Execution Envelope issuance to the Policy trust boundary | Accepted |
