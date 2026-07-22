@@ -10,6 +10,12 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from validate_autonomy_grant import (
+    GRANT_DIRECTORY,
+    MANDATORY_HUMAN_GATES,
+    validate_grant_document,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWED_DOCUMENT_STATUSES = {
@@ -416,6 +422,62 @@ def check_common_contract_schemas() -> None:
         fail("normalized error retry set changed")
 
 
+def check_contributor_autonomy_grants() -> None:
+    schema_path = ROOT / "schemas/forge/contributor/v1/autonomy-grant.schema.json"
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    for field in ("$schema", "$id", "title", "type"):
+        if field not in schema:
+            fail(f"{schema_path.relative_to(ROOT)} is missing {field}")
+    if schema.get("type") != "object" or schema.get("additionalProperties") is not False:
+        fail("contributor autonomy grant schema must be a closed top-level object")
+    if schema.get("properties", {}).get("schemaVersion", {}).get("const") != "forge.contributor-autonomy-grant.v1":
+        fail("contributor autonomy grant schema has an unsupported version")
+
+    grant_directory = ROOT / GRANT_DIRECTORY
+    grant_paths = sorted(grant_directory.glob("*.json"))
+    if not grant_paths:
+        fail("canonical contributor autonomy grant directory is empty")
+    identifiers: set[str] = set()
+    for path in grant_paths:
+        grant = validate_grant_document(json.loads(path.read_text(encoding="utf-8")))
+        identifier = grant["id"]
+        if identifier in identifiers:
+            fail(f"duplicate contributor autonomy grant ID: {identifier}")
+        identifiers.add(identifier)
+        if path.name != f"{identifier}.json":
+            fail(f"{path.relative_to(ROOT)} does not match its grant ID")
+        if set(grant["mandatoryHumanGates"]) != MANDATORY_HUMAN_GATES:
+            fail(f"{path.relative_to(ROOT)} weakens mandatory human gates")
+
+    expected = "forge.autonomy-grant.m1-bounded-delivery-v1"
+    if expected not in identifiers:
+        fail("the reviewed inactive-by-default M1 contributor grant is missing")
+
+    contract = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    required_contract_markers = (
+        "## Bounded autonomous delivery",
+        GRANT_DIRECTORY,
+        "candidate branch SHALL NOT activate",
+        "default-branch revision",
+        "pull-request-merge-ready",
+    )
+    missing = [marker for marker in required_contract_markers if marker not in contract]
+    if missing:
+        fail("operating contract lacks bounded-autonomy controls: " + ", ".join(missing))
+
+    guide = (ROOT / "docs/governance/bounded-autonomous-delivery.md").read_text(encoding="utf-8")
+    required_guide_markers = (
+        "forge.autonomy-grant.m1-bounded-delivery-v1",
+        "scripts/validate_autonomy_grant.py",
+        "eligible-for-human-activation",
+        "protected-default-branch-landing",
+        "## Revocation and safe recovery",
+    )
+    missing = [marker for marker in required_guide_markers if marker not in guide]
+    if missing:
+        fail("bounded-autonomy guide is incomplete: " + ", ".join(missing))
+
+
 def check_deployment_profiles() -> None:
     schema_path = ROOT / "schemas/forge/deployment/v1/profile.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -815,6 +877,7 @@ def check_required_ci() -> None:
         "permissions:\n  contents: read",
         "timeout-minutes: 10",
         "run: python3 scripts/check_architecture.py",
+        "run: python3 -m unittest scripts/test_autonomy_grant.py",
         "mkdocs build --strict",
     )
     missing = [marker for marker in required_architecture_markers if marker not in architecture_workflow]
@@ -839,6 +902,11 @@ def check_required_ci() -> None:
         "/assurance/ @cyberbeuk @3c-unified-git",
         "/security/ @cyberbeuk @3c-unified-git",
         "/scripts/check_architecture.py @cyberbeuk @3c-unified-git",
+        "/scripts/validate_autonomy_grant.py @cyberbeuk @3c-unified-git",
+        "/scripts/test_autonomy_grant.py @cyberbeuk @3c-unified-git",
+        "/.forge/autonomy/ @cyberbeuk @3c-unified-git",
+        "/schemas/forge/contributor/ @cyberbeuk @3c-unified-git",
+        "/AGENTS.md @cyberbeuk @3c-unified-git",
         "/.github/workflows/architecture.yml @cyberbeuk @3c-unified-git",
     )
     missing = [marker for marker in required_owners if marker not in codeowners]
@@ -1017,6 +1085,7 @@ def main() -> int:
         check_capability_ids,
         check_trust_schemas,
         check_common_contract_schemas,
+        check_contributor_autonomy_grants,
         check_deployment_profiles,
         check_assurance_schemas,
         check_journey_contracts,

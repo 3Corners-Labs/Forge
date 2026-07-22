@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "forge.contributor-autonomy-grant.v1",
+  "id": "forge.autonomy-grant.m1-bounded-delivery-v1",
+  "version": "1.0.0",
+  "status": "authorized",
+  "issuer": "Sijbren Beukenkamp",
+  "accountableOwner": "Sijbren Beukenkamp",
+  "issuedAt": "2026-07-22T00:00:00Z",
+  "expiresAt": "2026-10-01T00:00:00Z",
+  "revocation": {"revoked": false},
+  "repository": {
+    "slug": "3Corners-Labs/Forge",
+    "protectedRef": "refs/remotes/origin/main",
+    "protectedBaseRevision": "672fd788e4b567b400fef98bd4326779b118d1e1"
+  },
+  "scope": {
+    "milestones": ["M1"],
+    "taskPatterns": ["m1-*"],
+    "capabilityIds": [
+      "forge.capability.approval",
+      "forge.capability.architecture",
+      "forge.capability.context",
+      "forge.capability.delivery",
+      "forge.capability.evidence",
+      "forge.capability.execution",
+      "forge.capability.experience",
+      "forge.capability.identity",
+      "forge.capability.intent",
+      "forge.capability.policy",
+      "forge.capability.tenant",
+      "forge.capability.tool",
+      "forge.capability.verification"
+    ],
+    "pathPatterns": [
+      ".github/workflows/**",
+      "Taskfile.yml",
+      "assurance/**",
+      "architecture/testdata/**",
+      "cmd/**",
+      "docs/governance/**",
+      "go.mod",
+      "go.sum",
+      "internal/**",
+      "schemas/forge/assurance/**",
+      "schemas/forge/common/**",
+      "schemas/forge/trust/**",
+      "scripts/check_architecture.py"
+    ],
+    "branchPatterns": ["codex/m1-*"]
+  },
+  "allowedActions": [
+    "load-context",
+    "create-feature-branch",
+    "edit-task-scope",
+    "run-verification",
+    "repair-in-scope-failures",
+    "commit-task-changes",
+    "push-feature-branch",
+    "open-draft-pull-request",
+    "update-pull-request",
+    "address-review-feedback",
+    "mark-pull-request-ready",
+    "monitor-merge-readiness"
+  ],
+  "mandatoryHumanGates": [
+    "adr-or-architecture-decision",
+    "accepted-boundary-change",
+    "scope-expansion",
+    "protected-default-branch-landing",
+    "release-deploy-or-production-change",
+    "production-credentials-or-data",
+    "destructive-or-difficult-recovery",
+    "control-bypass-or-weakening",
+    "accepted-outcome-or-oracle-change",
+    "material-product-ambiguity",
+    "budget-overrun",
+    "indeterminate-authority-or-evidence"
+  ],
+  "destinations": [{"type": "github-repository", "value": "3Corners-Labs/Forge"}],
+  "limits": {
+    "maxDurationMinutes": 480,
+    "maxExternalCostMinorUnits": 0,
+    "maxAttemptsPerFailure": 3,
+    "maxConcurrency": 1,
+    "maxChangedFiles": 100,
+    "maxChangedLines": 20000
+  },
+  "verification": {
+    "requiredChecks": ["validate", "verify", "govulncheck", "codeql"],
+    "requiredEvidence": ["grant-id", "protected-revision", "intent", "capabilities", "verification", "rollback", "human-gates"],
+    "updateCadence": "material-progress",
+    "terminalState": "pull-request-merge-ready"
+  },
+  "stop": {
+    "conditions": [
+      "grant-expired",
+      "grant-revoked",
+      "scope-uncertain",
+      "authority-indeterminate",
+      "evidence-unavailable",
+      "budget-exhausted",
+      "terminal-state-reached"
+    ],
+    "safeRecovery": "Stop new delegated actions, preserve the reviewable worktree and evidence, and report the last completed action to the accountable owner."
+  },
+  "activation": {
+    "required": true,
+    "authenticatedHumanRequired": true,
+    "protectedRevisionRequired": true,
+    "candidateMayActivate": false
+  },
+  "integrity": {
+    "algorithm": "sha256",
+    "canonicalDigest": "sha256:a49de54eb351ccd27494de4b3842342f13cb4ccf79facf73f405c88c64dc2847"
+  }
+}

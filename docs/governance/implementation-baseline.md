@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Engineering and Architecture
-Version: 0.5
+Version: 0.6
 Verified: 2026-07-22
 
 ## Purpose
@@ -34,8 +34,13 @@ Forge currently provides a small developer bootstrap:
 | M1 threat and privacy candidates | Complete priority-threat mappings, phase-assigned negative contracts, Developer Trial decisions, and synthetic leakage fixtures | `security/threat-controls`, `security/privacy`, `security/fixtures` | Research |
 | Deployment profile candidates | Closed profile schema plus Developer Trial and connected self-hosted reference manifests with phased conformance plans | `schemas/forge/deployment/v1`, `profiles` | Research |
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
+| Contributor delivery delegation | Closed, integrity-bound autonomy-grant schema; protected-revision validator; candidate non-interference, lifecycle, scope, budget, and mandatory-gate tests; inactive-by-default reviewed M1 grant | `.forge/autonomy`, `schemas/forge/contributor/v1`, `scripts/validate_autonomy_grant.py`, and tests | Trial |
 
 The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, and intent capture are currently callable Go modules only; they are not wired into the CLI and provide no live identity provider, durable tenant or delivery store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
+
+Contributor delivery delegation is repository governance, not Forge product
+runtime functionality. It becomes active only after a separate authenticated
+human activation bound to an eligible protected grant revision and exact task.
 
 ## Target capabilities not yet implemented
 

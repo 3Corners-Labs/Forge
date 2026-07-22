@@ -20,6 +20,7 @@ nav:
   - G9 User Intent Assurance Evidence: governance/g9-user-intent-assurance-evidence.md
   - G10 Offensive Assurance Safety Evidence: governance/g10-offensive-assurance-safety-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md
+  - Bounded Autonomous Delivery: governance/bounded-autonomous-delivery.md
   - M1 Iteration 1 Trust Contracts: governance/m1-i1-trust-contract-evidence.md
   - M1 Iteration 2 Identity and Scope: governance/m1-i2-identity-scope-evidence.md
   - M1 Iteration 3 Intent Capture: governance/m1-i3-intent-capture-evidence.md
