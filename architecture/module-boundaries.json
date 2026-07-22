@@ -12,6 +12,7 @@
     {"id":"identity","path":"internal/identity","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract"]},
     {"id":"tenant","path":"internal/tenant","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity"]},
     {"id":"delivery","path":"internal/delivery","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity","tenant"]},
+    {"id":"policy","path":"internal/policy","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","identity","tenant","trust-contract"]},
     {"id":"cmd-forge-worker","path":"cmd/forge-worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker"]},
     {"id":"worker","path":"internal/worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker-contracts"]},
     {"id":"worker-contracts","path":"internal/contracts/worker","deploymentUnit":"shared-contract","maturity":"Research","planned":true,"allowedInternalDependencies":[]}
