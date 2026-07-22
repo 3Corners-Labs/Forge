@@ -67,6 +67,7 @@ nav:
       - ADR-0008 Canonical Documentation Baseline: decisions/0008-accept-canonical-documentation-baseline.md
       - ADR-0009 M1 Public CLI Boundary: decisions/0009-m1-public-cli-boundary.md
       - ADR-0010 Bounded M1 Authorization: decisions/0010-authorize-bounded-m1-implementation.md
+      - ADR-0011 Bounded Autonomous Delivery: decisions/0011-bounded-autonomous-contributor-delivery.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
