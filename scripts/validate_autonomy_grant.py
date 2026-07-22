@@ -161,6 +161,15 @@ def validate_grant_document(grant: Any) -> dict[str, Any]:
         _strings(scope[field], f"scope.{field}")
     if any(pattern in PROTECTED_PATHS for pattern in scope["pathPatterns"]):
         _fail("grant scope cannot include authority-defining paths")
+    allowed_architecture_paths = {
+        "architecture/module-boundaries.json",
+        "architecture/testdata/**",
+    }
+    if any(
+        pattern.startswith("architecture/") and pattern not in allowed_architecture_paths
+        for pattern in scope["pathPatterns"]
+    ):
+        _fail("grant scope cannot broadly include architecture paths")
     if any(pattern in {"main", "master", "*"} for pattern in scope["branchPatterns"]):
         _fail("grant scope cannot include a default or unrestricted branch")
 
