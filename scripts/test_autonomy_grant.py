@@ -55,6 +55,12 @@ class AutonomyGrantTests(unittest.TestCase):
         with self.assertRaisesRegex(GrantError, "authority-defining paths"):
             validate_grant_document(signed(altered))
 
+        self.assertIn("architecture/module-boundaries.json", self.grant["scope"]["pathPatterns"])
+        altered = copy.deepcopy(self.grant)
+        altered["scope"]["pathPatterns"].append("architecture/**")
+        with self.assertRaisesRegex(GrantError, "broadly include architecture"):
+            validate_grant_document(signed(altered))
+
     def test_integrity_change_fails_closed(self) -> None:
         altered = copy.deepcopy(self.grant)
         altered["limits"]["maxChangedFiles"] += 1

@@ -452,6 +452,12 @@ def check_contributor_autonomy_grants() -> None:
     expected = "forge.autonomy-grant.m1-bounded-delivery-v1"
     if expected not in identifiers:
         fail("the reviewed inactive-by-default M1 contributor grant is missing")
+    m1_grant_path = grant_directory / f"{expected}.json"
+    m1_grant = validate_grant_document(json.loads(m1_grant_path.read_text(encoding="utf-8")))
+    if "architecture/module-boundaries.json" not in m1_grant["scope"]["pathPatterns"]:
+        fail("the M1 grant cannot register accepted capability modules")
+    if "architecture/**" in m1_grant["scope"]["pathPatterns"]:
+        fail("the M1 grant must not receive broad architecture scope")
 
     contract = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
     required_contract_markers = (

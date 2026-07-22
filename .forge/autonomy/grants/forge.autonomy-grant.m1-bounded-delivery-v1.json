@@ -1,7 +1,7 @@
 {
   "schemaVersion": "forge.contributor-autonomy-grant.v1",
   "id": "forge.autonomy-grant.m1-bounded-delivery-v1",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "status": "authorized",
   "issuer": "Sijbren Beukenkamp",
   "accountableOwner": "Sijbren Beukenkamp",
@@ -35,6 +35,7 @@
       ".github/workflows/**",
       "Taskfile.yml",
       "assurance/**",
+      "architecture/module-boundaries.json",
       "architecture/testdata/**",
       "cmd/**",
       "docs/governance/**",
@@ -111,6 +112,6 @@
   },
   "integrity": {
     "algorithm": "sha256",
-    "canonicalDigest": "sha256:a49de54eb351ccd27494de4b3842342f13cb4ccf79facf73f405c88c64dc2847"
+    "canonicalDigest": "sha256:1e9b2e8030d5cb7229a92909ac8099cae209c70ea7b663d7a659a4533acff0fa"
   }
 }
