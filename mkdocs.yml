@@ -22,6 +22,7 @@ nav:
   - Implementation Baseline: governance/implementation-baseline.md
   - M1 Iteration 1 Trust Contracts: governance/m1-i1-trust-contract-evidence.md
   - M1 Iteration 2 Identity and Scope: governance/m1-i2-identity-scope-evidence.md
+  - M1 Iteration 3 Intent Capture: governance/m1-i3-intent-capture-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
