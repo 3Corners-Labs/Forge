@@ -350,7 +350,7 @@ func permitSet() policy.PolicySet {
 	}}}
 }
 
-func newEvaluator(t *testing.T, set policy.PolicySet, supported []string) *policy.Evaluator {
+func newEvaluator(t testing.TB, set policy.PolicySet, supported []string) *policy.Evaluator {
 	t.Helper()
 	evaluator, err := policy.NewEvaluator(set, supported, 5*time.Minute, func() time.Time { return testNow })
 	if err != nil {
@@ -359,11 +359,11 @@ func newEvaluator(t *testing.T, set policy.PolicySet, supported []string) *polic
 	return evaluator
 }
 
-func validRequest(t *testing.T) policy.EvaluateRequest {
+func validRequest(t testing.TB) policy.EvaluateRequest {
 	return validRequestWithExpiry(t, testNow.Add(30*time.Minute))
 }
 
-func validRequestWithExpiry(t *testing.T, expiresAt time.Time) policy.EvaluateRequest {
+func validRequestWithExpiry(t testing.TB, expiresAt time.Time) policy.EvaluateRequest {
 	t.Helper()
 	provider := identityProvider{assertion: identity.Assertion{
 		SubjectID: "synthetic-developer-allowed", Kind: identity.HumanPrincipal,
