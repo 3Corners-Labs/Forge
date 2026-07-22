@@ -811,6 +811,21 @@ def check_module_boundaries() -> None:
     }
     if by_id.get("policy") != expected_policy_module:
         fail("M1 policy must remain a Trial control-plane module with its accepted dependencies")
+    expected_context_module = {
+        "id": "context",
+        "path": "internal/context",
+        "deploymentUnit": "forge-control-plane",
+        "maturity": "Trial",
+        "allowedInternalDependencies": [
+            "delivery",
+            "failure-contract",
+            "identity",
+            "tenant",
+            "trust-contract",
+        ],
+    }
+    if by_id.get("context") != expected_context_module:
+        fail("M1 context must remain a Trial enforcement module without Policy runtime access")
     allowed_maturities = {"Research", "Trial", "Supported", "Deprecated"}
     for module in modules:
         if module.get("maturity") not in allowed_maturities:
@@ -874,10 +889,20 @@ def check_module_boundaries() -> None:
             continue
         imports: list[str] = []
         for path in (ROOT / module["path"]).rglob("*.go"):
+            if path.name.endswith("_test.go"):
+                continue
             imports.extend(go_import_pattern.findall(path.read_text(encoding="utf-8")))
         violations = dependency_violations(module, imports)
         if violations:
             fail(f"module {module['id']} violates boundaries: {sorted(violations)}")
+
+    delivery_source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (ROOT / "internal/delivery").rglob("*.go")
+        if not path.name.endswith("_test.go")
+    )
+    if "trust.ExecutionEnvelope{" in delivery_source or "BindExecutionEnvelopeIntegrity(" in delivery_source:
+        fail("Delivery must not construct or integrity-bind Execution Envelopes")
 
     fixture_directory = ROOT / "architecture/testdata"
     expected_fixture_names = {

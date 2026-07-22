@@ -129,7 +129,11 @@ func (value ExecutionEnvelope) Validate(correlationID string) error {
 }
 
 func (value ExecutionEnvelope) AuthorizeAction(action string, at time.Time, correlationID string) error {
-	if err := value.Validate(correlationID); err != nil {
+	if value.Integrity != nil {
+		if err := value.VerifyIntegrity(correlationID); err != nil {
+			return err
+		}
+	} else if err := value.Validate(correlationID); err != nil {
 		return err
 	}
 	if at.IsZero() {
