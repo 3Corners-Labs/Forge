@@ -86,12 +86,33 @@ func (value Scope) WorkspaceID() string     { return value.workspaceID }
 func (value Scope) ProjectID() string       { return value.projectID }
 func (value Scope) PrincipalID() string     { return value.principalID }
 
+// ValidateFor lets receiving capabilities verify that a scope was minted for
+// the active principal without gaining access to Tenant-owned selectors or
+// membership records.
+func (value Scope) ValidateFor(principal identity.Principal, at time.Time, correlationID string) error {
+	if err := principal.ValidateAt(at, correlationID); err != nil {
+		return err
+	}
+	if value.contractVersion != ScopeContractVersion || value.authorityID == "" || value.tenantID == "" || value.workspaceID == "" || value.projectID == "" || value.principalID == "" || value.repositorySelector == "" {
+		return unavailableScope(correlationID)
+	}
+	if value.principalID != principal.SubjectID() {
+		return unavailableScope(correlationID)
+	}
+	if value.principalExpiresAt.IsZero() || !at.Before(value.principalExpiresAt) {
+		return failure.New(failure.Expired, "authenticated scope is not active", correlationID, failure.RetryReauthenticate)
+	}
+	return nil
+}
+
 type RepositoryBinding struct {
 	contractVersion  string
+	authorityID      string
 	tenantID         string
 	workspaceID      string
 	projectID        string
 	repositoryID     string
+	selector         string
 	canonicalLocator string
 	classification   string
 }
@@ -103,6 +124,18 @@ func (value RepositoryBinding) ProjectID() string        { return value.projectI
 func (value RepositoryBinding) RepositoryID() string     { return value.repositoryID }
 func (value RepositoryBinding) CanonicalLocator() string { return value.canonicalLocator }
 func (value RepositoryBinding) Classification() string   { return value.classification }
+
+// ValidateFor verifies exact Tenant-owned scope binding before another
+// capability records or acts on the repository identity.
+func (value RepositoryBinding) ValidateFor(scope Scope, correlationID string) error {
+	if value.contractVersion != RepositoryBindingContractVersion || scope.contractVersion != ScopeContractVersion || value.authorityID == "" || scope.authorityID == "" || value.tenantID == "" || value.workspaceID == "" || value.projectID == "" || value.repositoryID == "" || value.selector == "" || value.canonicalLocator == "" || !validClassification(value.classification) {
+		return unavailableScope(correlationID)
+	}
+	if value.authorityID != scope.authorityID || value.tenantID != scope.tenantID || value.workspaceID != scope.workspaceID || value.projectID != scope.projectID || value.selector != scope.repositorySelector {
+		return unavailableScope(correlationID)
+	}
+	return nil
+}
 
 type Directory struct {
 	authorityID string
@@ -245,15 +278,17 @@ func (directory *Directory) GetRepositoryBinding(ctx context.Context, request Bi
 	if !found {
 		return RepositoryBinding{}, unavailableScope(request.CorrelationID)
 	}
-	if definition.TenantID != scope.tenantID || definition.WorkspaceID != scope.workspaceID || definition.ProjectID != scope.projectID || definition.Selector != scope.repositorySelector || definition.RepositoryID == "" || definition.CanonicalLocator == "" || definition.Classification == "" {
+	if definition.TenantID != scope.tenantID || definition.WorkspaceID != scope.workspaceID || definition.ProjectID != scope.projectID || definition.Selector != scope.repositorySelector || definition.RepositoryID == "" || definition.CanonicalLocator == "" || !validClassification(definition.Classification) {
 		return RepositoryBinding{}, failure.New(failure.Indeterminate, "repository binding could not be verified", request.CorrelationID, failure.RetryNone)
 	}
 	return RepositoryBinding{
 		contractVersion:  RepositoryBindingContractVersion,
+		authorityID:      directory.authorityID,
 		tenantID:         definition.TenantID,
 		workspaceID:      definition.WorkspaceID,
 		projectID:        definition.ProjectID,
 		repositoryID:     definition.RepositoryID,
+		selector:         definition.Selector,
 		canonicalLocator: definition.CanonicalLocator,
 		classification:   definition.Classification,
 	}, nil
@@ -266,6 +301,15 @@ func (directory *Directory) hasMembership(principalID, workspaceID string) bool 
 
 func projectKey(workspaceID, selector string) string {
 	return workspaceID + "\x00" + selector
+}
+
+func validClassification(value string) bool {
+	switch value {
+	case "Public", "Internal", "Confidential", "Restricted":
+		return true
+	default:
+		return false
+	}
 }
 
 func unavailableScope(correlationID string) error {

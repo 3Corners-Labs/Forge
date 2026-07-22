@@ -35,6 +35,16 @@ type bindingSource struct {
 	seen       [4]string
 }
 
+type selectorBindingSource struct{}
+
+func (selectorBindingSource) ResolveRepositoryBinding(_ context.Context, tenantID, workspaceID, projectID, selector string) (tenant.RepositoryBindingDefinition, bool, error) {
+	return tenant.RepositoryBindingDefinition{
+		TenantID: tenantID, WorkspaceID: workspaceID, ProjectID: projectID,
+		RepositoryID: "repository-" + selector, Selector: selector,
+		CanonicalLocator: "contract-test://" + selector, Classification: "Internal",
+	}, true, nil
+}
+
 func (source *bindingSource) ResolveRepositoryBinding(_ context.Context, tenantID, workspaceID, projectID, selector string) (tenant.RepositoryBindingDefinition, bool, error) {
 	source.calls++
 	source.seen = [4]string{tenantID, workspaceID, projectID, selector}
@@ -101,6 +111,73 @@ func TestUnmintedScopeCannotTriggerRepositoryDiscovery(t *testing.T) {
 	}
 }
 
+func TestRepositoryBindingCannotCrossTenantAuthorities(t *testing.T) {
+	t.Parallel()
+	principal := verifiedPrincipal(t, "synthetic-developer-allowed", testNow.Add(30*time.Minute))
+	newDirectory := func(authorityID string) *tenant.Directory {
+		directory, err := tenant.NewDirectory(
+			authorityID,
+			[]tenant.WorkspaceDefinition{{TenantID: "tenant-fixture", ID: "workspace-fixture", Selector: "fixture-workspace"}},
+			[]tenant.ProjectDefinition{{WorkspaceID: "workspace-fixture", ID: "project-forge", Selector: "forge"}},
+			[]tenant.MembershipDefinition{{PrincipalID: "synthetic-developer-allowed", WorkspaceID: "workspace-fixture"}},
+			validBindingSource(),
+			func() time.Time { return testNow },
+		)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return directory
+	}
+	directoryA := newDirectory("tenant-authority-a")
+	directoryB := newDirectory("tenant-authority-b")
+	scopeA, err := directoryA.ResolveWorkspaceScope(principal, validRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	scopeB, err := directoryB.ResolveWorkspaceScope(principal, validRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindingB, err := directoryB.GetRepositoryBinding(context.Background(), bindingRequest(scopeB))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFailureCodeAndMessage(t, bindingB.ValidateFor(scopeA, "correlation-1"), failure.Forbidden, "requested scope is not available to the authenticated principal")
+}
+
+func TestRepositoryBindingCannotCrossRepositorySelectors(t *testing.T) {
+	t.Parallel()
+	principal := verifiedPrincipal(t, "synthetic-developer-allowed", testNow.Add(30*time.Minute))
+	directory, err := tenant.NewDirectory(
+		"developer-trial-authority",
+		[]tenant.WorkspaceDefinition{{TenantID: "tenant-fixture", ID: "workspace-fixture", Selector: "fixture-workspace"}},
+		[]tenant.ProjectDefinition{{WorkspaceID: "workspace-fixture", ID: "project-forge", Selector: "forge"}},
+		[]tenant.MembershipDefinition{{PrincipalID: "synthetic-developer-allowed", WorkspaceID: "workspace-fixture"}},
+		selectorBindingSource{},
+		func() time.Time { return testNow },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestA := validRequest()
+	requestA.RepositorySelector = "forge-a"
+	scopeA, err := directory.ResolveWorkspaceScope(principal, requestA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestB := validRequest()
+	requestB.RepositorySelector = "forge-b"
+	scopeB, err := directory.ResolveWorkspaceScope(principal, requestB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindingB, err := directory.GetRepositoryBinding(context.Background(), bindingRequest(scopeB))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertFailureCodeAndMessage(t, bindingB.ValidateFor(scopeA, "correlation-1"), failure.Forbidden, "requested scope is not available to the authenticated principal")
+}
+
 func TestUnsupportedRequestVersionsFailBeforeRepositoryDiscovery(t *testing.T) {
 	t.Parallel()
 	source := validBindingSource()
@@ -146,6 +223,7 @@ func TestRepositoryBindingResolutionFailsClosed(t *testing.T) {
 		{"missing", func(source *bindingSource) { source.found = false }, failure.Forbidden},
 		{"unavailable", func(source *bindingSource) { source.err = errors.New("store diagnostic") }, failure.DependencyUnavailable},
 		{"scope mismatch", func(source *bindingSource) { source.definition.TenantID = "other-tenant" }, failure.Indeterminate},
+		{"unknown classification", func(source *bindingSource) { source.definition.Classification = "Unknown" }, failure.Indeterminate},
 	}
 	for _, test := range tests {
 		test := test
