@@ -787,6 +787,15 @@ def check_module_boundaries() -> None:
     by_path = {module["path"]: module for module in modules}
     if len(by_path) != len(modules):
         fail("module-boundary manifest contains duplicate module paths")
+    expected_identity_module = {
+        "id": "identity",
+        "path": "internal/identity",
+        "deploymentUnit": "forge-control-plane",
+        "maturity": "Trial",
+        "allowedInternalDependencies": ["failure-contract", "trust-contract"],
+    }
+    if by_id.get("identity") != expected_identity_module:
+        fail("M1 Identity must depend only on failure and shared trust contracts")
     expected_policy_module = {
         "id": "policy",
         "path": "internal/policy",

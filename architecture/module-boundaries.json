@@ -9,7 +9,7 @@
     {"id":"platform","path":"internal/platform","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":[]},
     {"id":"failure-contract","path":"internal/contracts/failure","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":[]},
     {"id":"trust-contract","path":"internal/contracts/trust","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":["failure-contract"]},
-    {"id":"identity","path":"internal/identity","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract"]},
+    {"id":"identity","path":"internal/identity","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","trust-contract"]},
     {"id":"tenant","path":"internal/tenant","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity"]},
     {"id":"delivery","path":"internal/delivery","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity","tenant"]},
     {"id":"policy","path":"internal/policy","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","identity","tenant","trust-contract"]},
