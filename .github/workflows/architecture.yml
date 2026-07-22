@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate architecture as code
         run: python3 scripts/check_architecture.py
+      - name: Test bounded autonomy grants
+        run: python3 -m unittest scripts/test_autonomy_grant.py
       - name: Reject empty ADR and RFC files
         shell: bash
         run: |

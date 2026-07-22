@@ -8,7 +8,9 @@ tasks:
   lint:
     cmds: [go vet ./...]
   test:
-    cmds: [go test ./... -cover]
+    cmds:
+      - go test ./... -cover
+      - python3 -m unittest scripts/test_autonomy_grant.py
   build:
     cmds:
       - mkdir -p dist

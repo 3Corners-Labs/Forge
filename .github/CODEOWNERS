@@ -19,4 +19,9 @@
 /deploy/ @cyberbeuk @3c-unified-git
 /architecture/ @cyberbeuk @3c-unified-git
 /scripts/check_architecture.py @cyberbeuk @3c-unified-git
+/scripts/validate_autonomy_grant.py @cyberbeuk @3c-unified-git
+/scripts/test_autonomy_grant.py @cyberbeuk @3c-unified-git
+/.forge/autonomy/ @cyberbeuk @3c-unified-git
+/schemas/forge/contributor/ @cyberbeuk @3c-unified-git
+/AGENTS.md @cyberbeuk @3c-unified-git
 /.github/workflows/architecture.yml @cyberbeuk @3c-unified-git
