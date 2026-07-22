@@ -21,6 +21,7 @@ nav:
   - G10 Offensive Assurance Safety Evidence: governance/g10-offensive-assurance-safety-evidence.md
   - Implementation Baseline: governance/implementation-baseline.md
   - M1 Iteration 1 Trust Contracts: governance/m1-i1-trust-contract-evidence.md
+  - M1 Iteration 2 Identity and Scope: governance/m1-i2-identity-scope-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md

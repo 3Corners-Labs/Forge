@@ -2,8 +2,8 @@
 
 Status: Accepted
 Owner: Forge Engineering and Architecture
-Version: 0.3
-Verified: 2026-07-21
+Version: 0.4
+Verified: 2026-07-22
 
 ## Purpose
 
@@ -24,6 +24,8 @@ Forge currently provides a small developer bootstrap:
 | Developer environment | Loopback-bound PostgreSQL, Keycloak, OpenBao, MinIO, OpenTelemetry Collector, Prometheus, Grafana, and Mailpit | `deploy/compose` | Trial |
 | Trust contract candidates | Closed JSON Schemas for Execution Envelope, Context Package, Policy Decision, Approval Record, and Evidence Record | `schemas/forge/trust/v1` | Research |
 | Executable trust contracts | Strict Go decoding, structural validation, exact authority binding, child-envelope narrowing, digest binding, evidence-subject binding, and normalized disclosure-safe failures for the five trust objects | `internal/contracts/trust`, `internal/contracts/failure`, and tests | Trial |
+| Developer Trial identity admission | Provider-neutral assertion verification, audience and lifecycle validation, immutable normalized principal, and disclosure-safe provider failure normalization; only deterministic test providers exist | `internal/identity` and tests | Trial |
+| Developer Trial scope admission | Single-test-tenant workspace membership resolution, server-derived immutable project scope, delayed repository binding discovery, and disclosure-safe cross-scope denial; storage and binding adapters remain test doubles | `internal/tenant` and tests | Trial |
 | Assurance contract candidates | Closed JSON Schemas for journey scenarios and results | `schemas/forge/assurance/v1` | Research |
 | M1 journey assurance candidates | Reviewed allowed and denied public-CLI scenarios, synthetic fixtures, and an execution plan that remains disabled until M1 | `assurance/journeys/m1` | Research |
 | Offensive assurance safety candidate | Closed rules-of-engagement schema, disabled contract-only M1 configuration, digest-bound target/configuration, and negative safety fixtures | `schemas/forge/security/v1`, `security/assurance` | Research |
@@ -32,14 +34,14 @@ Forge currently provides a small developer bootstrap:
 | Deployment profile candidates | Closed profile schema plus Developer Trial and connected self-hosted reference manifests with phased conformance plans | `schemas/forge/deployment/v1`, `profiles` | Research |
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 
-The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. The current CLI does not authenticate users, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
+The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity and scope admission are currently callable Go modules with deterministic test doubles only; they are not wired into the CLI and provide no live identity provider, durable tenant store, or repository provider. The current CLI does not authenticate users, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
 
 ## Target capabilities not yet implemented
 
 All capabilities in `architecture/capabilities.md` remain Research unless a later evidence record says otherwise. In particular, the repository does not yet implement:
 
-- tenant, workspace, project, membership, or quota management;
-- identity federation, delegation, workload identity, or revocation;
+- durable tenant, workspace, project, membership, repository-binding, or quota management beyond the bounded in-memory Developer Trial resolver;
+- identity federation, credential acquisition, delegation, workload identity issuance, or revocation beyond assertion normalization and lifecycle checks;
 - policy evaluation, decision issuance, revocation distribution, or distributed authorization enforcement beyond local contract checks;
 - durable delivery-run state, scheduling, cancellation, or recovery;
 - authorized knowledge retrieval, Context Package assembly, or memory lifecycle;
