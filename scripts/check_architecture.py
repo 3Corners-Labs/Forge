@@ -787,6 +787,21 @@ def check_module_boundaries() -> None:
     by_path = {module["path"]: module for module in modules}
     if len(by_path) != len(modules):
         fail("module-boundary manifest contains duplicate module paths")
+    expected_policy_module = {
+        "id": "policy",
+        "path": "internal/policy",
+        "deploymentUnit": "forge-control-plane",
+        "maturity": "Trial",
+        "allowedInternalDependencies": [
+            "delivery",
+            "failure-contract",
+            "identity",
+            "tenant",
+            "trust-contract",
+        ],
+    }
+    if by_id.get("policy") != expected_policy_module:
+        fail("M1 policy must remain a Trial control-plane module with its accepted dependencies")
     allowed_maturities = {"Research", "Trial", "Supported", "Deprecated"}
     for module in modules:
         if module.get("maturity") not in allowed_maturities:

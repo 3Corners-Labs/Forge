@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Engineering and Architecture
-Version: 0.6
+Version: 0.7
 Verified: 2026-07-22
 
 ## Purpose
@@ -27,6 +27,7 @@ Forge currently provides a small developer bootstrap:
 | Developer Trial identity admission | Provider-neutral assertion verification, audience and lifecycle validation, immutable normalized principal, and disclosure-safe provider failure normalization; only deterministic test providers exist | `internal/identity` and tests | Trial |
 | Developer Trial scope admission | Single-test-tenant workspace membership resolution, server-derived immutable project scope, delayed repository binding discovery, and disclosure-safe cross-scope denial; storage and binding adapters remain test doubles | `internal/tenant` and tests | Trial |
 | Developer Trial intent capture | Versioned direct-human intent capture, immutable `Captured` delivery run, Tenant-derived repository/classification binding, scope-bound atomic idempotency, and a concurrency-safe in-memory store behind a replaceable port | `internal/delivery` and tests | Trial |
+| Developer Trial policy decision | Deterministic fail-closed evaluation of trusted versioned rules against exact Identity, Tenant, Delivery, action, purpose, classification, risk, and environment facts; deny precedence, mandatory obligations, bounded expiry, reason codes, and digest-bound Policy Decisions | `internal/policy`, `internal/contracts/trust`, and tests | Trial |
 | Assurance contract candidates | Closed JSON Schemas for journey scenarios and results | `schemas/forge/assurance/v1` | Research |
 | M1 journey assurance candidates | Reviewed allowed and denied public-CLI scenarios, synthetic fixtures, and an execution plan that remains disabled until M1 | `assurance/journeys/m1` | Research |
 | Offensive assurance safety candidate | Closed rules-of-engagement schema, disabled contract-only M1 configuration, digest-bound target/configuration, and negative safety fixtures | `schemas/forge/security/v1`, `security/assurance` | Research |
@@ -36,7 +37,7 @@ Forge currently provides a small developer bootstrap:
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 | Contributor delivery delegation | Closed, integrity-bound autonomy-grant schema; protected-revision validator; candidate non-interference, lifecycle, scope, budget, and mandatory-gate tests; inactive-by-default reviewed M1 grant | `.forge/autonomy`, `schemas/forge/contributor/v1`, `scripts/validate_autonomy_grant.py`, and tests | Trial |
 
-The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, and intent capture are currently callable Go modules only; they are not wired into the CLI and provide no live identity provider, durable tenant or delivery store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
+The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, intent capture, and policy evaluation are currently callable Go modules only; they are not wired into the CLI and provide no live identity provider, durable tenant, delivery, or policy store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, evaluate policy, issue execution envelopes, retrieve context, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
 
 Contributor delivery delegation is repository governance, not Forge product
 runtime functionality. It becomes active only after a separate authenticated
@@ -48,7 +49,7 @@ All capabilities in `architecture/capabilities.md` remain Research unless a late
 
 - durable tenant, workspace, project, membership, repository-binding, or quota management beyond the bounded in-memory Developer Trial resolver;
 - identity federation, credential acquisition, delegation, workload identity issuance, or revocation beyond assertion normalization and lifecycle checks;
-- policy evaluation, decision issuance, revocation distribution, or distributed authorization enforcement beyond local contract checks;
+- durable policy sourcing, policy administration, decision persistence, revocation distribution, or distributed authorization enforcement beyond the bounded in-process Developer Trial evaluator;
 - durable delivery-run state, transitions beyond in-memory `Captured`, transactional outbox, scheduling, cancellation, or recovery;
 - authorized knowledge retrieval, Context Package assembly, or memory lifecycle;
 - agent registry, workforce coordination, model routing, or tool brokerage;
