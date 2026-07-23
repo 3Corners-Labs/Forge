@@ -25,3 +25,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0012](0012-assign-execution-envelope-issuance.md) | Assign Execution Envelope issuance to the Policy trust boundary | Accepted |
 | [ADR-0013](0013-risk-proportional-assurance-and-quality-envelopes.md) | Establish risk-proportional assurance and application quality envelopes | Accepted |
 | [ADR-0014](0014-bootstrap-root-task-delegation.md) | Bootstrap root task delegation with digest-bound policy authority | Accepted |
+| [ADR-0015](0015-context-informed-delivery-plan-review.md) | Establish context-informed delivery planning and plan review | Accepted |

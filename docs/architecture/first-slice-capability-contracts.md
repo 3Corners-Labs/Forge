@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Product and Architecture
-Version: 0.1
+Version: 0.2
 
 ## Scope
 
@@ -80,7 +80,8 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 ### Intent and delivery
 
 - Command `CaptureIntent(scope, actor, objective, constraints, acceptanceCriteria)` creates one delivery run.
-- Command `RecordPlan(runId, expectedVersion, plan)` records a reviewable delivery graph.
+- Command `RecordContext(runId, expectedVersion, contextPackageId, manifestDigest, evidenceRefs)` binds the exact validated Context Package before planning.
+- Command `RecordPlan(runId, expectedVersion, plan)` records a canonical context-informed delivery graph and digest.
 - Command `TransitionDelivery(runId, expectedVersion, transition, evidenceRefs)` performs one valid state transition and writes an outbox record atomically.
 - Command `RecordCandidate(runId, expectedVersion, digest, artefactRefs)` binds the candidate without accepting it.
 - Query `GetDeliveryRun(runId)` returns an authorized role-specific view.
@@ -126,6 +127,8 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 - Command `RequestApproval(actor, action, subjectDigest, environment, evidenceRefs, expiry)` opens a review without granting authority.
 - Command `DecideApproval(requestId, approver, decision, conditions)` produces an Approval Record.
 - Approval is valid only for the bound actor or role, action, digest, environment, conditions, and time window.
+- Plan review uses action `forge.delivery.execute-plan`, subject type `delivery-plan`, and the exact canonical plan digest. It cannot authorize execution or publication.
+- Publication approval is a separate request bound to the independently verified candidate digest.
 - The candidate creator cannot satisfy a required independent approval role.
 
 ### Audit evidence
@@ -145,13 +148,15 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 ### Experience
 
 - Command `SubmitIntent` maps authenticated user input to `CaptureIntent`; it cannot set authoritative scope.
-- Commands `ReviewPlan` and `DecideApproval` expose the exact subject, assumptions, checks, limitations, cost, risk, and rollback.
+- Commands `ReviewPlan` and `DecideApproval` expose the exact subject, context revisions, omissions, conflicts, assumptions, checks, limitations, cost, risk, and rollback.
 - Queries return role-appropriate projections with source, version, freshness, and authorization scope.
 - The first interface MAY be a CLI, but the same public boundary SHALL be usable by the accepted journey scenario.
 
 ## State and consistency boundaries
 
 - Delivery state uses optimistic concurrency and transactional outbox semantics.
+- Delivery follows `Captured -> ContextAuthorizing -> ContextReady -> Planned -> AwaitingPlanApproval -> PlanApproved -> ExecutionAuthorizing`; later execution and publication states preserve their separately named gates.
+- Context identity or manifest changes invalidate the plan; plan digest changes invalidate plan approval and later authority.
 - Internal events are at least once; consumers are idempotent.
 - External publication is idempotent and reconciled against provider state.
 - Evidence required for publication is committed before or atomically coordinated with the publication transition.
@@ -188,6 +193,7 @@ These are Proposed hypotheses until tests and an accepted support envelope estab
 - state-transition and optimistic-concurrency tests;
 - cross-tenant, expired-authority, changed-digest, and unknown-obligation negative tests;
 - context authority-separation tests;
+- context-informed plan ordering, digest invalidation, and plan-approval replay tests;
 - worker isolation, cancellation, quota, and egress tests;
 - independent verification and self-approval denial tests;
 - publication idempotency and ambiguous-result reconciliation tests;

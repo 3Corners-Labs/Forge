@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Delivery and Execution Architecture
-Version: 0.1
+Version: 0.2
 
 ## Purpose
 
@@ -10,21 +10,29 @@ Separate durable delivery coordination from isolated, potentially untrusted exec
 
 ## Delivery-run state
 
-The first slice uses explicit states:
+The first slice uses action- and subject-specific states:
 
 ~~~text
-Captured -> Planned -> Authorized -> ContextReady -> Executing
-          -> Verifying -> AwaitingApproval -> Publishing -> Completed
+Captured -> ContextAuthorizing -> ContextReady -> Planned
+         -> AwaitingPlanApproval -> PlanApproved
+         -> ExecutionAuthorizing -> Executing -> Verifying
+         -> AwaitingPublicationApproval -> Publishing -> Completed
 
 Any active state -> Cancelling -> Cancelled
 Any active state -> Failed -> Recovering -> prior safe state or FailedFinal
 ~~~
 
-Transitions are commands evaluated against current state, policy, idempotency key and expected version. Every committed transition produces an outbox entry for evidence and downstream events.
+Context is assembled before the canonical Delivery Plan so that source revisions, omissions, conflicts, classification, and lifecycle facts are part of the reviewed proposal. `PlanApproved` records a valid human decision on the exact plan digest; it is not worker authority. `ExecutionAuthorizing` requires separately evaluated Policy authority before execution. `AwaitingPublicationApproval` is a later, separate human gate bound to the independently verified candidate digest.
+
+The generic `Authorized` and `AwaitingApproval` names are prohibited because they obscure the protected action and approval subject.
+
+Transitions are commands evaluated against current state, policy where applicable, idempotency key and expected version. Every committed transition produces an outbox entry for evidence and downstream events. Cross-capability results become delivery facts only after their identifiers, digests, scope, lifecycle, and predecessor state have been revalidated.
 
 ## Control-plane responsibilities
 
 - own delivery-run state and optimistic concurrency version;
+- record the Context Package reference and manifest digest before constructing the canonical Delivery Plan;
+- own the Delivery Plan and its canonical digest without treating the plan as authority;
 - schedule work only after policy and prerequisite checks;
 - issue or reference the Execution Envelope;
 - enforce deadlines, cancellation and approval waits;
@@ -32,7 +40,7 @@ Transitions are commands evaluated against current state, policy, idempotency ke
 - checkpoint retryable progress;
 - preserve manual recovery instructions.
 
-The control plane does not execute repository code, retain plaintext secrets or trust worker-reported success without verification.
+The control plane does not execute repository code, retain plaintext secrets, record its own Approval Records or trust worker-reported success without verification.
 
 ## Worker responsibilities
 
@@ -75,6 +83,8 @@ Service extraction requires evidence that a module needs distinct scale, isolati
 ## Initial conformance scenarios
 
 - Two concurrent commands cannot commit conflicting state versions.
+- A changed Context Package or Delivery Plan invalidates its dependent plan approval and later authority.
+- Plan approval cannot be replayed as worker authority or publication approval.
 - Worker loss does not lose committed delivery state or create duplicate publication.
 - Cancellation revokes task credentials and blocks subsequent side effects.
 - A mismatched tenant, task or candidate digest is rejected.
