@@ -11,6 +11,8 @@ import (
 	approvalcap "github.com/3corners/forge/internal/approval"
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/contracts/trust"
+	verificationcontract "github.com/3corners/forge/internal/contracts/verification"
+	workercontract "github.com/3corners/forge/internal/contracts/worker"
 	"github.com/3corners/forge/internal/identity"
 )
 
@@ -109,9 +111,14 @@ func TestContextToApprovedPlanLifecycleIsAtomicAndDigestBound(t *testing.T) {
 	if err != nil || approved.State() != PlanApprovedState || approved.Approval().RecordID != record.ID {
 		t.Fatalf("record approval = state %q approval=%#v err=%v", approved.State(), approved.Approval(), err)
 	}
+	awaitingPublication := completeM1BDelivery(t, service, approved)
+	if awaitingPublication.State() != AwaitingPublicationApprovalState ||
+		awaitingPublication.Verification() == nil || awaitingPublication.Verification().Outcome != "passed" {
+		t.Fatalf("M1-B completion = state %q verification=%#v", awaitingPublication.State(), awaitingPublication.Verification())
+	}
 
 	stored, found, err := store.Load(ctx, run.ID())
-	if err != nil || !found || len(stored.Outbox) != 5 {
+	if err != nil || !found || len(stored.Outbox) != 9 {
 		t.Fatalf("stored outbox count=%d found=%t err=%v", len(stored.Outbox), found, err)
 	}
 	for index, event := range stored.Outbox {
@@ -119,6 +126,135 @@ func TestContextToApprovedPlanLifecycleIsAtomicAndDigestBound(t *testing.T) {
 			t.Fatalf("invalid outbox event %d: %#v", index, event)
 		}
 	}
+}
+
+func completeM1BDelivery(t testing.TB, service *Service, approved DeliveryRun) DeliveryRun {
+	t.Helper()
+	ctx := context.Background()
+	authorizing, _, err := service.BeginExecutionAuthorization(ctx, transitionRequest(approved, "transition-execution-authorizing"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, contextRecord, approval := authorizing.Plan(), authorizing.Context(), authorizing.Approval()
+	envelope, err := trust.BindExecutionEnvelopeIntegrity(trust.ExecutionEnvelope{
+		SchemaVersion: trust.ExecutionEnvelopeSchemaVersion, Issuer: "forge.policy",
+		IssuedAt: lifecycleTime.Add(-time.Minute), ExpiresAt: lifecycleTime.Add(time.Hour),
+		Scope: trust.ExecutionScope{
+			TenantID: authorizing.TenantID(), WorkspaceID: authorizing.WorkspaceID(),
+			ProjectID: authorizing.ProjectID(), DeliveryRunID: authorizing.ID(),
+		},
+		Principal: trust.EnvelopePrincipal{
+			SubjectID: authorizing.ActorID(), AgentID: "worker-1",
+			DelegationChain: []string{"worker-delegation-1"},
+		},
+		Purpose: M1ChangePurpose, RiskClass: plan.RiskClass,
+		Actions: []string{workercontract.PrepareChangeAction}, Classifications: []string{authorizing.Classification()},
+		Destinations: []string{}, ModelIDs: []string{}, ToolIDs: []string{}, SecretReferenceIDs: []string{},
+		PolicyDecisionIDs:     []string{"decision-delegation", "decision-execution"},
+		ApprovalRecordIDs:     []string{approval.RecordID},
+		Limits:                trust.ExecutionLimits{MaxDurationSeconds: 60, MaxConcurrency: 1},
+		EvidenceCorrelationID: authorizing.CorrelationID(),
+	}, authorizing.CorrelationID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	executing, _, err := service.RecordExecutionAuthority(ctx, RecordExecutionAuthorityRequest{
+		TransitionRequest: transitionRequest(authorizing, "transition-executing"),
+		Envelope:          envelope, DelegationID: "worker-delegation-1", WorkerID: "worker-1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacements := make([]workercontract.FileReplacement, 0, len(plan.ChangePaths))
+	for _, changedPath := range plan.ChangePaths {
+		replacements = append(replacements, workercontract.FileReplacement{Path: changedPath, Content: []byte("bounded candidate\n")})
+	}
+	workerRequest, err := workercontract.BindRequest(workercontract.Request{
+		SchemaVersion: workercontract.RequestVersion, EnvelopeID: envelope.ID,
+		DelegationID: "worker-delegation-1", PlanID: plan.ID, PlanDigest: plan.Digest,
+		PlanApprovalRecordID: approval.RecordID, ContextPackageID: contextRecord.PackageID,
+		ContextManifestDigest: contextRecord.ManifestDigest, SourceRevision: contextRecord.SourceRevisions[0],
+		Scope: workercontract.Scope{
+			TenantID: executing.TenantID(), WorkspaceID: executing.WorkspaceID(), ProjectID: executing.ProjectID(),
+			RepositoryID: executing.RepositoryID(), DeliveryRunID: executing.ID(),
+		},
+		Action: workercontract.PrepareChangeAction, TransformationID: workercontract.TransformationV1,
+		TransformationVersion: "1.0.0", AllowedReadPaths: slices.Clone(plan.ChangePaths),
+		AllowedWritePaths: slices.Clone(plan.ChangePaths), DependencyDigests: []string{plan.Digest, contextRecord.ManifestDigest},
+		Replacements: replacements,
+		Limits: workercontract.Limits{
+			MaxDurationSeconds: 60, MaxProcesses: 4, MaxOutputBytes: 1 << 20,
+			MaxChangedFiles: int64(len(replacements)), MaxAttempts: plan.Budgets.MaxAttempts,
+		},
+		Attempt: 1, ExpiresAt: envelope.ExpiresAt, EvidenceCorrelationID: executing.CorrelationID(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := make([]workercontract.CandidateFile, 0, len(replacements))
+	for _, replacement := range replacements {
+		files = append(files, workercontract.CandidateFile{Path: replacement.Path, Content: replacement.Content})
+	}
+	bundle, err := workercontract.BindBundle(workercontract.CandidateBundle{
+		SchemaVersion: workercontract.BundleVersion, SourceRevision: workerRequest.SourceRevision,
+		PlanDigest: plan.Digest, Files: files,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	changedPaths := make([]string, 0, len(bundle.Files))
+	for _, file := range bundle.Files {
+		changedPaths = append(changedPaths, file.Path)
+	}
+	workerResult := workercontract.Result{
+		SchemaVersion: workercontract.ResultVersion, RequestID: workerRequest.ID, RequestDigest: workerRequest.Digest,
+		CandidateDigest: bundle.Digest, TreeDigest: workercontract.CandidateTreeDigest(bundle),
+		ChangedPaths: changedPaths, BundleDigest: bundle.Digest,
+		ResourceUse:    workercontract.ResourceUse{DurationMillis: 1, OutputBytes: 128, ChangedFiles: int64(len(changedPaths))},
+		CleanupOutcome: "completed", EvidenceReferences: []string{}, CompletedAt: lifecycleTime,
+	}
+	verifying, _, err := service.RecordCandidate(ctx, RecordCandidateRequest{
+		TransitionRequest: transitionRequest(executing, "transition-verifying"),
+		WorkerRequest:     workerRequest, Bundle: bundle, Result: workerResult,
+		ArtefactReferences: []string{"artifact:" + bundle.Digest},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assurancePlan, err := verificationcontract.BindPlan(verificationcontract.AssurancePlan{
+		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
+		PlanDigest: plan.Digest, RiskClass: plan.RiskClass, Classification: verifying.Classification(),
+		AffectedCapabilities: slices.Clone(plan.AffectedCapabilities), ChangedPaths: changedPaths,
+		Controls:    []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
+		Environment: "developer-trial", ExpiresAt: lifecycleTime.Add(time.Hour),
+		EvidenceCorrelationID: verifying.CorrelationID(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	verificationResult, err := verificationcontract.BindResult(verificationcontract.Result{
+		SchemaVersion: verificationcontract.ResultVersion, AssurancePlanID: assurancePlan.ID,
+		AssurancePlanDigest: assurancePlan.Digest, CandidateDigest: bundle.Digest,
+		Environment: "developer-trial", Outcome: "passed", Independent: true, CompletedAt: lifecycleTime,
+		EvidenceCorrelationID: verifying.CorrelationID(),
+		Findings: []verificationcontract.Finding{{
+			ControlID: "forge.candidate-integrity", Outcome: "passed", Code: "passed",
+			EvidenceDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Consequential:  true,
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completed, _, err := service.RecordVerification(ctx, RecordVerificationRequest{
+		TransitionRequest: transitionRequest(verifying, "transition-awaiting-publication"),
+		AssurancePlan:     assurancePlan, Result: verificationResult,
+		EvidenceReferences: []string{"verification:" + verificationResult.Digest},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return completed
 }
 
 func TestDeliveryAndApprovalCapabilitiesComposeThroughOwnedResolvers(t *testing.T) {

@@ -29,6 +29,7 @@ const (
 	ActionAssembleContext                    = Action("forge.context.assemble")
 	ActionCreateDelegation                   = Action("forge.delegation.create")
 	ActionDecideApproval                     = Action("forge.approval.decide")
+	ActionPrepareChange                      = Action("forge.worker.prepare-change")
 )
 
 type Action string
@@ -488,7 +489,7 @@ func validateRule(rule Rule, seen map[string]struct{}) error {
 		return errors.New("policy rule effect is invalid")
 	}
 	for _, action := range rule.Actions {
-		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval {
+		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval && action != ActionPrepareChange {
 			return errors.New("policy rule action is invalid")
 		}
 	}

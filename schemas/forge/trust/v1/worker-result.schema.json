@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/worker-result.schema.json",
+  "title": "Forge Worker Result v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "requestId", "requestDigest", "candidateDigest", "treeDigest", "changedPaths", "bundleDigest", "resourceUse", "cleanupOutcome", "evidenceReferences", "completedAt"],
+  "properties": {
+    "schemaVersion": {"const": "forge.worker-result.v1"},
+    "requestId": {"type": "string", "minLength": 1},
+    "requestDigest": {"$ref": "#/$defs/digest"}, "candidateDigest": {"$ref": "#/$defs/digest"},
+    "treeDigest": {"$ref": "#/$defs/digest"}, "bundleDigest": {"$ref": "#/$defs/digest"},
+    "changedPaths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "resourceUse": {
+      "type": "object", "additionalProperties": false, "required": ["durationMillis", "outputBytes", "changedFiles"],
+      "properties": {
+        "durationMillis": {"type": "integer", "minimum": 0}, "outputBytes": {"type": "integer", "minimum": 0},
+        "changedFiles": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cleanupOutcome": {"enum": ["completed", "not-completed"]},
+    "evidenceReferences": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "completedAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}}
+}

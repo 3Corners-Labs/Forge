@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/candidate-bundle.schema.json",
+  "title": "Forge Candidate Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sourceRevision", "planDigest", "files", "digest"],
+  "properties": {
+    "schemaVersion": {"const": "forge.candidate-bundle.v1"},
+    "sourceRevision": {"type": "string", "minLength": 1},
+    "planDigest": {"$ref": "#/$defs/digest"},
+    "files": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/file"}},
+    "digest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "file": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "content", "contentDigest"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1}, "sourceDigest": {"$ref": "#/$defs/digest"},
+        "content": {"type": "string", "contentEncoding": "base64", "minLength": 1},
+        "contentDigest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

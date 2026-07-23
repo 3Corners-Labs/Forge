@@ -179,6 +179,51 @@ func (value ApprovalRecordV2) VerifyIntegrity(correlationID string) error {
 	return nil
 }
 
+func BindEvidenceRecordIntegrity(value EvidenceRecord, previousDigest, correlationID string) (EvidenceRecord, error) {
+	if value.ID != "" || value.Integrity != (EvidenceIntegrity{}) {
+		return EvidenceRecord{}, invalid("evidence record is already integrity-bound", correlationID)
+	}
+	value.References = canonicalApprovalValues(value.References)
+	value.ID = "forge.evidence-record.pending"
+	value.Integrity = EvidenceIntegrity{
+		Algorithm:            sha256IntegrityAlgorithm,
+		Digest:               "sha256:" + strings.Repeat("0", 64),
+		PreviousRecordDigest: previousDigest,
+	}
+	if err := value.Validate(correlationID); err != nil {
+		return EvidenceRecord{}, err
+	}
+	value.ID = ""
+	value.Integrity.Digest = ""
+	digest, err := evidenceRecordDigest(value)
+	if err != nil {
+		return EvidenceRecord{}, failure.New(failure.Indeterminate, "evidence integrity could not be calculated", correlationID, failure.RetryNone)
+	}
+	value.ID = "forge.evidence-record." + digest
+	value.Integrity.Digest = "sha256:" + digest
+	if err := value.VerifyIntegrity(correlationID); err != nil {
+		return EvidenceRecord{}, err
+	}
+	return value, nil
+}
+
+func (value EvidenceRecord) VerifyIntegrity(correlationID string) error {
+	if err := value.Validate(correlationID); err != nil {
+		return err
+	}
+	if value.Integrity.Algorithm != sha256IntegrityAlgorithm {
+		return failure.New(failure.VerificationFailed, "evidence integrity is not verifiable", correlationID, failure.RetryNone)
+	}
+	digest, err := evidenceRecordDigest(value)
+	if err != nil {
+		return failure.New(failure.Indeterminate, "evidence integrity could not be verified", correlationID, failure.RetryNone)
+	}
+	if value.ID != "forge.evidence-record."+digest || value.Integrity.Digest != "sha256:"+digest {
+		return failure.New(failure.VerificationFailed, "evidence integrity verification failed", correlationID, failure.RetryNone)
+	}
+	return nil
+}
+
 func executionEnvelopeDigest(value ExecutionEnvelope) (string, error) {
 	value.ID = ""
 	value.Integrity = nil
@@ -215,6 +260,18 @@ func approvalRequestDigest(value ApprovalRequest) (string, error) {
 func approvalRecordV2Digest(value ApprovalRecordV2) (string, error) {
 	value.ID = ""
 	value.Integrity = Integrity{}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func evidenceRecordDigest(value EvidenceRecord) (string, error) {
+	value.ID = ""
+	value.Integrity.Digest = ""
+	value.Integrity.SignatureReference = ""
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return "", err

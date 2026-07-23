@@ -12,6 +12,8 @@ import (
 
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/contracts/trust"
+	verificationcontract "github.com/3corners/forge/internal/contracts/verification"
+	workercontract "github.com/3corners/forge/internal/contracts/worker"
 )
 
 var (
@@ -37,6 +39,35 @@ type PlanApprovalRecord struct {
 	RecordID      string
 }
 
+type ExecutionAuthorityRecord struct {
+	EnvelopeID        string
+	EnvelopeDigest    string
+	DelegationID      string
+	WorkerSubjectID   string
+	PolicyDecisionIDs []string
+	ExpiresAt         time.Time
+}
+
+type CandidateRecord struct {
+	Digest              string
+	TreeDigest          string
+	BundleDigest        string
+	ChangedPaths        []string
+	WorkerRequestID     string
+	WorkerRequestDigest string
+	WorkerResultDigest  string
+	ArtefactReferences  []string
+}
+
+type VerificationRecord struct {
+	AssurancePlanID     string
+	AssurancePlanDigest string
+	ResultID            string
+	ResultDigest        string
+	Outcome             string
+	EvidenceReferences  []string
+}
+
 type OutboxEvent struct {
 	ID            string
 	RunID         string
@@ -60,6 +91,9 @@ type TransitionCommand struct {
 	Context         *ContextRecord
 	Plan            *DeliveryPlan
 	Approval        *PlanApprovalRecord
+	Execution       *ExecutionAuthorityRecord
+	Candidate       *CandidateRecord
+	Verification    *VerificationRecord
 }
 
 type transitionEntry struct {
@@ -100,8 +134,30 @@ type RecordPlanApprovalRequest struct {
 	ApprovalRecordID string
 }
 
+type RecordExecutionAuthorityRequest struct {
+	TransitionRequest
+	Envelope     trust.ExecutionEnvelope
+	DelegationID string
+	WorkerID     string
+}
+
+type RecordCandidateRequest struct {
+	TransitionRequest
+	WorkerRequest      workercontract.Request
+	Bundle             workercontract.CandidateBundle
+	Result             workercontract.Result
+	ArtefactReferences []string
+}
+
+type RecordVerificationRequest struct {
+	TransitionRequest
+	AssurancePlan      verificationcontract.AssurancePlan
+	Result             verificationcontract.Result
+	EvidenceReferences []string
+}
+
 func (service *Service) BeginContextAuthorization(ctx context.Context, request TransitionRequest) (DeliveryRun, bool, error) {
-	return service.transition(ctx, request, CapturedState, ContextAuthorizingState, nil, nil, nil)
+	return service.transition(ctx, request, CapturedState, ContextAuthorizingState, nil, nil, nil, nil, nil, nil)
 }
 
 func (service *Service) RecordContext(ctx context.Context, request RecordContextRequest) (DeliveryRun, bool, error) {
@@ -148,7 +204,7 @@ func (service *Service) RecordContext(ctx context.Context, request RecordContext
 		SourceRevisions: revisions, Omissions: canonicalStrings(request.Package.Omissions),
 		Conflicts: canonicalStrings(request.Package.Conflicts), Classification: classification, ExpiresAt: expiresAt,
 	}
-	return service.transition(ctx, request.TransitionRequest, ContextAuthorizingState, ContextReadyState, record, nil, nil)
+	return service.transition(ctx, request.TransitionRequest, ContextAuthorizingState, ContextReadyState, record, nil, nil, nil, nil, nil)
 }
 
 func (service *Service) RecordPlan(ctx context.Context, profiles PlanProfileResolver, request RecordPlanRequest) (DeliveryRun, bool, error) {
@@ -174,7 +230,7 @@ func (service *Service) RecordPlan(ctx context.Context, profiles PlanProfileReso
 	if err != nil {
 		return DeliveryRun{}, false, err
 	}
-	return service.transition(ctx, request.TransitionRequest, ContextReadyState, PlannedState, nil, &plan, nil)
+	return service.transition(ctx, request.TransitionRequest, ContextReadyState, PlannedState, nil, &plan, nil, nil, nil, nil)
 }
 
 func (service *Service) AwaitPlanApproval(ctx context.Context, resolver ApprovalRequestResolver, request AwaitPlanApprovalRequest) (DeliveryRun, bool, error) {
@@ -202,7 +258,7 @@ func (service *Service) AwaitPlanApproval(ctx context.Context, resolver Approval
 		return DeliveryRun{}, false, failure.New(failure.Forbidden, "approval request is outside the current delivery plan", request.CorrelationID, failure.RetryNone)
 	}
 	approval := &PlanApprovalRecord{RequestID: approvalRequest.ID, RequestDigest: approvalRequest.RequestDigest}
-	return service.transition(ctx, request.TransitionRequest, PlannedState, AwaitingPlanApprovalState, nil, nil, approval)
+	return service.transition(ctx, request.TransitionRequest, PlannedState, AwaitingPlanApprovalState, nil, nil, approval, nil, nil, nil)
 }
 
 func (service *Service) RecordPlanApproval(ctx context.Context, resolver ApprovalResolver, request RecordPlanApprovalRequest) (DeliveryRun, bool, error) {
@@ -237,7 +293,122 @@ func (service *Service) RecordPlanApproval(ctx context.Context, resolver Approva
 		return DeliveryRun{}, false, err
 	}
 	approved := &PlanApprovalRecord{RequestID: pending.RequestID, RequestDigest: pending.RequestDigest, RecordID: record.ID}
-	return service.transition(ctx, request.TransitionRequest, AwaitingPlanApprovalState, PlanApprovedState, nil, nil, approved)
+	return service.transition(ctx, request.TransitionRequest, AwaitingPlanApprovalState, PlanApprovedState, nil, nil, approved, nil, nil, nil)
+}
+
+func (service *Service) BeginExecutionAuthorization(ctx context.Context, request TransitionRequest) (DeliveryRun, bool, error) {
+	return service.transition(ctx, request, PlanApprovedState, ExecutionAuthorizingState, nil, nil, nil, nil, nil, nil)
+}
+
+func (service *Service) RecordExecutionAuthority(ctx context.Context, request RecordExecutionAuthorityRequest) (DeliveryRun, bool, error) {
+	at, err := service.transitionTime(request.TransitionRequest)
+	if err != nil {
+		return DeliveryRun{}, false, err
+	}
+	plan, approval := request.Run.Plan(), request.Run.Approval()
+	if plan == nil || approval == nil || request.DelegationID == "" || request.WorkerID == "" ||
+		request.Run.State() != ExecutionAuthorizingState {
+		return DeliveryRun{}, false, failure.New(failure.InvalidRequest, "execution authority input is invalid", request.CorrelationID, failure.RetryNone)
+	}
+	if err := request.Envelope.VerifyIntegrity(request.CorrelationID); err != nil {
+		return DeliveryRun{}, false, err
+	}
+	if err := request.Envelope.AuthorizeAction(workercontract.PrepareChangeAction, at, request.CorrelationID); err != nil {
+		return DeliveryRun{}, false, err
+	}
+	if request.Envelope.Scope != (trust.ExecutionScope{
+		TenantID: request.Run.TenantID(), WorkspaceID: request.Run.WorkspaceID(),
+		ProjectID: request.Run.ProjectID(), DeliveryRunID: request.Run.ID(),
+	}) || request.Envelope.Principal.SubjectID != request.Run.ActorID() ||
+		request.Envelope.Principal.AgentID != request.WorkerID ||
+		!slices.Equal(request.Envelope.Principal.DelegationChain, []string{request.DelegationID}) ||
+		!slices.Equal(request.Envelope.ApprovalRecordIDs, []string{approval.RecordID}) ||
+		request.Envelope.Purpose != M1ChangePurpose || request.Envelope.RiskClass != plan.RiskClass ||
+		!slices.Equal(request.Envelope.Classifications, []string{request.Run.Classification()}) ||
+		len(request.Envelope.ModelIDs) != 0 || len(request.Envelope.ToolIDs) != 0 ||
+		len(request.Envelope.SecretReferenceIDs) != 0 || len(request.Envelope.Destinations) != 0 ||
+		request.Envelope.Integrity == nil {
+		return DeliveryRun{}, false, failure.New(failure.Forbidden, "execution authority is outside the approved plan", request.CorrelationID, failure.RetryNewAuthority)
+	}
+	record := &ExecutionAuthorityRecord{
+		EnvelopeID: request.Envelope.ID, EnvelopeDigest: request.Envelope.Integrity.Digest,
+		DelegationID: request.DelegationID, WorkerSubjectID: request.WorkerID,
+		PolicyDecisionIDs: slices.Clone(request.Envelope.PolicyDecisionIDs), ExpiresAt: request.Envelope.ExpiresAt,
+	}
+	return service.transition(ctx, request.TransitionRequest, ExecutionAuthorizingState, ExecutingState, nil, nil, nil, record, nil, nil)
+}
+
+func (service *Service) RecordCandidate(ctx context.Context, request RecordCandidateRequest) (DeliveryRun, bool, error) {
+	at, err := service.transitionTime(request.TransitionRequest)
+	if err != nil {
+		return DeliveryRun{}, false, err
+	}
+	plan, contextRecord := request.Run.Plan(), request.Run.Context()
+	approval, authority := request.Run.Approval(), request.Run.Execution()
+	if request.Run.State() != ExecutingState || plan == nil || contextRecord == nil || approval == nil || authority == nil {
+		return DeliveryRun{}, false, failure.New(failure.Conflict, "delivery run is not executing", request.CorrelationID, failure.RetryReconcile)
+	}
+	if err := request.WorkerRequest.Validate(at); err != nil {
+		return DeliveryRun{}, false, failure.New(failure.VerificationFailed, "worker request could not be verified", request.CorrelationID, failure.RetryNone)
+	}
+	if err := request.Bundle.Validate(); err != nil {
+		return DeliveryRun{}, false, failure.New(failure.VerificationFailed, "candidate bundle could not be verified", request.CorrelationID, failure.RetryNone)
+	}
+	if request.WorkerRequest.EnvelopeID != authority.EnvelopeID ||
+		request.WorkerRequest.DelegationID != authority.DelegationID ||
+		request.WorkerRequest.PlanID != plan.ID || request.WorkerRequest.PlanDigest != plan.Digest ||
+		request.WorkerRequest.PlanApprovalRecordID != approval.RecordID ||
+		request.WorkerRequest.ContextPackageID != contextRecord.PackageID ||
+		request.WorkerRequest.ContextManifestDigest != contextRecord.ManifestDigest ||
+		request.WorkerRequest.SourceRevision != contextRecord.SourceRevisions[0] ||
+		request.WorkerRequest.Scope != (workercontract.Scope{
+			TenantID: request.Run.TenantID(), WorkspaceID: request.Run.WorkspaceID(),
+			ProjectID: request.Run.ProjectID(), RepositoryID: request.Run.RepositoryID(), DeliveryRunID: request.Run.ID(),
+		}) || !slices.Equal(request.WorkerRequest.AllowedWritePaths, plan.ChangePaths) ||
+		request.Result.SchemaVersion != workercontract.ResultVersion ||
+		request.Result.RequestID != request.WorkerRequest.ID ||
+		request.Result.RequestDigest != request.WorkerRequest.Digest ||
+		request.Result.CandidateDigest != request.Bundle.Digest ||
+		request.Result.BundleDigest != request.Bundle.Digest ||
+		request.Result.TreeDigest != workercontract.CandidateTreeDigest(request.Bundle) ||
+		!slices.Equal(request.Result.ChangedPaths, bundlePaths(request.Bundle)) ||
+		len(request.ArtefactReferences) == 0 {
+		return DeliveryRun{}, false, failure.New(failure.Forbidden, "candidate is outside worker authority", request.CorrelationID, failure.RetryNone)
+	}
+	record := &CandidateRecord{
+		Digest: request.Bundle.Digest, TreeDigest: request.Result.TreeDigest, BundleDigest: request.Result.BundleDigest,
+		ChangedPaths: slices.Clone(request.Result.ChangedPaths), WorkerRequestID: request.WorkerRequest.ID,
+		WorkerRequestDigest: request.WorkerRequest.Digest, WorkerResultDigest: digestValue(request.Result),
+		ArtefactReferences: canonicalStrings(request.ArtefactReferences),
+	}
+	return service.transition(ctx, request.TransitionRequest, ExecutingState, VerifyingState, nil, nil, nil, nil, record, nil)
+}
+
+func (service *Service) RecordVerification(ctx context.Context, request RecordVerificationRequest) (DeliveryRun, bool, error) {
+	at, err := service.transitionTime(request.TransitionRequest)
+	if err != nil {
+		return DeliveryRun{}, false, err
+	}
+	plan, candidate := request.Run.Plan(), request.Run.Candidate()
+	if request.Run.State() != VerifyingState || plan == nil || candidate == nil {
+		return DeliveryRun{}, false, failure.New(failure.Conflict, "delivery run is not verifying", request.CorrelationID, failure.RetryReconcile)
+	}
+	if err := request.AssurancePlan.Validate(at); err != nil {
+		return DeliveryRun{}, false, failure.New(failure.VerificationFailed, "assurance plan could not be verified", request.CorrelationID, failure.RetryNone)
+	}
+	if err := request.Result.Validate(request.AssurancePlan); err != nil ||
+		request.AssurancePlan.CandidateDigest != candidate.Digest ||
+		request.AssurancePlan.PlanDigest != plan.Digest ||
+		!slices.Equal(request.AssurancePlan.ChangedPaths, candidate.ChangedPaths) ||
+		request.Result.Outcome != "passed" || len(request.EvidenceReferences) == 0 {
+		return DeliveryRun{}, false, failure.New(failure.VerificationFailed, "candidate verification did not pass independently", request.CorrelationID, failure.RetryNone)
+	}
+	record := &VerificationRecord{
+		AssurancePlanID: request.AssurancePlan.ID, AssurancePlanDigest: request.AssurancePlan.Digest,
+		ResultID: request.Result.ID, ResultDigest: request.Result.Digest, Outcome: request.Result.Outcome,
+		EvidenceReferences: canonicalStrings(request.EvidenceReferences),
+	}
+	return service.transition(ctx, request.TransitionRequest, VerifyingState, AwaitingPublicationApprovalState, nil, nil, nil, nil, nil, record)
 }
 
 type PlanSubject = trust.PlanApprovalSubject
@@ -267,7 +438,7 @@ func (service *Service) ResolvePlanSubject(ctx context.Context, tenantID, runID 
 	}, true, nil
 }
 
-func (service *Service) transition(ctx context.Context, request TransitionRequest, from, to string, contextRecord *ContextRecord, plan *DeliveryPlan, approval *PlanApprovalRecord) (DeliveryRun, bool, error) {
+func (service *Service) transition(ctx context.Context, request TransitionRequest, from, to string, contextRecord *ContextRecord, plan *DeliveryPlan, approval *PlanApprovalRecord, execution *ExecutionAuthorityRecord, candidate *CandidateRecord, verification *VerificationRecord) (DeliveryRun, bool, error) {
 	at, err := service.transitionTime(request)
 	if err != nil {
 		return DeliveryRun{}, false, err
@@ -284,6 +455,7 @@ func (service *Service) transition(ctx context.Context, request TransitionReques
 		FromState: from, ToState: to, IdempotencyKey: request.IdempotencyKey,
 		CorrelationID: request.CorrelationID, OccurredAt: at,
 		Context: cloneContextRecord(contextRecord), Plan: clonePlan(plan), Approval: clonePlanApprovalRecord(approval),
+		Execution: cloneExecutionRecord(execution), Candidate: cloneCandidateRecord(candidate), Verification: cloneVerificationRecord(verification),
 	}
 	command.Fingerprint = transitionFingerprint(command)
 	stored, replayed, err := store.Transition(ctx, command)
@@ -363,6 +535,15 @@ func (store *MemoryStore) Transition(ctx context.Context, command TransitionComm
 	if command.Approval != nil {
 		next.Approval = clonePlanApprovalRecord(command.Approval)
 	}
+	if command.Execution != nil {
+		next.Execution = cloneExecutionRecord(command.Execution)
+	}
+	if command.Candidate != nil {
+		next.Candidate = cloneCandidateRecord(command.Candidate)
+	}
+	if command.Verification != nil {
+		next.Verification = cloneVerificationRecord(command.Verification)
+	}
 	next.Outbox = append(next.Outbox, OutboxEvent{
 		ID: command.Fingerprint, RunID: command.RunID, FromState: command.FromState, ToState: command.ToState,
 		RunVersion: next.Version, CorrelationID: command.CorrelationID, OccurredAt: command.OccurredAt,
@@ -420,4 +601,46 @@ func clonePlanApprovalRecord(value *PlanApprovalRecord) *PlanApprovalRecord {
 	}
 	result := *value
 	return &result
+}
+
+func cloneExecutionRecord(value *ExecutionAuthorityRecord) *ExecutionAuthorityRecord {
+	if value == nil {
+		return nil
+	}
+	result := *value
+	result.PolicyDecisionIDs = slices.Clone(value.PolicyDecisionIDs)
+	return &result
+}
+
+func cloneCandidateRecord(value *CandidateRecord) *CandidateRecord {
+	if value == nil {
+		return nil
+	}
+	result := *value
+	result.ChangedPaths = slices.Clone(value.ChangedPaths)
+	result.ArtefactReferences = slices.Clone(value.ArtefactReferences)
+	return &result
+}
+
+func cloneVerificationRecord(value *VerificationRecord) *VerificationRecord {
+	if value == nil {
+		return nil
+	}
+	result := *value
+	result.EvidenceReferences = slices.Clone(value.EvidenceReferences)
+	return &result
+}
+
+func bundlePaths(bundle workercontract.CandidateBundle) []string {
+	result := make([]string, 0, len(bundle.Files))
+	for _, file := range bundle.Files {
+		result = append(result, file.Path)
+	}
+	return result
+}
+
+func digestValue(value any) string {
+	encoded, _ := json.Marshal(value)
+	sum := sha256.Sum256(encoded)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }

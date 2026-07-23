@@ -1,0 +1,8 @@
+{
+  "importerModule": "verification",
+  "imports": ["github.com/3corners/forge/internal/verifier"],
+  "expectedViolations": [
+    "control-plane-cannot-import-verifier",
+    "undeclared-internal-dependency"
+  ]
+}

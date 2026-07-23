@@ -378,6 +378,11 @@ def check_trust_schemas() -> None:
         "approval-request.schema.json",
         "approval-record-v2.schema.json",
         "evidence-record.schema.json",
+        "worker-request.schema.json",
+        "candidate-bundle.schema.json",
+        "worker-result.schema.json",
+        "assurance-plan.schema.json",
+        "verification-result.schema.json",
     }
     present = {path.name for path in schema_directory.glob("*.schema.json")}
     if present != required:
@@ -823,6 +828,8 @@ def check_module_boundaries() -> None:
             "identity",
             "tenant",
             "trust-contract",
+            "verification-contracts",
+            "worker-contracts",
         ],
     }
     if by_id.get("delivery") != expected_delivery_module:
@@ -855,6 +862,17 @@ def check_module_boundaries() -> None:
     }
     if by_id.get("approval") != expected_approval_module:
         fail("M1 Approval must own approval state without importing Delivery or Policy runtime state")
+    expected_m1_b_modules = {
+        "execution": ("forge-control-plane", {"delivery", "failure-contract", "trust-contract", "worker-contracts"}),
+        "verification": ("forge-control-plane", {"delivery", "failure-contract", "verification-contracts", "worker-contracts"}),
+        "evidence": ("forge-control-plane", {"failure-contract", "trust-contract"}),
+        "worker": ("forge-worker", {"worker-contracts"}),
+        "verifier": ("forge-verifier", {"verification-contracts", "worker-contracts"}),
+    }
+    for module_id, (unit, dependencies) in expected_m1_b_modules.items():
+        module = by_id.get(module_id)
+        if module is None or module.get("deploymentUnit") != unit or module.get("maturity") != "Trial" or set(module.get("allowedInternalDependencies", [])) != dependencies:
+            fail(f"M1-B module {module_id} does not preserve its accepted capability and deployment boundary")
     allowed_maturities = {"Research", "Trial", "Supported", "Deprecated"}
     for module in modules:
         if module.get("maturity") not in allowed_maturities:
@@ -877,6 +895,8 @@ def check_module_boundaries() -> None:
     expected_rules = {
         "control-plane-cannot-import-worker",
         "worker-cannot-import-control-plane",
+        "control-plane-cannot-import-verifier",
+        "verifier-cannot-import-control-plane",
         "shared-contract-cannot-import-runtime",
     }
     if set(isolation_rules) != expected_rules:
@@ -940,9 +960,11 @@ def check_module_boundaries() -> None:
         "forbidden-control-to-worker.json",
         "forbidden-undeclared-module.json",
         "forbidden-worker-to-control.json",
+        "m1-b-boundaries/forbidden-control-to-verifier.json",
+        "m1-b-boundaries/forbidden-verifier-to-control.json",
     }
-    fixture_paths = sorted(fixture_directory.glob("*.json"))
-    if {path.name for path in fixture_paths} != expected_fixture_names:
+    fixture_paths = sorted(fixture_directory.rglob("*.json"))
+    if {str(path.relative_to(fixture_directory)) for path in fixture_paths} != expected_fixture_names:
         fail("module-boundary negative fixture set changed")
     for path in fixture_paths:
         fixture = json.loads(path.read_text(encoding="utf-8"))
