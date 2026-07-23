@@ -45,15 +45,19 @@ func TestRequirementsProposalSeparatesInputFromAuthorityAndBindsDigest(t *testin
 		t.Fatal(err)
 	}
 	if proposal.ContractVersion != experience.RequirementsProposalVersion || proposal.Lifecycle != "proposal" ||
-		!proposal.Current || proposal.Digest == "" || proposal.Statements[0].Kind != "direct-user-statement" {
+		!proposal.Current || proposal.Digest == "" ||
+		proposal.Statements[0].Kind != "direct-user-statement" ||
+		proposal.Statements[1].Kind != "model-inference" {
 		t.Fatalf("unexpected proposal: %#v", proposal)
 	}
 	subject, found, err := service.ResolvePromotionSubject(context.Background(), proposal.TenantID, proposal.ID)
 	if err != nil || !found || !intent.VerifyProposalDigest(subject) {
 		t.Fatalf("promotion subject found=%t err=%v subject=%#v", found, err, subject)
 	}
-	if subject.ProposalDigest != proposal.Digest || subject.DirectUserStatements[0] != request.RawInput {
-		t.Fatal("proposal digest or direct user statement was not preserved")
+	if subject.ProposalDigest != proposal.Digest || subject.DirectUserStatements[0] != request.RawInput ||
+		subject.Inferences[0] != request.Inferences[0] ||
+		subject.ProductAreaRefs[0] != request.ProductAreaRefs[0] {
+		t.Fatal("proposal digest, direct user statement, inference, or product area was not preserved")
 	}
 }
 
@@ -112,11 +116,13 @@ func validProposal() experience.CreateProposal {
 		Constraints:        []string{"No production access", "Synthetic data only"},
 		Exclusions:         []string{"Live GitHub credentials"},
 		AcceptanceCriteria: []string{"Exact proposal digest is promoted"},
+		Inferences:         []string{"The user likely needs a resumable session"},
 		Assumptions:        []string{"The Developer Trial profile is active"},
 		Hypotheses:         []string{"A guided CLI reduces requirement ambiguity"},
 		EvidenceReferences: []string{"adr:0020"},
 		Questions:          []intent.Question{{ID: "q-1", Text: "Which provider?", Consequence: "", Material: false, Resolved: false}},
-		Experiments:        []string{"Disposable contract-double preview"}, Provenance: []string{"channel:cli"},
+		Experiments:        []string{"Disposable contract-double preview"},
+		ProductAreaRefs:    []string{"forge.discovery"}, Provenance: []string{"channel:cli"},
 		ChangeExplanation: "Initial proposal",
 	}
 }

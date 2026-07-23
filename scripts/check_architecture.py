@@ -429,6 +429,32 @@ def check_common_contract_schemas() -> None:
         fail("normalized error retry set changed")
 
 
+def check_intelligence_schemas() -> None:
+    path = ROOT / "schemas/forge/intelligence/v1/provider-activation.schema.json"
+    document = json.loads(path.read_text(encoding="utf-8"))
+    for field in ("$schema", "$id", "title", "type"):
+        if field not in document:
+            fail(f"{path.relative_to(ROOT)} is missing {field}")
+    if document.get("type") != "object" or document.get("additionalProperties") is not False:
+        fail("model-provider activation must be a closed top-level object schema")
+    properties = document.get("properties", {})
+    if properties.get("schemaVersion", {}).get("const") != "forge.model-provider-activation.v1":
+        fail("model-provider activation has an unsupported schema version")
+    if properties.get("storeProviderState", {}).get("const") is not False:
+        fail("Developer Trial model-provider activation must disable provider state storage")
+    if properties.get("trainingUse", {}).get("const") != "disabled":
+        fail("Developer Trial model-provider activation must disable provider training use")
+    if properties.get("allowedPurposes", {}).get("items", {}).get("const") != "forge.product.discovery":
+        fail("M1 model-provider activation must be limited to product discovery")
+    if set(properties.get("allowedClassifications", {}).get("items", {}).get("enum", [])) != {
+        "Public",
+        "Internal",
+    }:
+        fail("M1 model-provider activation has unsupported data classifications")
+    if set(document.get("required", [])) != set(properties):
+        fail("model-provider activation must require every declared property")
+
+
 def check_contributor_autonomy_grants() -> None:
     schema_path = ROOT / "schemas/forge/contributor/v1/autonomy-grant.schema.json"
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -1325,6 +1351,7 @@ def main() -> int:
         check_capability_ids,
         check_trust_schemas,
         check_common_contract_schemas,
+        check_intelligence_schemas,
         check_contributor_autonomy_grants,
         check_deployment_profiles,
         check_assurance_schemas,

@@ -59,6 +59,7 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 | Audit evidence | Evidence Records and integrity relationships | domain state, unrestricted telemetry |
 | Source-control adapter | provider operation receipt and reconciled remote reference | Forge policy, delivery state |
 | Experience | user input and authorized projections | canonical delivery, policy, or evidence data |
+| Intelligence | model eligibility, adapter invocation, model and prompt versions, usage receipt and normalized provider failure | interaction state, canonical intent, policy, approval, execution or verification |
 
 ## Commands, queries, and events
 
@@ -147,10 +148,19 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 
 ### Experience
 
-- Command `SubmitIntent` maps authenticated user input to `CaptureIntent`; it cannot set authoritative scope.
+- Command `ProposeDiscoveryTurn` sends only an authorized, minimized, bounded interaction draft through the Intelligence contract and returns an untrusted structured proposal.
+- Command `SubmitIntent` promotes the exact authenticated-human-approved Requirements Proposal to `CaptureIntent`; neither raw input nor a model result can set authoritative scope.
 - Commands `ReviewPlan` and `DecideApproval` expose the exact subject, context revisions, omissions, conflicts, assumptions, checks, limitations, cost, risk, and rollback.
 - Queries return role-appropriate projections with source, version, freshness, and authorization scope.
 - The first interface MAY be a CLI, but the same public boundary SHALL be usable by the accepted journey scenario.
+
+### Intelligence
+
+- Command `ProposeDiscoveryTurn(request, providerActivation)` invokes one eligible model adapter for the bounded `forge.product.discovery` purpose.
+- The request identifies the role profile, task agent, resolved scope, classification, direct user statements, current draft, provenance references, questions, limits, and expiry without containing credentials or authority objects.
+- The result distinguishes response, requirement draft, material questions, uncertainty, limitations, provenance, refusal, incompleteness, resource use, and provider receipt.
+- Provider output is schema-, scope-, provenance-, classification-, size-, time-, token-, and cost-validated and remains non-authoritative.
+- Provider failure, refusal, timeout, invalid output, or budget exhaustion cannot corrupt the deterministic session or bypass proposal promotion.
 
 ## State and consistency boundaries
 
@@ -171,6 +181,7 @@ Unknown errors fail closed at authority, retrieval, secret, mutation, disclosure
 - Deny worker egress by default and permit exact destinations only.
 - Exclude secrets, unrestricted source, prompts, personal data, and tool output from routine telemetry.
 - Treat repository content, context items, provider output, tool output, generated code, and generated tests as untrusted.
+- Authorize purpose and classification before model disclosure; forbid Restricted content, secrets, repository source, unrestricted transcripts, and provider-side conversation state in the M1 discovery trial.
 - Re-evaluate policy when a relevant input or protected resource changes.
 
 ## Initial quality hypotheses

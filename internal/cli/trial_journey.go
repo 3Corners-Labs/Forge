@@ -12,6 +12,8 @@ import (
 
 	"github.com/3corners/forge/internal/approval"
 	forgecontext "github.com/3corners/forge/internal/context"
+	"github.com/3corners/forge/internal/contracts/discovery"
+	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/contracts/trust"
 	verificationcontract "github.com/3corners/forge/internal/contracts/verification"
 	workercontract "github.com/3corners/forge/internal/contracts/worker"
@@ -205,6 +207,7 @@ type developerTrialJourney struct {
 	scope         tenant.Scope
 	binding       tenant.RepositoryBinding
 	experience    *experience.Service
+	discovery     *experience.DiscoveryService
 	intent        *intent.Service
 	delivery      *delivery.Service
 	policies      *policyResolvers
@@ -317,6 +320,64 @@ func (journey *developerTrialJourney) newIdentifier() string {
 	return fmt.Sprintf("forge-m1-%d-%d", journey.now().UnixNano(), journey.nextID)
 }
 
+func (journey *developerTrialJourney) configureDiscovery(advisor experience.DiscoveryAdvisor) error {
+	service, err := experience.NewDiscoveryService(
+		advisor, journey.now, journey.newIdentifier,
+		discovery.Limits{
+			MaxInputBytes: 32 << 10, MaxOutputBytes: 32 << 10, MaxTokens: 4096,
+			MaxLatency: 20 * time.Second, MaxCostMicros: 250_000,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	journey.discovery = service
+	return nil
+}
+
+func (journey *developerTrialJourney) Discover(ctx context.Context, input discoveryInput) (discoveryStage, error) {
+	scope, err := journey.directory.ResolveWorkspaceScope(journey.human, tenant.ScopeRequest{
+		ContractVersion: tenant.ScopeRequestContractVersion, CorrelationID: trialCorrelation,
+		WorkspaceSelector: input.Workspace, ProjectSelector: input.Project, RepositorySelector: input.Repository,
+	})
+	if err != nil {
+		return discoveryStage{}, err
+	}
+	binding, err := journey.directory.GetRepositoryBinding(ctx, tenant.BindingRequest{
+		ContractVersion: tenant.BindingRequestContractVersion, CorrelationID: trialCorrelation, Scope: scope,
+	})
+	if err != nil {
+		return discoveryStage{}, err
+	}
+	session, err := experience.NewSession(journey.human, scope, binding, journey.now(), trialCorrelation)
+	if err != nil {
+		return discoveryStage{}, err
+	}
+	if journey.discovery == nil {
+		return discoveryStage{}, failure.New(
+			failure.DependencyUnavailable, "model-assisted discovery is not activated",
+			trialCorrelation, failure.RetryNewAuthority,
+		)
+	}
+	proposal, err := journey.discovery.Turn(ctx, session, journey.taskAgent, experience.DiscoveryTurn{
+		SessionID: input.SessionID, UserStatements: input.UserStatements,
+		CurrentDraft: input.CurrentDraft, PreviousQuestions: input.PreviousQuestions,
+		ProvenanceRefs: input.ProvenanceRefs,
+	})
+	if err != nil {
+		return discoveryStage{}, err
+	}
+	journey.scope, journey.binding = scope, binding
+	return discoveryStage{
+		SessionID: proposal.SessionID, Response: proposal.Response, Draft: proposal.Draft,
+		Questions: proposal.Questions, Uncertainty: proposal.Uncertainty,
+		Limitations: proposal.Limitations, Refusal: proposal.Refusal, Incomplete: proposal.Incomplete,
+		Usage: proposal.Usage, Provider: proposal.Receipt.Provider, ModelID: proposal.Receipt.ModelID,
+		RoleProfileID: proposal.Receipt.RoleProfileID, PromptVersion: proposal.Receipt.PromptVersion,
+		ResponseSchema: proposal.Receipt.ResponseSchema,
+	}, nil
+}
+
 func (journey *developerTrialJourney) Start(ctx context.Context, input startInput) (proposalStage, error) {
 	scope, err := journey.directory.ResolveWorkspaceScope(journey.human, tenant.ScopeRequest{
 		ContractVersion: tenant.ScopeRequestContractVersion, CorrelationID: trialCorrelation,
@@ -335,16 +396,26 @@ func (journey *developerTrialJourney) Start(ctx context.Context, input startInpu
 	if err != nil {
 		return proposalStage{}, err
 	}
-	raw, _ := json.Marshal(input.Intent)
+	rawInput := input.RawInput
+	if rawInput == "" {
+		raw, _ := json.Marshal(input.Intent)
+		rawInput = string(raw)
+	}
+	provenance := input.Provenance
+	if len(provenance) == 0 {
+		provenance = []string{"cli:intent-file"}
+	}
 	proposal, err := journey.experience.Create(ctx, session, experience.CreateProposal{
-		RawInput: string(raw), Outcome: input.Intent.Outcome, AffectedUsers: input.Intent.AffectedUsers,
+		RawInput: rawInput, Outcome: input.Intent.Outcome, AffectedUsers: input.Intent.AffectedUsers,
 		Problem: input.Intent.Problem, FunctionalBehavior: input.Intent.FunctionalBehavior,
 		UXExpectations: input.Intent.UXExpectations, Accessibility: input.Intent.Accessibility,
 		Privacy: input.Intent.Privacy, Security: input.Intent.Security, Operations: input.Intent.Operations,
 		Constraints: input.Intent.Constraints, Exclusions: input.Intent.Exclusions,
-		AcceptanceCriteria: input.Intent.AcceptanceCriteria, Assumptions: input.Intent.Assumptions,
-		Experiments: input.Intent.Experiments, Provenance: []string{"cli:intent-file"},
-		ChangeExplanation: "Initial deterministic Developer Trial proposal.",
+		AcceptanceCriteria: input.Intent.AcceptanceCriteria, Inferences: input.Intent.Inferences,
+		Assumptions: input.Intent.Assumptions, Hypotheses: input.Intent.Hypotheses,
+		Questions: input.Intent.Questions, Experiments: input.Intent.Experiments,
+		ProductAreaRefs: input.Intent.ProductAreaRefs, Provenance: provenance,
+		ChangeExplanation: "Initial Developer Trial proposal.",
 	})
 	if err != nil {
 		return proposalStage{}, err
@@ -353,7 +424,13 @@ func (journey *developerTrialJourney) Start(ctx context.Context, input startInpu
 	journey.sessions[proposal.ID] = &trialSession{proposal: proposal}
 	return proposalStage{
 		SessionID: proposal.ID, ProposalID: proposal.ID, ProposalDigest: proposal.Digest,
-		Outcome: proposal.Outcome, Assumptions: proposal.Assumptions, Experiments: proposal.Experiments,
+		Outcome: proposal.Outcome, AffectedUsers: proposal.AffectedUsers, Problem: proposal.Problem,
+		FunctionalBehavior: proposal.FunctionalBehavior, UXExpectations: proposal.UXExpectations,
+		Accessibility: proposal.Accessibility, Privacy: proposal.Privacy, Security: proposal.Security,
+		Operations: proposal.Operations, Constraints: proposal.Constraints, Exclusions: proposal.Exclusions,
+		AcceptanceCriteria: proposal.AcceptanceCriteria, Inferences: proposal.Inferences,
+		Assumptions: proposal.Assumptions, Hypotheses: proposal.Hypotheses, Questions: proposal.Questions,
+		Experiments: proposal.Experiments, ProductAreaRefs: proposal.ProductAreaRefs,
 	}, nil
 }
 

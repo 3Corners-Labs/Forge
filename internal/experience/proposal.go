@@ -18,12 +18,13 @@ import (
 const RequirementsProposalVersion = "forge.requirements-proposal.v1"
 
 type Session struct {
-	actorID      string
-	tenantID     string
-	workspaceID  string
-	projectID    string
-	repositoryID string
-	correlation  string
+	actorID        string
+	tenantID       string
+	workspaceID    string
+	projectID      string
+	repositoryID   string
+	classification string
+	correlation    string
 }
 
 func NewSession(principal identity.Principal, scope tenant.Scope, binding tenant.RepositoryBinding, at time.Time, correlationID string) (Session, error) {
@@ -44,7 +45,8 @@ func NewSession(principal identity.Principal, scope tenant.Scope, binding tenant
 	}
 	return Session{
 		actorID: principal.SubjectID(), tenantID: scope.TenantID(), workspaceID: scope.WorkspaceID(),
-		projectID: scope.ProjectID(), repositoryID: binding.RepositoryID(), correlation: correlationID,
+		projectID: scope.ProjectID(), repositoryID: binding.RepositoryID(),
+		classification: binding.Classification(), correlation: correlationID,
 	}, nil
 }
 
@@ -77,12 +79,14 @@ type RequirementsProposal struct {
 	Constraints        []string
 	Exclusions         []string
 	AcceptanceCriteria []string
+	Inferences         []string
 	Statements         []Statement
 	Assumptions        []string
 	Hypotheses         []string
 	EvidenceReferences []string
 	Questions          []intent.Question
 	Experiments        []string
+	ProductAreaRefs    []string
 	Provenance         []string
 	PreviousDigest     string
 	ChangeExplanation  string
@@ -104,11 +108,13 @@ type CreateProposal struct {
 	Constraints        []string
 	Exclusions         []string
 	AcceptanceCriteria []string
+	Inferences         []string
 	Assumptions        []string
 	Hypotheses         []string
 	EvidenceReferences []string
 	Questions          []intent.Question
 	Experiments        []string
+	ProductAreaRefs    []string
 	Provenance         []string
 	ChangeExplanation  string
 }
@@ -156,10 +162,15 @@ func (service *Service) Create(ctx context.Context, session Session, request Cre
 		Privacy: slices.Clone(request.Privacy), Security: slices.Clone(request.Security),
 		Operations: slices.Clone(request.Operations), Constraints: slices.Clone(request.Constraints),
 		Exclusions: slices.Clone(request.Exclusions), AcceptanceCriteria: slices.Clone(request.AcceptanceCriteria),
-		Statements:  []Statement{{Kind: "direct-user-statement", Text: request.RawInput}},
+		Inferences: slices.Clone(request.Inferences),
+		Statements: append(
+			[]Statement{{Kind: "direct-user-statement", Text: request.RawInput}},
+			statements("model-inference", request.Inferences)...,
+		),
 		Assumptions: slices.Clone(request.Assumptions), Hypotheses: slices.Clone(request.Hypotheses),
 		EvidenceReferences: slices.Clone(request.EvidenceReferences), Questions: slices.Clone(request.Questions),
-		Experiments: slices.Clone(request.Experiments), Provenance: slices.Clone(request.Provenance),
+		Experiments: slices.Clone(request.Experiments), ProductAreaRefs: slices.Clone(request.ProductAreaRefs),
+		Provenance:        slices.Clone(request.Provenance),
 		ChangeExplanation: request.ChangeExplanation, CreatedAt: at, CorrelationID: session.correlation,
 	}
 	subject := intent.BindProposalDigest(toPromotionSubject(proposal))
@@ -197,11 +208,13 @@ func toPromotionSubject(value RequirementsProposal) intent.PromotionSubject {
 		Constraints: slices.Clone(value.Constraints), Exclusions: slices.Clone(value.Exclusions),
 		AcceptanceCriteria:   slices.Clone(value.AcceptanceCriteria),
 		DirectUserStatements: statementTexts(value.Statements, "direct-user-statement"),
+		Inferences:           slices.Clone(value.Inferences),
 		Assumptions:          slices.Clone(value.Assumptions),
 		Hypotheses:           slices.Clone(value.Hypotheses), EvidenceReferences: slices.Clone(value.EvidenceReferences),
 		Questions: slices.Clone(value.Questions), Experiments: slices.Clone(value.Experiments),
-		Provenance: slices.Clone(value.Provenance), ChangeExplanation: value.ChangeExplanation,
-		CreatedAt: value.CreatedAt, CorrelationID: value.CorrelationID,
+		ProductAreaRefs: slices.Clone(value.ProductAreaRefs), Provenance: slices.Clone(value.Provenance),
+		ChangeExplanation: value.ChangeExplanation,
+		CreatedAt:         value.CreatedAt, CorrelationID: value.CorrelationID,
 	}
 }
 
@@ -211,6 +224,14 @@ func statementTexts(values []Statement, kind string) []string {
 		if value.Kind == kind {
 			result = append(result, value.Text)
 		}
+	}
+	return result
+}
+
+func statements(kind string, values []string) []Statement {
+	result := make([]Statement, len(values))
+	for index, value := range values {
+		result[index] = Statement{Kind: kind, Text: value}
 	}
 	return result
 }
@@ -253,12 +274,14 @@ func cloneProposal(value RequirementsProposal) RequirementsProposal {
 	value.Constraints = slices.Clone(value.Constraints)
 	value.Exclusions = slices.Clone(value.Exclusions)
 	value.AcceptanceCriteria = slices.Clone(value.AcceptanceCriteria)
+	value.Inferences = slices.Clone(value.Inferences)
 	value.Statements = slices.Clone(value.Statements)
 	value.Assumptions = slices.Clone(value.Assumptions)
 	value.Hypotheses = slices.Clone(value.Hypotheses)
 	value.EvidenceReferences = slices.Clone(value.EvidenceReferences)
 	value.Questions = slices.Clone(value.Questions)
 	value.Experiments = slices.Clone(value.Experiments)
+	value.ProductAreaRefs = slices.Clone(value.ProductAreaRefs)
 	value.Provenance = slices.Clone(value.Provenance)
 	return value
 }
