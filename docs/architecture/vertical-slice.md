@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Product and Architecture
-Version: 0.1
+Version: 0.2
 
 ## Objective
 
@@ -16,8 +16,8 @@ The slice validates Forge as a development-team application before broadening th
 2. Forge records intent, constraints and acceptance criteria.
 3. Policy grants a task-scoped Execution Envelope.
 4. Knowledge retrieval produces a bounded Context Package under that envelope.
-5. Forge proposes a delivery plan and obtains required approval.
-6. One isolated worker creates a branch and prepares a bounded repository change.
+5. Delivery proposes a context-informed plan and Approval records human review of its exact digest.
+6. Policy separately authorizes execution, after which one isolated worker creates a branch and prepares a bounded repository change.
 7. Independent checks evaluate the candidate change.
 8. A human approves publication of the immutable candidate digest.
 9. Forge pushes the branch and opens a pull request.
@@ -39,7 +39,7 @@ The detailed command, query, event, ownership, error, consistency, and conforman
 | Tool brokerage | tool metadata and invocation mediation | envelope and validated tool request | normalized result and invocation evidence | tool implementation or policy decision |
 | Isolated execution | ephemeral workspace and execution state | envelope, candidate source revision and plan | candidate artefacts, test results and digest | durable project state or approval |
 | Verification | independent test and review results | immutable candidate digest and declared criteria | findings and verification evidence | mutation of the candidate |
-| Approval | approval lifecycle | actor, action, candidate digest, evidence and expiry | versioned Approval Record | candidate creation or policy evaluation |
+| Approval | approval lifecycle | actor, action, plan or candidate digest, evidence and expiry | versioned Approval Record | plan or candidate creation, policy evaluation, or execution authority |
 | Audit evidence | append-oriented Evidence Records | referenced decisions, transitions and attestations | integrity-protected evidence manifest | operational telemetry or domain state |
 | Source-control adapter | branch and pull-request interaction | approved, idempotent publication request | remote references and provider receipt | Forge policy or delivery state |
 | Experience | conversation and role-specific projections | capability APIs and evidence | human request, review and explanation | canonical delivery or evidence data |
@@ -54,8 +54,10 @@ flowchart LR
     PolicyDecision --> Envelope[Execution Envelope]
     Envelope --> Context[Context Package]
     Context --> Plan[Delivery Plan]
-    Envelope --> Worker[Isolated Worker]
-    Plan --> Worker
+    Plan --> PlanApproval[Plan Approval Record]
+    PlanApproval --> ExecutionPolicy[Execution Policy Decision]
+    ExecutionPolicy --> WorkerEnvelope[Worker Execution Envelope]
+    WorkerEnvelope --> Worker[Isolated Worker]
     Worker --> Candidate[Candidate Digest]
     Candidate --> Verification
     Verification --> Approval[Approval Record]
@@ -63,13 +65,15 @@ flowchart LR
     Publication --> Evidence[Evidence Record]
     PolicyDecision --> Evidence
     Envelope --> Evidence
+    PlanApproval --> Evidence
     Verification --> Evidence
     Approval --> Evidence
 ~~~
 
 - A Context Package references exactly one Execution Envelope.
 - A Policy Decision may authorize envelope issuance or a later action gate.
-- An Approval Record is bound to one immutable subject digest and action.
+- A plan Approval Record is bound to action `forge.delivery.execute-plan` and the immutable Delivery Plan digest; it does not grant worker authority.
+- Publication approval is a separate Approval Record bound to the immutable verified candidate digest.
 - An Evidence Record references objects; it does not copy secrets or unrestricted source content.
 - A tool, model, repository or context item cannot expand the envelope.
 
@@ -105,7 +109,8 @@ Failure to meet a hypothesis triggers measurement and architecture review, not p
 | Worker timeout or crash | Preserve durable control state, revoke task credentials and allow bounded retry |
 | Tool or model exceeds quota | Stop or use a pre-authorized fallback; record decision and cost |
 | Candidate changes after verification | Invalidate verification and approval |
-| Approval expires or digest differs | Deny publication |
+| Plan approval expires or its digest differs | Deny execution authorization |
+| Publication approval expires or its digest differs | Deny publication |
 | Source-control publication is ambiguous | Reconcile idempotently before retrying |
 | Evidence sink unavailable | Block consequential publication unless policy explicitly permits deferred evidence with a durable local outbox |
 
@@ -131,6 +136,7 @@ The slice is complete only when:
 - one interrupted run is recovered without duplicate publication;
 - one source-control provider can be replaced by a contract-test double;
 - context can be reproduced from its manifest and source revisions;
+- human plan review binds the exact context-informed Delivery Plan digest without becoming worker authority;
 - independent verification and human approval bind the exact candidate digest;
 - the Workbench or CLI explains intent, assumptions, changes, checks, cost, risk and rollback;
 - one versioned scenario exercises that same public Workbench or CLI boundary and cannot alter its own expected outcome;

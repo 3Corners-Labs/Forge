@@ -1091,6 +1091,55 @@ def check_principles_integrity() -> None:
         )
 
 
+def check_m1_planning_lifecycle() -> None:
+    decision = (ROOT / "docs/decisions/0015-context-informed-delivery-plan-review.md").read_text(
+        encoding="utf-8"
+    )
+    runtime = (ROOT / "docs/architecture/runtime-and-workflow.md").read_text(encoding="utf-8")
+    contracts = (ROOT / "docs/architecture/first-slice-capability-contracts.md").read_text(
+        encoding="utf-8"
+    )
+    vertical_slice = (ROOT / "docs/architecture/vertical-slice.md").read_text(encoding="utf-8")
+    data_flow = (ROOT / "docs/architecture/first-slice-data-flow.md").read_text(encoding="utf-8")
+    roadmap = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+
+    if "Status: Accepted" not in decision:
+        fail("ADR-0015 must remain Accepted after accountable review")
+    required_runtime_order = (
+        "Captured -> ContextAuthorizing -> ContextReady -> Planned",
+        "-> AwaitingPlanApproval -> PlanApproved",
+        "-> ExecutionAuthorizing -> Executing -> Verifying",
+        "-> AwaitingPublicationApproval -> Publishing -> Completed",
+    )
+    if any(marker not in runtime for marker in required_runtime_order):
+        fail("runtime workflow does not preserve the accepted context-informed planning order")
+    forbidden_lifecycle_markers = (
+        "Captured -> Planned -> Authorized -> ContextReady",
+        "Verifying -> AwaitingApproval -> Publishing",
+    )
+    lifecycle_documents = (runtime, contracts, vertical_slice, data_flow, roadmap)
+    if any(
+        marker in document
+        for marker in forbidden_lifecycle_markers
+        for document in lifecycle_documents
+    ):
+        fail("an ambiguous pre-context planning or approval state was reintroduced")
+
+    required_contract_markers = (
+        "RecordContext(runId, expectedVersion, contextPackageId, manifestDigest, evidenceRefs)",
+        "forge.delivery.execute-plan",
+        "Publication approval is a separate request",
+    )
+    if any(marker not in contracts for marker in required_contract_markers):
+        fail("first-slice contracts do not preserve separate context, plan, and publication gates")
+    if "PlanApproval --> ExecutionPolicy" not in vertical_slice:
+        fail("vertical slice bypasses plan approval before execution policy")
+    if "PlanApproval --> ExecutionAuthority" not in data_flow:
+        fail("first-slice data flow bypasses plan approval before execution authority")
+    if "Human plan review binds that exact plan digest but does not grant worker authority" not in roadmap:
+        fail("roadmap does not preserve the ADR-0015 authority boundary")
+
+
 def check_developer_compose() -> None:
     path = ROOT / "deploy/compose/docker-compose.yml"
     text = path.read_text(encoding="utf-8")
@@ -1148,6 +1197,7 @@ def main() -> int:
         check_module_boundaries,
         check_required_ci,
         check_threat_privacy_readiness,
+        check_m1_planning_lifecycle,
         check_principles_integrity,
         check_developer_compose,
     )

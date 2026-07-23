@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Product and Architecture
-Version: 0.3
+Version: 0.4
 
 ## Purpose
 
@@ -126,6 +126,8 @@ M1 includes only the repository inspection, bounded context, planning, and expla
 Enable Forge to transform one authenticated human request into one reviewable pull request against the Forge repository through a complete, independently verifiable trust path. This is the minimum platform capable of building itself.
 
 Forge prepares changes only. It cannot merge, release, change production policy, approve itself, or acquire production credentials.
+
+M1 assembles the bounded Context Package before constructing the canonical Delivery Plan. Human plan review binds that exact plan digest but does not grant worker authority. Policy separately authorizes execution, and publication later requires a different human approval bound to the independently verified candidate digest, as established by ADR-0015.
 
 ### Deliverables
 

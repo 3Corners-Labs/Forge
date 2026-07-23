@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Security and Privacy Architecture
-Version: 0.1
+Version: 0.2
 
 ## Scope
 
@@ -20,7 +20,10 @@ flowchart LR
     Control --> Policy[Policy decision]
     Policy --> Envelope[Execution Envelope]
     Envelope --> Context[Context assembly]
-    Context --> Worker[Isolated worker]
+    Context --> Plan[Delivery plan]
+    Plan --> PlanApproval[Human plan review]
+    PlanApproval --> ExecutionAuthority[Execution policy and envelope]
+    ExecutionAuthority --> Worker[Isolated worker]
     Repository[Source repository] --> Context
     Repository --> Worker
     Worker --> Candidate[Candidate digest and artefacts]
@@ -48,6 +51,8 @@ Each arrow crossing a capability or external boundary requires schema validation
 | Policy Decision | Policy | Internal | action, resource, outcome, obligations, versions, reason codes | unrestricted sensitive policy inputs |
 | Execution Envelope | Delivery and trust issuance boundary | Confidential | identifiers, granted actions, limits, references, integrity | secret values and retrieved content |
 | Context Package | Context assembly | Inherits highest included item | source references, versions, purpose, omissions, conflicts, manifest digest | authority grants and unrestricted repository dump |
+| Delivery Plan | Intent and delivery | Inherits Context Package classification | context digest, bounded steps, requirements, budgets, risks, verification intent, rollback | authority grants, source content, secrets, or implicit capabilities |
+| Plan Approval Record | Approval | Internal; inherits protected subject handling | actor, `forge.delivery.execute-plan`, plan digest, decision, conditions, expiry | worker authority or publication approval |
 | Repository checkout | Source repository; temporary worker copy | Usually Confidential | authorized revision and required files | unrelated repositories and hidden credentials |
 | Worker credentials | Credential or secret provider | Restricted | short-lived, task-scoped references resolved at execution | credential material in durable workflow state |
 | Candidate artefacts | Intent and delivery references; artefact store owns bytes | Same as source or higher | changed files, build outputs, candidate digest | production secrets or unrelated workspace data |
@@ -68,13 +73,16 @@ Classification is evaluated from actual tenant policy and source metadata. Table
 | Capture intent | human request and scope | input schema, classification, purpose | intent record and delivery-run ID |
 | Issue authority | principal, scope, action, risk, classification | deterministic policy evaluation | Policy Decision and Execution Envelope |
 | Assemble context | envelope, objective, authorized source refs | authorize before discovery and retrieval | minimal Context Package manifest |
-| Execute change | envelope, plan, context, source revision | worker isolation, secret, filesystem, network, resource, and expiry enforcement | candidate digest, artefact refs, structured result |
+| Construct plan | intent and exact Context Package manifest | deterministic profile, graph, path, capability, budget, and digest validation | canonical Delivery Plan and digest |
+| Review plan | plan digest, context facts, actor, conditions, expiry | exact action, subject, scope, eligibility, lifecycle, and replay prevention | Plan Approval Record |
+| Authorize execution | plan, plan approval, identity, scope, risk, classification | fresh deterministic Policy evaluation and separate envelope issuance | worker-specific Policy Decision and Execution Envelope |
+| Execute change | worker envelope, plan, context, source revision | worker isolation, secret, filesystem, network, resource, and expiry enforcement | candidate digest, artefact refs, structured result |
 | Verify | candidate digest and declared criteria | independent runner and evidence policy | findings and Verification Result |
 | Approve | exact digest, action, evidence, actor | approver authority, separation of duties, expiry | Approval Record |
 | Publish | envelope, decision, approval, candidate, binding | exact-digest, repository, branch, idempotency, and evidence readiness | remote branch and pull-request receipt |
 | Record evidence | subject and referenced outcomes | classification, minimization, retention, integrity | append-oriented Evidence Record |
 
-Policy is re-evaluated when subject, action, resource, classification, destination, candidate digest, environment, policy version, or approval validity changes in a way defined by policy.
+Policy is re-evaluated when subject, action, resource, classification, destination, plan digest, candidate digest, environment, policy version, or approval validity changes in a way defined by policy.
 
 ## Trust and processing boundaries
 
@@ -90,7 +98,7 @@ Policy is re-evaluated when subject, action, resource, classification, destinati
 
 ## Purpose limitation and minimization
 
-The permitted first-slice purposes are capturing one requested change, preparing one candidate, verifying it, obtaining publication approval, publishing one pull request, and preserving proportionate evidence.
+The permitted first-slice purposes are capturing one requested change, assembling its bounded context, constructing and reviewing one exact delivery plan, preparing one candidate, verifying it, obtaining separate publication approval, publishing one pull request, and preserving proportionate evidence.
 
 The following are separate, excluded purposes and require later review:
 
@@ -121,6 +129,8 @@ No fixed retention duration is invented by this architecture document. Product, 
 
 - A caller-supplied tenant identifier conflicting with verified membership is denied before repository discovery.
 - A Context Package for one project cannot reference or retrieve another project's content.
+- A changed Context Package or plan digest invalidates plan approval and blocks execution authorization.
+- A plan Approval Record cannot be replayed as worker authority or publication approval.
 - A seeded credential or personal identifier is absent from telemetry, routine evidence, screenshots, and provider requests.
 - Restricted content cannot reach a model, tool, or source-control description without explicit destination eligibility.
 - Cancellation or delegation revocation prevents subsequent credential resolution and publication.
