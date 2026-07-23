@@ -76,6 +76,10 @@ nav:
       - ADR-0013 Risk-Proportional Assurance: decisions/0013-risk-proportional-assurance-and-quality-envelopes.md
       - ADR-0014 Root Task Delegation: decisions/0014-bootstrap-root-task-delegation.md
       - ADR-0015 Context-Informed Planning: decisions/0015-context-informed-delivery-plan-review.md
+      - ADR-0016 Scope-Bound Approval v2: decisions/0016-scope-bound-approval-record-v2.md
+      - ADR-0017 Bounded Autonomous Worker: decisions/0017-bounded-autonomous-worker-and-verification.md
+      - ADR-0018 Durable State and Evidence: decisions/0018-developer-trial-durable-state-and-evidence.md
+      - ADR-0019 GitHub Trial Publication: decisions/0019-github-developer-trial-publication-adapter.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md

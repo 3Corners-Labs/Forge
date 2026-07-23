@@ -26,3 +26,7 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0013](0013-risk-proportional-assurance-and-quality-envelopes.md) | Establish risk-proportional assurance and application quality envelopes | Accepted |
 | [ADR-0014](0014-bootstrap-root-task-delegation.md) | Bootstrap root task delegation with digest-bound policy authority | Accepted |
 | [ADR-0015](0015-context-informed-delivery-plan-review.md) | Establish context-informed delivery planning and plan review | Accepted |
+| [ADR-0016](0016-scope-bound-approval-record-v2.md) | Introduce a scope-bound Approval Record v2 | Accepted |
+| [ADR-0017](0017-bounded-autonomous-worker-and-verification.md) | Establish the bounded autonomous worker and independent verifier | Accepted |
+| [ADR-0018](0018-developer-trial-durable-state-and-evidence.md) | Select Developer Trial durable state and evidence adapters | Accepted |
+| [ADR-0019](0019-github-developer-trial-publication-adapter.md) | Select the GitHub Developer Trial publication adapter | Accepted |

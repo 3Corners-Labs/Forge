@@ -1140,6 +1140,71 @@ def check_m1_planning_lifecycle() -> None:
         fail("roadmap does not preserve the ADR-0015 authority boundary")
 
 
+def check_m1_remaining_runway() -> None:
+    decisions = {
+        identifier: (ROOT / path).read_text(encoding="utf-8")
+        for identifier, path in {
+            "ADR-0016": "docs/decisions/0016-scope-bound-approval-record-v2.md",
+            "ADR-0017": "docs/decisions/0017-bounded-autonomous-worker-and-verification.md",
+            "ADR-0018": "docs/decisions/0018-developer-trial-durable-state-and-evidence.md",
+            "ADR-0019": "docs/decisions/0019-github-developer-trial-publication-adapter.md",
+        }.items()
+    }
+    if any("Status: Accepted" not in text for text in decisions.values()):
+        fail("the accepted M1 architecture-runway packet is incomplete")
+
+    approval = decisions["ADR-0016"]
+    for marker in (
+        "forge.approval-record.v2",
+        "forge.approval-request.v1",
+        "V1 may validate its own historical structure but SHALL be rejected",
+    ):
+        if marker not in approval:
+            fail(f"ADR-0016 lost required Approval v2 boundary: {marker}")
+
+    worker = decisions["ADR-0017"]
+    for marker in (
+        "After one valid human approval of the exact Delivery Plan",
+        "It does not request additional human approval for:",
+        "one deterministic change-preparation worker",
+        "one independent verifier",
+        "forge.worker.prepare-change",
+    ):
+        if marker not in worker:
+            fail(f"ADR-0017 lost bounded-autonomy or independence rule: {marker}")
+
+    persistence = decisions["ADR-0018"]
+    for marker in (
+        "Use PostgreSQL as the Developer Trial adapter",
+        "Use MinIO as the Developer Trial adapter",
+        "Modules do not read another capability's tables",
+        "Evidence Records remain distinct from telemetry",
+    ):
+        if marker not in persistence:
+            fail(f"ADR-0018 lost durable-state or evidence boundary: {marker}")
+
+    publication = decisions["ADR-0019"]
+    for marker in (
+        "dedicated GitHub App installation identity",
+        "pull_requests:write",
+        "adapter endpoint allowlist containing no merge",
+        "repository rules on the protected default branch that deny updates by the GitHub App",
+        "It SHALL NOT automatically choose",
+    ):
+        if marker not in publication:
+            fail(f"ADR-0019 lost GitHub publication or no-merge boundary: {marker}")
+
+    roadmap = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    for marker in (
+        "M1-A Context to approved plan",
+        "M1-B Approved plan to verified candidate",
+        "M1-C Verified candidate to reviewable pull request",
+        "do not introduce micro-approval gates",
+    ):
+        if marker not in roadmap:
+            fail(f"roadmap lost the accelerated M1 tranche plan: {marker}")
+
+
 def check_developer_compose() -> None:
     path = ROOT / "deploy/compose/docker-compose.yml"
     text = path.read_text(encoding="utf-8")
@@ -1198,6 +1263,7 @@ def main() -> int:
         check_required_ci,
         check_threat_privacy_readiness,
         check_m1_planning_lifecycle,
+        check_m1_remaining_runway,
         check_principles_integrity,
         check_developer_compose,
     )
