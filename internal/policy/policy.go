@@ -30,6 +30,7 @@ const (
 	ActionCreateDelegation                   = Action("forge.delegation.create")
 	ActionDecideApproval                     = Action("forge.approval.decide")
 	ActionPrepareChange                      = Action("forge.worker.prepare-change")
+	ActionPublishPullRequest                 = Action("forge.source-control.publish-pr")
 )
 
 type Action string
@@ -489,7 +490,8 @@ func validateRule(rule Rule, seen map[string]struct{}) error {
 		return errors.New("policy rule effect is invalid")
 	}
 	for _, action := range rule.Actions {
-		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval && action != ActionPrepareChange {
+		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval &&
+			action != ActionPrepareChange && action != ActionPublishPullRequest {
 			return errors.New("policy rule action is invalid")
 		}
 	}
@@ -615,26 +617,40 @@ func matchesDelegation(rule Rule, request EvaluateDelegationRequest) bool {
 }
 
 func validApprovalFacts(request EvaluateApprovalRequest, at time.Time) bool {
-	plan := request.Run.Plan()
-	return request.Environment == DeveloperTrialEnvironment && validRisk(request.Risk) &&
-		request.Principal.Kind() == identity.HumanPrincipal &&
-		request.Run.ContractVersion() == delivery.DeliveryRunContractVersion &&
-		(request.Run.State() == delivery.PlannedState || request.Run.State() == delivery.AwaitingPlanApprovalState) &&
-		plan != nil && request.Run.ActorID() == request.Principal.SubjectID() &&
-		request.Run.TenantID() == request.Scope.TenantID() &&
-		request.Run.WorkspaceID() == request.Scope.WorkspaceID() &&
-		request.Run.ProjectID() == request.Scope.ProjectID() &&
-		request.Request.IntendedApproverID == request.Principal.SubjectID() &&
-		request.Request.Scope == (trust.ApprovalScope{
+	if request.Environment != DeveloperTrialEnvironment || !validRisk(request.Risk) ||
+		request.Principal.Kind() != identity.HumanPrincipal ||
+		request.Run.ContractVersion() != delivery.DeliveryRunContractVersion ||
+		request.Run.ActorID() != request.Principal.SubjectID() ||
+		request.Run.TenantID() != request.Scope.TenantID() ||
+		request.Run.WorkspaceID() != request.Scope.WorkspaceID() ||
+		request.Run.ProjectID() != request.Scope.ProjectID() ||
+		request.Request.IntendedApproverID != request.Principal.SubjectID() ||
+		request.Request.Scope != (trust.ApprovalScope{
 			TenantID: request.Run.TenantID(), WorkspaceID: request.Run.WorkspaceID(),
 			ProjectID: request.Run.ProjectID(), RepositoryID: request.Run.RepositoryID(),
 			DeliveryRunID: request.Run.ID(),
-		}) && request.Request.Environment == string(request.Environment) &&
-		request.Request.Purpose == request.Run.Purpose() &&
-		request.Request.Classification == request.Run.Classification() &&
-		request.Request.RiskClass == string(request.Risk) &&
-		request.Request.SubjectID == plan.ID && request.Request.SubjectDigest == plan.Digest &&
-		at.Before(request.Request.ExpiresAt)
+		}) || request.Request.Environment != string(request.Environment) ||
+		request.Request.Purpose != request.Run.Purpose() ||
+		request.Request.Classification != request.Run.Classification() ||
+		request.Request.RiskClass != string(request.Risk) || !at.Before(request.Request.ExpiresAt) {
+		return false
+	}
+	switch request.Request.Action {
+	case "forge.delivery.execute-plan":
+		plan := request.Run.Plan()
+		return (request.Run.State() == delivery.PlannedState || request.Run.State() == delivery.AwaitingPlanApprovalState) &&
+			plan != nil && request.Request.SubjectType == "delivery-plan" &&
+			request.Request.SubjectID == plan.ID && request.Request.SubjectDigest == plan.Digest
+	case "forge.source-control.publish-pr":
+		candidate, verification := request.Run.Candidate(), request.Run.Verification()
+		return request.Run.State() == delivery.AwaitingPublicationApprovalState &&
+			candidate != nil && verification != nil && verification.Outcome == "passed" &&
+			request.Request.SubjectType == "verified-candidate" &&
+			request.Request.SubjectID == request.Run.ID()+".candidate" &&
+			request.Request.SubjectDigest == candidate.Digest
+	default:
+		return false
+	}
 }
 
 func matchesApproval(rule Rule, request EvaluateApprovalRequest) bool {

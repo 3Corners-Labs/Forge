@@ -1,1 +1,1 @@
-{"name":"CLI imports an undeclared internal module","importerModule":"cli","imports":["github.com/3corners/forge/internal/evidence"],"expectedViolations":["undeclared-internal-dependency"]}
+{"name":"CLI imports its undeclared command wrapper","importerModule":"cli","imports":["github.com/3corners/forge/cmd/forge"],"expectedViolations":["undeclared-internal-dependency"]}

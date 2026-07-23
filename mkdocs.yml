@@ -29,6 +29,7 @@ nav:
   - M1 Authority to Context Slice: governance/m1-authority-to-context-slice-evidence.md
   - M1-A Context to Approved Plan: governance/m1-a-context-to-approved-plan-evidence.md
   - M1-B Approved Plan to Verified Candidate: governance/m1-b-approved-plan-to-verified-candidate-evidence.md
+  - M1-C Guided Delivery to Reviewable PR: governance/m1-c-guided-delivery-to-reviewable-pr-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
@@ -83,6 +84,7 @@ nav:
       - ADR-0018 Durable State and Evidence: decisions/0018-developer-trial-durable-state-and-evidence.md
       - ADR-0019 GitHub Trial Publication: decisions/0019-github-developer-trial-publication-adapter.md
       - ADR-0020 Guided Intent and Exploration: decisions/0020-guided-intent-and-exploratory-feedback.md
+      - ADR-0021 Guided Resumable M1 Journey: decisions/0021-guided-resumable-m1-journey.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md

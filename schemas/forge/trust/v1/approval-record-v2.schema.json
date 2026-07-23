@@ -5,6 +5,14 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "id", "issuer", "requestId", "requestDigest", "approverId", "scope", "environment", "purpose", "classification", "riskClass", "action", "subjectType", "subjectId", "subjectDigest", "decision", "decidedAt", "expiresAt", "conditions", "policyDecisionIds", "evidenceReferences", "evidenceCorrelationId", "integrity"],
+  "allOf": [
+    {
+      "oneOf": [
+        {"properties": {"action": {"const": "forge.delivery.execute-plan"}, "subjectType": {"const": "delivery-plan"}}},
+        {"properties": {"action": {"const": "forge.source-control.publish-pr"}, "subjectType": {"const": "verified-candidate"}}}
+      ]
+    }
+  ],
   "properties": {
     "schemaVersion": {"const": "forge.approval-record.v2"},
     "id": {"type": "string", "minLength": 1},
@@ -18,8 +26,8 @@
     "purpose": {"type": "string", "minLength": 1},
     "classification": {"enum": ["Public", "Internal", "Confidential", "Restricted"]},
     "riskClass": {"enum": ["low", "moderate", "high", "critical"]},
-    "action": {"const": "forge.delivery.execute-plan"},
-    "subjectType": {"const": "delivery-plan"},
+    "action": {"enum": ["forge.delivery.execute-plan", "forge.source-control.publish-pr"]},
+    "subjectType": {"enum": ["delivery-plan", "verified-candidate"]},
     "subjectId": {"type": "string", "minLength": 1},
     "subjectDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "decision": {"enum": ["approved", "rejected", "revoked"]},

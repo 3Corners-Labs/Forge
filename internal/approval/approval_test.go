@@ -22,6 +22,16 @@ type subjectResolverStub struct {
 	err     error
 }
 
+type publicationSubjectResolverStub struct {
+	subject trust.PublicationApprovalSubject
+	found   bool
+	err     error
+}
+
+func (resolver publicationSubjectResolverStub) ResolvePublicationSubject(context.Context, string, string) (trust.PublicationApprovalSubject, bool, error) {
+	return resolver.subject, resolver.found, resolver.err
+}
+
 func (resolver subjectResolverStub) ResolvePlanSubject(context.Context, string, string) (PlanSubject, bool, error) {
 	return resolver.subject, resolver.found, resolver.err
 }
@@ -135,6 +145,99 @@ func TestApprovalFailsClosedForReplayEvidenceAndEligibilityMismatch(t *testing.T
 	conflicting.Decision = "rejected"
 	_, _, err = service.DecideApproval(ctx, conflicting)
 	assertApprovalCode(t, err, failure.Conflict)
+}
+
+func TestPublicationApprovalIsSeparateAndCandidateDigestBound(t *testing.T) {
+	policies := &policyResolverStub{decisions: make(map[string]trust.PolicyDecision)}
+	store := NewMemoryStore()
+	subject := trust.PublicationApprovalSubject{
+		RunID: "run-1", CandidateID: "run-1.candidate", CandidateDigest: approvalSubjectDigest,
+		TreeDigest: "sha256:" + strings.Repeat("d", 64), ChangedPaths: []string{"docs/example.md"},
+		Scope: trust.ApprovalScope{
+			TenantID: "tenant-1", WorkspaceID: "workspace-1", ProjectID: "project-1",
+			RepositoryID: "repository-1", DeliveryRunID: "run-1",
+		},
+		RequestingActorID: "human-1", Purpose: "forge.m1.prepare-change",
+		Classification: "Internal", RiskClass: "low", VerificationResultID: "verification-1",
+		VerificationResultDigest: "sha256:" + strings.Repeat("b", 64),
+		EvidenceReferences:       []string{"candidate:" + approvalSubjectDigest, "verification:sha256:" + strings.Repeat("b", 64)},
+		PolicyDecisionIDs:        []string{"verification-policy"}, ExpiresAt: approvalNow.Add(30 * time.Minute),
+		CorrelationID: "correlation-1",
+	}
+	service, err := NewServiceWithPublication(
+		subjectResolverStub{subject: validSubjectFixture(), found: true},
+		publicationSubjectResolverStub{subject: subject, found: true},
+		policies, store,
+		Profile{
+			Issuer: "forge.approval.developer-trial", MaximumDecisionLifetime: 30 * time.Minute,
+			SupportedConditions: []string{}, EnforcedObligationTypes: []string{"human-interaction"},
+		},
+		func() time.Time { return approvalNow },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _, principal := approvalFixture(t)
+	request, replayed, err := service.RequestPublicationReview(context.Background(), RequestPublicationReview{
+		ContractVersion: RequestPublicationReviewContractVersion, CorrelationID: "correlation-1",
+		IdempotencyKey: "publication-request", TenantID: "tenant-1", RunID: "run-1",
+		RequestingActorID: "human-1", IntendedApproverID: "human-1",
+		RequestedExpiry: approvalNow.Add(20 * time.Minute),
+	})
+	if err != nil || replayed {
+		t.Fatalf("request replay=%t err=%v", replayed, err)
+	}
+	if request.Action != "forge.source-control.publish-pr" || request.SubjectType != "verified-candidate" ||
+		request.SubjectDigest != subject.CandidateDigest {
+		t.Fatalf("publication request is not candidate-bound: %#v", request)
+	}
+	for name, mutate := range map[string]func(*trust.PublicationApprovalSubject){
+		"evidence": func(value *trust.PublicationApprovalSubject) {
+			value.EvidenceReferences = append(value.EvidenceReferences, "verification:changed")
+		},
+		"policy": func(value *trust.PublicationApprovalSubject) {
+			value.PolicyDecisionIDs = append(value.PolicyDecisionIDs, "policy:changed")
+		},
+		"expiry": func(value *trust.PublicationApprovalSubject) {
+			value.ExpiresAt = request.ExpiresAt.Add(-time.Second)
+		},
+	} {
+		t.Run("current-subject-"+name, func(t *testing.T) {
+			changed := subject
+			mutate(&changed)
+			service.publicationSubjects = publicationSubjectResolverStub{subject: changed, found: true}
+			if service.currentSubjectMatches(context.Background(), "tenant-1", request) {
+				t.Fatalf("changed publication %s remained current", name)
+			}
+		})
+	}
+	service.publicationSubjects = publicationSubjectResolverStub{subject: subject, found: true}
+	publicationEligibility := eligibilityDecision(request, "permit")
+	publicationEligibility.ID = "publication-eligibility"
+	policies.decisions["publication-eligibility"] = publicationEligibility
+	record, _, err := service.DecideApproval(context.Background(), DecideApproval{
+		ContractVersion: DecideApprovalContractVersion, CorrelationID: "correlation-1",
+		IdempotencyKey: "publication-decision", TenantID: "tenant-1", RequestID: request.ID,
+		Approver: principal, PolicyDecisionID: "publication-eligibility", Decision: "approved",
+		Conditions: []string{}, EvidenceReferences: request.EvidenceReferences,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.Action != "forge.source-control.publish-pr" || record.SubjectDigest != subject.CandidateDigest {
+		t.Fatalf("publication record is not candidate-bound: %#v", record)
+	}
+
+	changed := subject
+	changed.CandidateDigest = "sha256:" + strings.Repeat("c", 64)
+	service.publicationSubjects = publicationSubjectResolverStub{subject: changed, found: true}
+	_, _, err = service.DecideApproval(context.Background(), DecideApproval{
+		ContractVersion: DecideApprovalContractVersion, CorrelationID: "correlation-1",
+		IdempotencyKey: "stale-publication-decision", TenantID: "tenant-1", RequestID: request.ID,
+		Approver: principal, PolicyDecisionID: "publication-eligibility", Decision: "approved",
+		Conditions: []string{}, EvidenceReferences: request.EvidenceReferences,
+	})
+	assertApprovalCode(t, err, failure.Forbidden)
 }
 
 func BenchmarkApprovalResolution(b *testing.B) {

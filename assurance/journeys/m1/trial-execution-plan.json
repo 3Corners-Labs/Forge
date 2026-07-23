@@ -22,7 +22,7 @@
       "scenario": "assurance/journeys/m1/allowed-intent-to-pr.scenario.json",
       "identityProfileId": "forge.identity.synthetic.developer-permitted",
       "fixture": "assurance/journeys/m1/fixtures/allowed-developer.json",
-      "fixtureSha256": "576dcdb93961313e3c467401a5a648ba3d1c86bfa26b1978ae6e59ef999da0d6"
+      "fixtureSha256": "2e48ae2319fb9e20a39057db45836a9d824fe558a2ee508456736fa8a6e1477f"
     },
     {
       "scenario": "assurance/journeys/m1/denied-intent-to-pr.scenario.json",
@@ -33,8 +33,8 @@
   ],
   "phaseEvidence": {
     "beforeM1": "Scenario contracts, fixtures, bindings, and structural checks accepted",
-    "m1Exit": "Both scenarios pass through the implemented public CLI with immutable scenario, application, runner, identity, fixture, and result bindings",
+    "m1Exit": "The allowed scenario reaches exactly one reviewable contract-double pull request and the denied scenario fails closed before repository discovery through the implemented public CLI with immutable scenario, application, runner, identity, fixture, and result bindings",
     "beforeTrial": "Repeatability, negative authorization, privacy, cost, duration, and quarantine metrics accepted"
   },
-  "executionState": "not-executable-before-m1"
+  "executionState": "executable-m1-candidate"
 }
