@@ -2,7 +2,7 @@
 
 Status: Accepted
 Owner: Forge Product and Architecture
-Version: 0.4
+Version: 0.5
 
 ## Purpose
 
@@ -164,6 +164,21 @@ M1 assembles the bounded Context Package before constructing the canonical Deliv
 - Evidence mutation is detected and required evidence unavailability blocks publication.
 - Forge prepares a real, reviewable improvement to Forge on an isolated branch; an accountable human remains the only publication approver.
 - The implementation baseline is updated with exact source and verification evidence.
+
+### Remaining delivery tranches
+
+The remaining M1 work is delivered as a small number of end-to-end tranches rather than one pull request per capability or control:
+
+| Tranche | Outcome | Affected capabilities | Decision dependencies |
+|---|---|---|---|
+| M1-A Context to approved plan | Reproduce the exact context, construct the deterministic Delivery Plan, and obtain one human plan approval through `PlanApproved` | Context, Delivery, Policy, Approval, Experience | ADR-0015 and ADR-0016 |
+| M1-B Approved plan to verified candidate | Persist and resume the run, autonomously prepare one bounded candidate in an isolated worker, independently verify its digest, and commit required evidence | Delivery, Identity, Policy, Execution, Verification, Evidence | ADR-0017 and ADR-0018 |
+| M1-C Verified candidate to reviewable pull request | Obtain separate publication approval, reconcile one GitHub branch and pull request idempotently, and expose the allowed and denied public CLI journeys | Delivery, Policy, Approval, Evidence, Source Control, Experience | ADR-0016, ADR-0018, and ADR-0019 |
+| M1 exit | Exercise recovery, ambiguity, performance, leakage, isolation, and journey evidence and prepare one real Forge pull request | all participating M1 capabilities | every applicable Accepted M1 decision and exit contract |
+
+One human plan approval opens the bounded autonomous preparation and verification window for the unchanged plan. One later human publication approval opens only the exact idempotent branch-and-pull-request operation. Ordinary declared steps, controls, checkpoints, progress, bounded retries, and exact reconciliation do not introduce micro-approval gates.
+
+An implementation detail does not require a new ADR merely because it affects several modules. Work returns to architecture review only for a new or changed trust boundary, capability owner, durable provider, external destination, credential model, deployment unit, autonomous power, production claim, or contradiction with an Accepted decision.
 
 ### Estimated complexity
 
