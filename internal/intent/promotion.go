@@ -55,11 +55,13 @@ type PromotionSubject struct {
 	Exclusions           []string
 	AcceptanceCriteria   []string
 	DirectUserStatements []string
+	Inferences           []string
 	Assumptions          []string
 	Hypotheses           []string
 	EvidenceReferences   []string
 	Questions            []Question
 	Experiments          []string
+	ProductAreaRefs      []string
 	Provenance           []string
 	ChangeExplanation    string
 	CreatedAt            time.Time
@@ -249,10 +251,12 @@ func canonicalSubject(value PromotionSubject) PromotionSubject {
 	value.Exclusions = canonicalStrings(value.Exclusions)
 	value.AcceptanceCriteria = canonicalStrings(value.AcceptanceCriteria)
 	value.DirectUserStatements = canonicalStrings(value.DirectUserStatements)
+	value.Inferences = canonicalStrings(value.Inferences)
 	value.Assumptions = canonicalStrings(value.Assumptions)
 	value.Hypotheses = canonicalStrings(value.Hypotheses)
 	value.EvidenceReferences = canonicalStrings(value.EvidenceReferences)
 	value.Experiments = canonicalStrings(value.Experiments)
+	value.ProductAreaRefs = canonicalStrings(value.ProductAreaRefs)
 	value.Provenance = canonicalStrings(value.Provenance)
 	sort.Slice(value.Questions, func(left, right int) bool { return value.Questions[left].ID < value.Questions[right].ID })
 	return value

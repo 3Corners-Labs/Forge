@@ -91,7 +91,10 @@ Policy is re-evaluated when subject, action, resource, classification, destinati
 - Repository files and history are untrusted content even when access is authorized.
 - Context assembly is an authorization enforcement point, not merely a ranking stage.
 - The worker is an untrusted execution boundary and receives no control-plane database access.
-- Model and tool providers, if introduced, are external processing destinations requiring separate eligibility. The first deterministic slice does not require a model.
+- Model and tool providers are external processing destinations requiring
+  separate eligibility. The deterministic intent-file path does not require a
+  model; ADR-0022 permits one separately activated, non-authoritative discovery
+  provider before Requirements Proposal promotion.
 - The source-control adapter is an external side-effect boundary and cannot decide Forge policy.
 - Evidence and telemetry are separate stores with different writers, retention, and disclosure paths.
 - A self-hosted profile cannot make an undeclared call to Forge SaaS.

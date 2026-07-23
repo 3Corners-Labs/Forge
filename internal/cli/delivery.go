@@ -11,6 +11,9 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/3corners/forge/internal/contracts/discovery"
+	"github.com/3corners/forge/internal/intent"
 )
 
 type journeyFactory func() (guidedJourney, error)
@@ -19,33 +22,82 @@ type startInput struct {
 	Workspace  string
 	Project    string
 	Repository string
+	RawInput   string
+	Provenance []string
 	Intent     intentInput
 }
 
 type intentInput struct {
-	Outcome            string   `json:"outcome"`
-	AffectedUsers      []string `json:"affectedUsers"`
-	Problem            string   `json:"problem"`
-	FunctionalBehavior []string `json:"functionalBehavior"`
-	UXExpectations     []string `json:"uxExpectations"`
-	Accessibility      []string `json:"accessibility"`
-	Privacy            []string `json:"privacy"`
-	Security           []string `json:"security"`
-	Operations         []string `json:"operations"`
-	Constraints        []string `json:"constraints"`
-	Exclusions         []string `json:"exclusions"`
-	AcceptanceCriteria []string `json:"acceptanceCriteria"`
-	Assumptions        []string `json:"assumptions"`
-	Experiments        []string `json:"experiments"`
+	Outcome            string            `json:"outcome"`
+	AffectedUsers      []string          `json:"affectedUsers"`
+	Problem            string            `json:"problem"`
+	FunctionalBehavior []string          `json:"functionalBehavior"`
+	UXExpectations     []string          `json:"uxExpectations"`
+	Accessibility      []string          `json:"accessibility"`
+	Privacy            []string          `json:"privacy"`
+	Security           []string          `json:"security"`
+	Operations         []string          `json:"operations"`
+	Constraints        []string          `json:"constraints"`
+	Exclusions         []string          `json:"exclusions"`
+	AcceptanceCriteria []string          `json:"acceptanceCriteria"`
+	Inferences         []string          `json:"inferences"`
+	Assumptions        []string          `json:"assumptions"`
+	Hypotheses         []string          `json:"hypotheses"`
+	Questions          []intent.Question `json:"questions"`
+	Experiments        []string          `json:"experiments"`
+	ProductAreaRefs    []string          `json:"productAreaRefs"`
 }
 
 type proposalStage struct {
-	SessionID      string   `json:"sessionId"`
-	ProposalID     string   `json:"proposalId"`
-	ProposalDigest string   `json:"proposalDigest"`
-	Outcome        string   `json:"outcome"`
-	Assumptions    []string `json:"assumptions"`
-	Experiments    []string `json:"experiments"`
+	SessionID          string            `json:"sessionId"`
+	ProposalID         string            `json:"proposalId"`
+	ProposalDigest     string            `json:"proposalDigest"`
+	Outcome            string            `json:"outcome"`
+	AffectedUsers      []string          `json:"affectedUsers"`
+	Problem            string            `json:"problem"`
+	FunctionalBehavior []string          `json:"functionalBehavior"`
+	UXExpectations     []string          `json:"uxExpectations"`
+	Accessibility      []string          `json:"accessibility"`
+	Privacy            []string          `json:"privacy"`
+	Security           []string          `json:"security"`
+	Operations         []string          `json:"operations"`
+	Constraints        []string          `json:"constraints"`
+	Exclusions         []string          `json:"exclusions"`
+	AcceptanceCriteria []string          `json:"acceptanceCriteria"`
+	Inferences         []string          `json:"inferences"`
+	Assumptions        []string          `json:"assumptions"`
+	Hypotheses         []string          `json:"hypotheses"`
+	Questions          []intent.Question `json:"questions"`
+	Experiments        []string          `json:"experiments"`
+	ProductAreaRefs    []string          `json:"productAreaRefs"`
+}
+
+type discoveryInput struct {
+	Workspace         string
+	Project           string
+	Repository        string
+	SessionID         string
+	UserStatements    []string
+	CurrentDraft      discovery.Draft
+	PreviousQuestions []discovery.Question
+	ProvenanceRefs    []string
+}
+
+type discoveryStage struct {
+	SessionID      string               `json:"sessionId"`
+	Response       string               `json:"response"`
+	Draft          discovery.Draft      `json:"draft"`
+	Questions      []discovery.Question `json:"questions"`
+	Uncertainty    []string             `json:"uncertainty"`
+	Limitations    []string             `json:"limitations"`
+	Refusal        bool                 `json:"refusal"`
+	Incomplete     bool                 `json:"incomplete"`
+	Usage          discovery.Usage      `json:"usage"`
+	Provider       string               `json:"provider"`
+	ModelID        string               `json:"modelId"`
+	RoleProfileID  string               `json:"roleProfileId"`
+	PromptVersion  string               `json:"promptVersion"`
+	ResponseSchema string               `json:"responseSchema"`
 }
 
 type planStage struct {
@@ -78,6 +130,7 @@ type publicationStage struct {
 }
 
 type guidedJourney interface {
+	Discover(context.Context, discoveryInput) (discoveryStage, error)
 	Start(context.Context, startInput) (proposalStage, error)
 	PromoteAndPlan(context.Context, string, string) (planStage, error)
 	ApprovePlanAndVerify(context.Context, string, string) (candidateStage, error)
@@ -95,7 +148,7 @@ type event struct {
 
 func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writer, journeys journeyFactory) error {
 	if len(args) == 0 || args[0] != "start" {
-		return errors.New("usage: forge delivery start --workspace <workspace> --project <project> --repository <repository> --intent-file <path> --output json")
+		return errors.New("usage: forge delivery start --workspace <workspace> --project <project> --repository <repository> (--intent-file <path> | --message <request>) --output json")
 	}
 	fs := flag.NewFlagSet("delivery start", flag.ContinueOnError)
 	fs.SetOutput(errorOutput)
@@ -103,30 +156,57 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	project := fs.String("project", "", "project selector")
 	repository := fs.String("repository", "", "repository selector")
 	intentFile := fs.String("intent-file", "", "requirements input JSON")
+	message := fs.String("message", "", "natural-language product request")
 	outputFormat := fs.String("output", "json", "output format")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-	if *workspace == "" || *project == "" || *repository == "" || *intentFile == "" || *outputFormat != "json" {
-		return errors.New("delivery start selectors, intent file, and JSON output are required")
-	}
-	intent, err := readIntent(*intentFile)
-	if err != nil {
-		return err
+	if *workspace == "" || *project == "" || *repository == "" || *outputFormat != "json" ||
+		((*intentFile == "") == (*message == "")) {
+		return errors.New("delivery start requires selectors, JSON output, and exactly one of intent file or message")
 	}
 	journey, err := journeys()
 	if err != nil {
 		return err
 	}
 	ctx := context.Background()
+	var intent intentInput
+	var rawInput string
+	var provenance []string
+	conversational := *message != ""
+	if conversational {
+		intent, rawInput, provenance, err = discoverIntent(ctx, journey, input, output, discoveryInput{
+			Workspace: *workspace, Project: *project, Repository: *repository,
+			UserStatements: []string{*message}, ProvenanceRefs: []string{"interaction:user:1"},
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		intent, err = readIntent(*intentFile)
+		if err != nil {
+			return err
+		}
+		rawInput = marshalIntent(intent)
+		provenance = []string{"cli:intent-file"}
+	}
 	writeEvent(output, "progress", "proposal-preparing", "Structuring untrusted input as a Requirements Proposal.", nil)
-	proposal, err := journey.Start(ctx, startInput{Workspace: *workspace, Project: *project, Repository: *repository, Intent: intent})
+	proposal, err := journey.Start(ctx, startInput{
+		Workspace: *workspace, Project: *project, Repository: *repository,
+		RawInput: rawInput, Provenance: provenance, Intent: intent,
+	})
 	if err != nil {
 		return err
 	}
 	writeEvent(output, "requirements-proposal", "awaiting-promotion", "Review the proposal. It has no delivery authority.", proposal)
-	if err := requireExact(input, output, "promote "+proposal.ProposalDigest, "Promote the exact proposal"); err != nil {
-		return err
+	if conversational {
+		if err := requireConfirmation(input, output, "Promote this exact Requirements Proposal?"); err != nil {
+			return err
+		}
+	} else {
+		if err := requireExact(input, output, "promote "+proposal.ProposalDigest, "Promote the exact proposal"); err != nil {
+			return err
+		}
 	}
 	writeEvent(output, "progress", "planning", "Proposal promoted. Resolving bounded context and constructing the Delivery Plan.", nil)
 	plan, err := journey.PromoteAndPlan(ctx, proposal.SessionID, proposal.ProposalDigest)
@@ -134,8 +214,14 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 		return err
 	}
 	writeEvent(output, "delivery-plan", "awaiting-plan-approval", "Review risk, checks, budgets, limitations, and rollback.", plan)
-	if err := requireExact(input, output, "approve-plan "+plan.PlanDigest, "Approve execution of the exact plan"); err != nil {
-		return err
+	if conversational {
+		if err := requireConfirmation(input, output, "Approve execution of this exact plan?"); err != nil {
+			return err
+		}
+	} else {
+		if err := requireExact(input, output, "approve-plan "+plan.PlanDigest, "Approve execution of the exact plan"); err != nil {
+			return err
+		}
 	}
 	writeEvent(output, "progress", "executing", "Plan approved. Preparing the bounded candidate and running independent verification.", nil)
 	candidate, err := journey.ApprovePlanAndVerify(ctx, plan.SessionID, plan.PlanDigest)
@@ -143,8 +229,14 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 		return err
 	}
 	writeEvent(output, "verified-candidate", "awaiting-publication-approval", "Verification passed. Publication still has no authority.", candidate)
-	if err := requireExact(input, output, "approve-publication "+candidate.CandidateDigest, "Approve contract-double publication of the exact candidate"); err != nil {
-		return err
+	if conversational {
+		if err := requireConfirmation(input, output, "Approve contract-double publication of this exact candidate?"); err != nil {
+			return err
+		}
+	} else {
+		if err := requireExact(input, output, "approve-publication "+candidate.CandidateDigest, "Approve contract-double publication of the exact candidate"); err != nil {
+			return err
+		}
 	}
 	writeEvent(output, "progress", "publishing", "Publication approved. Reconciling the idempotent contract-double operation.", nil)
 	publication, err := journey.ApprovePublicationAndPublish(ctx, candidate.SessionID, candidate.CandidateDigest)
@@ -153,6 +245,105 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	}
 	writeEvent(output, "publication-receipt", "reviewable", "Pull request published. Human review and merge remain required.", publication)
 	return nil
+}
+
+func discoverIntent(ctx context.Context, journey guidedJourney, input *bufio.Reader, output io.Writer, request discoveryInput) (intentInput, string, []string, error) {
+	const maximumTurns = 8
+	statements := append([]string(nil), request.UserStatements...)
+	provenance := append([]string(nil), request.ProvenanceRefs...)
+	for turn := 0; turn < maximumTurns; turn++ {
+		request.UserStatements = append([]string(nil), statements...)
+		request.ProvenanceRefs = append([]string(nil), provenance...)
+		writeEvent(output, "progress", "discovering", "Forge is clarifying the product outcome. Model output has no authority.", nil)
+		stage, err := journey.Discover(ctx, request)
+		if err != nil {
+			return intentInput{}, "", nil, err
+		}
+		state := "proposal-ready"
+		if hasMaterialQuestions(stage.Questions) {
+			state = "awaiting-clarification"
+		}
+		writeEvent(output, "discovery-turn", state, stage.Response, stage)
+		if stage.Refusal {
+			return intentInput{}, "", nil, errors.New("model-assisted discovery refused the request")
+		}
+		if !hasMaterialQuestions(stage.Questions) {
+			if stage.Incomplete || !stage.Draft.Complete() {
+				return intentInput{}, "", nil, errors.New("model-assisted discovery did not produce a complete proposal")
+			}
+			return intentFromDraft(stage.Draft, stage.Questions), strings.Join(statements, "\n"), provenance, nil
+		}
+		answers, answerRefs, err := readDiscoveryAnswers(input, output, stage.Questions, len(statements))
+		if err != nil {
+			return intentInput{}, "", nil, err
+		}
+		statements = append(statements, answers...)
+		provenance = append(provenance, answerRefs...)
+		request.SessionID = stage.SessionID
+		request.CurrentDraft = stage.Draft
+		request.PreviousQuestions = append([]discovery.Question(nil), stage.Questions...)
+	}
+	return intentInput{}, "", nil, errors.New("model-assisted discovery exceeded the maximum clarification turns")
+}
+
+func readDiscoveryAnswers(input *bufio.Reader, output io.Writer, questions []discovery.Question, offset int) ([]string, []string, error) {
+	answers := make([]string, 0, len(questions))
+	references := make([]string, 0, len(questions))
+	for _, question := range questions {
+		if !question.Material {
+			continue
+		}
+		fmt.Fprintf(output, "Forge asks [%s]: %s\nYour answer: ", question.ID, question.Text)
+		line, err := input.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return nil, nil, fmt.Errorf("read discovery answer: %w", err)
+		}
+		answer := strings.TrimSpace(line)
+		if answer == "" {
+			return nil, nil, errors.New("material discovery question requires an answer")
+		}
+		answers = append(answers, answer)
+		references = append(references, fmt.Sprintf("interaction:user:%d", offset+len(answers)))
+	}
+	return answers, references, nil
+}
+
+func intentFromDraft(value discovery.Draft, questions []discovery.Question) intentInput {
+	return intentInput{
+		Outcome: value.Outcome, AffectedUsers: value.AffectedUsers, Problem: value.Problem,
+		FunctionalBehavior: value.FunctionalBehavior, UXExpectations: value.UXExpectations,
+		Accessibility: value.Accessibility, Privacy: value.Privacy, Security: value.Security,
+		Operations: value.Operations, Constraints: value.Constraints, Exclusions: value.Exclusions,
+		AcceptanceCriteria: value.AcceptanceCriteria, Inferences: value.Inferences,
+		Assumptions: value.Assumptions, Hypotheses: value.Hypotheses,
+		Questions: discoveryQuestionsToIntent(questions), Experiments: value.Experiments,
+		ProductAreaRefs: value.ProductAreaRefs,
+	}
+}
+
+func discoveryQuestionsToIntent(values []discovery.Question) []intent.Question {
+	result := make([]intent.Question, len(values))
+	for index, value := range values {
+		result[index] = intent.Question{
+			ID: value.ID, Text: value.Text, Consequence: value.Consequence,
+			Material: value.Material, Resolved: false,
+		}
+	}
+	return result
+}
+
+func hasMaterialQuestions(values []discovery.Question) bool {
+	for _, value := range values {
+		if value.Material {
+			return true
+		}
+	}
+	return false
+}
+
+func marshalIntent(value intentInput) string {
+	encoded, _ := json.Marshal(value)
+	return string(encoded)
 }
 
 func readIntent(path string) (intentInput, error) {
@@ -186,6 +377,18 @@ func requireExact(input *bufio.Reader, output io.Writer, expected, label string)
 	}
 	if strings.TrimSpace(line) != expected {
 		return errors.New("explicit human decision did not match the current immutable digest")
+	}
+	return nil
+}
+
+func requireConfirmation(input *bufio.Reader, output io.Writer, label string) error {
+	fmt.Fprintf(output, "%s [yes/no]\n", label)
+	line, err := input.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("read human decision: %w", err)
+	}
+	if !strings.EqualFold(strings.TrimSpace(line), "yes") {
+		return errors.New("explicit human decision was not approved")
 	}
 	return nil
 }
