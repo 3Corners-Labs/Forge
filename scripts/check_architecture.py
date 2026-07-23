@@ -653,6 +653,22 @@ def check_journey_contracts() -> None:
     denied_assertions = " ".join(item["assertion"] for item in denied["expectedOutcomes"])
     if "forbidden" not in denied_assertions or "before repository discovery" not in denied_assertions:
         fail("denied journey must fail closed before repository discovery")
+    if allowed.get("version") != "2.0.0":
+        fail("allowed M1 journey must use the accepted 2.0.0 oracle")
+    allowed_assertions = " ".join(item["assertion"] for item in allowed["expectedOutcomes"])
+    for required in (
+        "Requirements Proposal",
+        "plan digest",
+        "independent Assurance Plan",
+        "candidate digest",
+        "contract-double",
+    ):
+        if required not in allowed_assertions:
+            fail(f"allowed M1 journey must assert {required}")
+    allowed_forbidden = " ".join(allowed["forbiddenOutcomes"])
+    for prohibited in ("Live GitHub", "merge", "release", "deployment", "production"):
+        if prohibited.lower() not in allowed_forbidden.lower():
+            fail(f"allowed M1 journey must forbid {prohibited}")
 
     plan_path = scenario_directory / "trial-execution-plan.json"
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -660,8 +676,8 @@ def check_journey_contracts() -> None:
         fail("M1 execution plan must bind the ADR-0009 public CLI boundary")
     if plan.get("owner") == plan.get("implementationOwner"):
         fail("M1 execution-plan owner must be independent from implementation")
-    if plan.get("executionState") != "not-executable-before-m1":
-        fail("M1 journey runner must remain disabled during F0")
+    if plan.get("executionState") != "executable-m1-candidate":
+        fail("M1 journey runner must be an executable M1 candidate")
     if plan.get("resultSchema") != "schemas/forge/assurance/v1/journey-result.schema.json":
         fail("M1 execution plan must bind the journey-result schema")
     if not plan.get("applicationRevisionBinding", {}).get("required"):
@@ -962,6 +978,8 @@ def check_module_boundaries() -> None:
         "forbidden-worker-to-control.json",
         "m1-b-boundaries/forbidden-control-to-verifier.json",
         "m1-b-boundaries/forbidden-verifier-to-control.json",
+        "m1-c-boundaries/forbidden-experience-to-delivery.json",
+        "m1-c-boundaries/forbidden-source-control-to-approval.json",
     }
     fixture_paths = sorted(fixture_directory.rglob("*.json"))
     if {str(path.relative_to(fixture_directory)) for path in fixture_paths} != expected_fixture_names:

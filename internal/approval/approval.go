@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	RequestPlanReviewContractVersion = "forge.request-plan-review.v1"
-	DecideApprovalContractVersion    = "forge.decide-approval.v1"
-	RevokeApprovalContractVersion    = "forge.revoke-approval.v1"
+	RequestPlanReviewContractVersion        = "forge.request-plan-review.v1"
+	RequestPublicationReviewContractVersion = "forge.request-publication-review.v1"
+	DecideApprovalContractVersion           = "forge.decide-approval.v1"
+	RevokeApprovalContractVersion           = "forge.revoke-approval.v1"
 )
 
 var (
@@ -32,6 +33,10 @@ type PlanSubject = trust.PlanApprovalSubject
 
 type SubjectResolver interface {
 	ResolvePlanSubject(context.Context, string, string) (PlanSubject, bool, error)
+}
+
+type PublicationSubjectResolver interface {
+	ResolvePublicationSubject(context.Context, string, string) (trust.PublicationApprovalSubject, bool, error)
 }
 
 type PolicyResolver interface {
@@ -53,14 +58,19 @@ type Profile struct {
 }
 
 type Service struct {
-	subjects SubjectResolver
-	policies PolicyResolver
-	store    Store
-	profile  Profile
-	now      func() time.Time
+	subjects            SubjectResolver
+	publicationSubjects PublicationSubjectResolver
+	policies            PolicyResolver
+	store               Store
+	profile             Profile
+	now                 func() time.Time
 }
 
 func NewService(subjects SubjectResolver, policies PolicyResolver, store Store, profile Profile, now func() time.Time) (*Service, error) {
+	return NewServiceWithPublication(subjects, nil, policies, store, profile, now)
+}
+
+func NewServiceWithPublication(subjects SubjectResolver, publicationSubjects PublicationSubjectResolver, policies PolicyResolver, store Store, profile Profile, now func() time.Time) (*Service, error) {
 	if subjects == nil || policies == nil || store == nil || now == nil {
 		return nil, errors.New("approval dependencies are required")
 	}
@@ -76,7 +86,10 @@ func NewService(subjects SubjectResolver, policies PolicyResolver, store Store, 
 	}
 	profile.SupportedConditions = conditions
 	profile.EnforcedObligationTypes = obligations
-	return &Service{subjects: subjects, policies: policies, store: store, profile: profile, now: now}, nil
+	return &Service{
+		subjects: subjects, publicationSubjects: publicationSubjects,
+		policies: policies, store: store, profile: profile, now: now,
+	}, nil
 }
 
 type RequestPlanReview struct {
@@ -149,6 +162,74 @@ func (service *Service) RequestPlanReview(ctx context.Context, command RequestPl
 	return cloneRequest(stored), replayed, nil
 }
 
+type RequestPublicationReview struct {
+	ContractVersion    string
+	CorrelationID      string
+	IdempotencyKey     string
+	TenantID           string
+	RunID              string
+	RequestingActorID  string
+	IntendedApproverID string
+	RequestedExpiry    time.Time
+}
+
+func (service *Service) RequestPublicationReview(ctx context.Context, command RequestPublicationReview) (trust.ApprovalRequest, bool, error) {
+	if service == nil || service.publicationSubjects == nil || service.store == nil || service.now == nil ||
+		ctx == nil || command.ContractVersion != RequestPublicationReviewContractVersion ||
+		command.CorrelationID == "" || command.IdempotencyKey == "" || command.TenantID == "" ||
+		command.RunID == "" || command.RequestingActorID == "" || command.IntendedApproverID == "" {
+		return trust.ApprovalRequest{}, false, invalid(command.CorrelationID)
+	}
+	at := service.now()
+	if at.IsZero() {
+		return trust.ApprovalRequest{}, false, unavailable(command.CorrelationID)
+	}
+	subject, found, err := service.publicationSubjects.ResolvePublicationSubject(ctx, command.TenantID, command.RunID)
+	if err != nil {
+		return trust.ApprovalRequest{}, false, unavailable(command.CorrelationID)
+	}
+	if !found || !validPublicationSubject(subject, command) {
+		return trust.ApprovalRequest{}, false, forbidden(command.CorrelationID)
+	}
+	expiresAt := command.RequestedExpiry
+	for _, candidate := range []time.Time{at.Add(service.profile.MaximumDecisionLifetime), subject.ExpiresAt} {
+		if expiresAt.IsZero() || candidate.Before(expiresAt) {
+			expiresAt = candidate
+		}
+	}
+	evidence := canonical(append(slices.Clone(subject.EvidenceReferences),
+		"candidate:"+subject.CandidateDigest,
+		"verification:"+subject.VerificationResultDigest,
+	))
+	value := trust.ApprovalRequest{
+		SchemaVersion: trust.ApprovalRequestSchemaVersion, Issuer: service.profile.Issuer,
+		RequestingActorID: command.RequestingActorID, IntendedApproverID: command.IntendedApproverID,
+		Scope: subject.Scope, Environment: "developer-trial", Purpose: subject.Purpose,
+		Classification: subject.Classification, RiskClass: subject.RiskClass,
+		Action: "forge.source-control.publish-pr", SubjectType: "verified-candidate",
+		SubjectID: subject.CandidateID, SubjectDigest: subject.CandidateDigest,
+		EvidenceReferences: evidence, PermittedConditions: slices.Clone(service.profile.SupportedConditions),
+		PolicyDecisionIDs: canonical(subject.PolicyDecisionIDs), CreatedAt: at, ExpiresAt: expiresAt,
+		MaxDecisionLifetime: int64(service.profile.MaximumDecisionLifetime / time.Second),
+		Lifecycle:           "open", EvidenceCorrelationID: command.CorrelationID,
+	}
+	value, err = trust.BindApprovalRequestDigest(value, command.CorrelationID)
+	if err != nil {
+		return trust.ApprovalRequest{}, false, err
+	}
+	stored, replayed, err := service.store.CreateRequest(ctx, command.TenantID, command.IdempotencyKey, value)
+	if err != nil {
+		return trust.ApprovalRequest{}, false, normalizeStore(err, command.CorrelationID)
+	}
+	if err := stored.VerifyDigest(command.CorrelationID); err != nil {
+		return trust.ApprovalRequest{}, false, err
+	}
+	if stored.ID != value.ID || stored.RequestDigest != value.RequestDigest {
+		return trust.ApprovalRequest{}, false, failure.New(failure.Indeterminate, "stored approval request differs from reviewed facts", command.CorrelationID, failure.RetryNone)
+	}
+	return cloneRequest(stored), replayed, nil
+}
+
 type DecideApproval struct {
 	ContractVersion    string
 	CorrelationID      string
@@ -192,11 +273,7 @@ func (service *Service) DecideApproval(ctx context.Context, command DecideApprov
 	if !at.Before(request.ExpiresAt) {
 		return trust.ApprovalRecordV2{}, false, failure.New(failure.Expired, "approval request is no longer active", command.CorrelationID, failure.RetryNewAuthority)
 	}
-	subject, subjectFound, err := service.subjects.ResolvePlanSubject(ctx, command.TenantID, request.Scope.DeliveryRunID)
-	if err != nil {
-		return trust.ApprovalRecordV2{}, false, unavailable(command.CorrelationID)
-	}
-	if !subjectFound || !matchesRequestSubject(subject, request) {
+	if !service.currentSubjectMatches(ctx, command.TenantID, request) {
 		return trust.ApprovalRecordV2{}, false, forbidden(command.CorrelationID)
 	}
 	if !subset(command.Conditions, request.PermittedConditions) ||
@@ -438,6 +515,48 @@ func validSubject(subject PlanSubject, command RequestPlanReview) bool {
 		subject.Classification != "" && subject.RiskClass != "" && subject.ContextPackageID != "" &&
 		subject.ContextManifest != "" && len(subject.EvidenceReferences) > 0 &&
 		len(subject.PolicyDecisionIDs) > 0 && !subject.ExpiresAt.IsZero()
+}
+
+func validPublicationSubject(subject trust.PublicationApprovalSubject, command RequestPublicationReview) bool {
+	return subject.RunID == command.RunID && subject.Scope.TenantID == command.TenantID &&
+		subject.Scope.DeliveryRunID == command.RunID && subject.CandidateID != "" &&
+		subject.CandidateDigest != "" && subject.TreeDigest != "" && len(subject.ChangedPaths) > 0 &&
+		subject.RequestingActorID == command.RequestingActorID &&
+		subject.CorrelationID == command.CorrelationID && subject.Purpose != "" &&
+		subject.Classification != "" && subject.RiskClass != "" &&
+		subject.VerificationResultID != "" && subject.VerificationResultDigest != "" &&
+		len(subject.EvidenceReferences) > 0 && len(subject.PolicyDecisionIDs) > 0 &&
+		!subject.ExpiresAt.IsZero()
+}
+
+func (service *Service) currentSubjectMatches(ctx context.Context, tenantID string, request trust.ApprovalRequest) bool {
+	switch request.Action {
+	case "forge.delivery.execute-plan":
+		subject, found, err := service.subjects.ResolvePlanSubject(ctx, tenantID, request.Scope.DeliveryRunID)
+		return err == nil && found && matchesRequestSubject(subject, request)
+	case "forge.source-control.publish-pr":
+		if service.publicationSubjects == nil {
+			return false
+		}
+		subject, found, err := service.publicationSubjects.ResolvePublicationSubject(ctx, tenantID, request.Scope.DeliveryRunID)
+		return err == nil && found && matchesPublicationRequestSubject(subject, request)
+	default:
+		return false
+	}
+}
+
+func matchesPublicationRequestSubject(subject trust.PublicationApprovalSubject, request trust.ApprovalRequest) bool {
+	return subject.RunID == request.Scope.DeliveryRunID && subject.CandidateID == request.SubjectID &&
+		subject.CandidateDigest == request.SubjectDigest && subject.Scope == request.Scope &&
+		subject.RequestingActorID == request.RequestingActorID &&
+		subject.Purpose == request.Purpose && subject.Classification == request.Classification &&
+		subject.RiskClass == request.RiskClass && subject.CorrelationID == request.EvidenceCorrelationID &&
+		subject.VerificationResultID != "" && subject.VerificationResultDigest != "" &&
+		slices.Contains(request.EvidenceReferences, "candidate:"+subject.CandidateDigest) &&
+		slices.Contains(request.EvidenceReferences, "verification:"+subject.VerificationResultDigest) &&
+		!subject.ExpiresAt.Before(request.ExpiresAt) &&
+		slices.Equal(canonical(request.PolicyDecisionIDs), canonical(subject.PolicyDecisionIDs)) &&
+		slices.Equal(canonical(request.EvidenceReferences), canonical(subject.EvidenceReferences))
 }
 
 func matchesRequestSubject(subject PlanSubject, request trust.ApprovalRequest) bool {

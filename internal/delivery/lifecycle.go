@@ -438,6 +438,52 @@ func (service *Service) ResolvePlanSubject(ctx context.Context, tenantID, runID 
 	}, true, nil
 }
 
+func (service *Service) ResolvePublicationSubject(ctx context.Context, tenantID, runID string) (trust.PublicationApprovalSubject, bool, error) {
+	store, ok := service.store.(LifecycleStore)
+	if !ok || ctx == nil || tenantID == "" || runID == "" {
+		return trust.PublicationApprovalSubject{}, false, ErrDeliveryUnavailable
+	}
+	stored, found, err := store.Load(ctx, runID)
+	if err != nil || !found {
+		return trust.PublicationApprovalSubject{}, found, err
+	}
+	if stored.TenantID != tenantID || stored.State != AwaitingPublicationApprovalState ||
+		stored.Plan == nil || stored.Context == nil || stored.Execution == nil ||
+		stored.Candidate == nil || stored.Verification == nil ||
+		stored.Verification.Outcome != "passed" {
+		return trust.PublicationApprovalSubject{}, false, nil
+	}
+	expiresAt := stored.Plan.ExpiresAt
+	if stored.Context.ExpiresAt.Before(expiresAt) {
+		expiresAt = stored.Context.ExpiresAt
+	}
+	policyDecisionIDs := canonicalStrings(append(
+		slices.Clone(stored.Context.PolicyDecisionIDs),
+		stored.Execution.PolicyDecisionIDs...,
+	))
+	evidenceReferences := canonicalStrings(append(
+		slices.Clone(stored.Verification.EvidenceReferences),
+		"candidate:"+stored.Candidate.Digest,
+		"verification:"+stored.Verification.ResultDigest,
+	))
+	return trust.PublicationApprovalSubject{
+		RunID: stored.ID, CandidateID: stored.ID + ".candidate",
+		CandidateDigest: stored.Candidate.Digest, TreeDigest: stored.Candidate.TreeDigest,
+		ChangedPaths: slices.Clone(stored.Candidate.ChangedPaths),
+		Scope: trust.ApprovalScope{
+			TenantID: stored.TenantID, WorkspaceID: stored.WorkspaceID,
+			ProjectID: stored.ProjectID, RepositoryID: stored.RepositoryID,
+			DeliveryRunID: stored.ID,
+		},
+		RequestingActorID: stored.ActorID, Purpose: stored.Purpose,
+		Classification: stored.Classification, RiskClass: stored.Plan.RiskClass,
+		VerificationResultID:     stored.Verification.ResultID,
+		VerificationResultDigest: stored.Verification.ResultDigest,
+		EvidenceReferences:       evidenceReferences, PolicyDecisionIDs: policyDecisionIDs,
+		ExpiresAt: expiresAt, CorrelationID: stored.CorrelationID,
+	}, true, nil
+}
+
 func (service *Service) transition(ctx context.Context, request TransitionRequest, from, to string, contextRecord *ContextRecord, plan *DeliveryPlan, approval *PlanApprovalRecord, execution *ExecutionAuthorityRecord, candidate *CandidateRecord, verification *VerificationRecord) (DeliveryRun, bool, error) {
 	at, err := service.transitionTime(request)
 	if err != nil {

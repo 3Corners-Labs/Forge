@@ -1,20 +1,28 @@
 {
   "schemaVersion": "forge.journey-scenario.v1",
   "id": "forge.journey.m1.allowed-intent-capture",
-  "version": "1.0.0",
-  "title": "Permitted developer starts a bounded delivery",
+  "version": "2.0.0",
+  "title": "Permitted developer completes a guided delivery to a reviewable pull request",
   "owner": "Forge Product, Experience, and Quality Architecture",
   "lifecycle": "accepted",
   "riskClass": "high",
   "intentReferences": [
     "docs/architecture/vertical-slice.md#included-journey",
-    "docs/decisions/0009-m1-public-cli-boundary.md"
+    "docs/decisions/0009-m1-public-cli-boundary.md",
+    "docs/decisions/0020-requirements-proposal-before-authority.md",
+    "docs/decisions/0021-guided-resumable-m1-journey.md"
   ],
   "persona": {
     "id": "synthetic-developer-allowed",
     "role": "developer",
-    "entitlements": ["forge.capability.experience", "forge.capability.intent"],
-    "deniedCapabilities": ["forge.capability.approval", "forge.capability.release"],
+    "entitlements": [
+      "forge.capability.approval",
+      "forge.capability.delivery",
+      "forge.capability.experience",
+      "forge.capability.intent",
+      "forge.capability.source-control"
+    ],
+    "deniedCapabilities": ["forge.capability.release"],
     "locale": "en-NL",
     "accessibilityProfile": "terminal-keyboard-and-screen-reader"
   },
@@ -32,21 +40,41 @@
   ],
   "steps": [
     {
-      "id": "submit-intent",
+      "id": "submit-untrusted-request",
       "action": "Run forge delivery start --workspace fixture-workspace --project forge --repository forge --intent-file <fixture-intent> --output json",
-      "checkpoint": "The public CLI returns a normalized success response with one delivery-run reference"
+      "checkpoint": "The public CLI immediately returns a Requirements Proposal that separates direct statements from assumptions, hypotheses, and open questions"
     },
     {
-      "id": "inspect-boundary",
-      "action": "Inspect the response and referenced evidence through the public CLI projection",
-      "checkpoint": "The run awaits plan review and no worker or publication action has occurred"
+      "id": "promote-proposal",
+      "action": "Promote the exact Requirements Proposal digest through the guided CLI action",
+      "checkpoint": "The promoted proposal becomes bounded intent and Forge presents one deterministic plan digest for separate approval"
+    },
+    {
+      "id": "approve-plan",
+      "action": "Approve the exact plan digest through the guided CLI action",
+      "checkpoint": "The bounded worker executes only after policy and delegated-authority checks"
+    },
+    {
+      "id": "inspect-verification",
+      "action": "Inspect the independently produced verification result and evidence references",
+      "checkpoint": "The exact candidate digest is verified under the independent Assurance Plan before publication can be requested"
+    },
+    {
+      "id": "approve-publication",
+      "action": "Approve publication of the exact candidate digest through the guided CLI action",
+      "checkpoint": "The publication approval is separate from plan approval and binds the candidate, verification evidence, repository, and policy decision"
+    },
+    {
+      "id": "inspect-reviewable-result",
+      "action": "Inspect the source-control receipt through the public CLI projection",
+      "checkpoint": "Exactly one idempotent contract-double pull request is reviewable and no merge, release, deployment, or production effect occurred"
     }
   ],
   "expectedOutcomes": [
     {
-      "id": "intent-captured",
+      "id": "proposal-promoted",
       "category": "business",
-      "assertion": "Exactly one delivery run is created for the resolved workspace, project, repository, and supplied intent",
+      "assertion": "Untrusted free text becomes a Requirements Proposal and only the explicitly promoted exact proposal digest becomes bounded intent",
       "oracle": "deterministic"
     },
     {
@@ -56,9 +84,27 @@
       "oracle": "deterministic"
     },
     {
-      "id": "awaits-review",
+      "id": "plan-approved-before-execution",
       "category": "operational",
-      "assertion": "The delivery state stops before execution and publication pending the required plan review",
+      "assertion": "Bounded worker execution starts only after separate approval of the exact plan digest",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "candidate-independently-verified",
+      "category": "assurance",
+      "assertion": "The exact candidate digest passes the independent Assurance Plan and produces immutable verification evidence",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "publication-separately-approved",
+      "category": "authorization",
+      "assertion": "Publication requires a separate approval of the exact candidate digest plus current policy and delegated-authority validation",
+      "oracle": "deterministic"
+    },
+    {
+      "id": "reviewable-pr-created",
+      "category": "business",
+      "assertion": "Exactly one idempotent contract-double pull request is created for review without live GitHub credentials",
       "oracle": "deterministic"
     },
     {
@@ -70,8 +116,13 @@
   ],
   "forbiddenOutcomes": [
     "Caller input becomes authoritative tenant scope",
+    "Free text directly becomes executable authority",
     "A worker starts before a separately authorized plan transition",
-    "A branch or pull request is published",
+    "Plan approval is replayed as publication approval",
+    "Publication occurs before independent verification, complete evidence, current policy evaluation, or separate publication approval",
+    "Live GitHub credentials or ambient source-control credentials are used",
+    "A merge, release, deployment, or production effect occurs",
+    "Retry or reconciliation creates a duplicate branch or pull request",
     "The seeded sensitive value appears in output or evidence",
     "The scenario or candidate changes its expected outcomes"
   ],
@@ -86,7 +137,20 @@
     "releaseConditions": ["Root cause is recorded", "The deterministic oracle passes three consecutive clean runs", "Accountable owner removes quarantine"]
   },
   "evidencePolicy": {
-    "requiredTypes": ["policy-decision", "delivery-transition", "cli-result", "redaction-assertion"],
+    "requiredTypes": [
+      "requirements-proposal",
+      "proposal-promotion",
+      "plan-approval",
+      "policy-decision",
+      "delegated-authority",
+      "execution-result",
+      "verification-result",
+      "publication-approval",
+      "source-control-receipt",
+      "delivery-transition",
+      "cli-result",
+      "redaction-assertion"
+    ],
     "classification": "Internal",
     "retentionClass": "m1-assurance-candidate",
     "redactionRequired": true

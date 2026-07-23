@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bufio"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -13,13 +15,17 @@ import (
 )
 
 func Execute() error {
-	if len(os.Args) < 2 {
-		printUsage()
+	return execute(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, newDeveloperTrialJourney)
+}
+
+func execute(args []string, input io.Reader, output, errorOutput io.Writer, journeys journeyFactory) error {
+	if len(args) < 1 {
+		printUsageTo(output)
 		return nil
 	}
-	switch os.Args[1] {
+	switch args[0] {
 	case "version":
-		fmt.Println("forge 0.1.0")
+		fmt.Fprintln(output, "forge 0.2.0")
 		return nil
 	case "doctor":
 		if doctor.Print(doctor.Run()) {
@@ -27,23 +33,29 @@ func Execute() error {
 		}
 		return errors.New("one or more prerequisites are missing")
 	case "init":
-		return runInit(os.Args[2:])
+		return runInit(args[1:])
+	case "delivery":
+		return runDelivery(args[1:], bufio.NewReader(input), output, errorOutput, journeys)
 	case "up":
 		return runCompose("up")
 	case "down":
 		return runCompose("down")
 	case "help", "-h", "--help":
-		printUsage()
+		printUsageTo(output)
 		return nil
 	default:
-		return fmt.Errorf("unknown command %q", os.Args[1])
+		return fmt.Errorf("unknown command %q", args[0])
 	}
 }
 
 func printUsage() {
-	fmt.Println("3Corners Forge engineering platform CLI")
-	fmt.Println("Usage: forge <command>")
-	fmt.Println("Commands: init, doctor, up, down, version")
+	printUsageTo(os.Stdout)
+}
+
+func printUsageTo(output io.Writer) {
+	fmt.Fprintln(output, "3Corners Forge engineering platform CLI")
+	fmt.Fprintln(output, "Usage: forge <command>")
+	fmt.Fprintln(output, "Commands: delivery, init, doctor, up, down, version")
 }
 
 func runInit(args []string) error {

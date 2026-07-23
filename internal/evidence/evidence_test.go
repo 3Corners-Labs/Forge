@@ -52,6 +52,35 @@ func TestEvidenceIdempotencyCannotChangeImmutableInput(t *testing.T) {
 	}
 }
 
+func TestEvidenceSubjectReadinessRequiresExactRecordAndReferences(t *testing.T) {
+	now := time.Now().UTC()
+	service, _ := NewService(NewMemoryStore(), func() time.Time { return now })
+	scope := trust.EvidenceScope{TenantID: "tenant", WorkspaceID: "workspace", ProjectID: "project", DeliveryRunID: "run"}
+	value := request(scope, "candidate-ready", digest('a'))
+	value.Subject.Type = "verified-candidate"
+	value.References = []string{"candidate:" + digest('a'), "verification:result"}
+	if _, _, err := service.Append(context.Background(), value); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.VerifySubject(
+		context.Background(), scope, value.Subject, value.References, "corr",
+	); err != nil {
+		t.Fatalf("exact evidence subject was not ready: %v", err)
+	}
+	changed := value.Subject
+	changed.Digest = digest('b')
+	if err := service.VerifySubject(
+		context.Background(), scope, changed, value.References, "corr",
+	); err == nil {
+		t.Fatal("changed evidence subject was accepted")
+	}
+	if err := service.VerifySubject(
+		context.Background(), scope, value.Subject, []string{"verification:other"}, "corr",
+	); err == nil {
+		t.Fatal("missing required evidence reference was accepted")
+	}
+}
+
 func request(scope trust.EvidenceScope, key, subjectDigest string) AppendRequest {
 	return AppendRequest{
 		CorrelationID: "corr", IdempotencyKey: key, Type: "verification",

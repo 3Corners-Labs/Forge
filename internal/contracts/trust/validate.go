@@ -330,9 +330,9 @@ func (value ApprovalRequest) Validate(correlationID string) error {
 			return invalid("approval request has an empty required field", correlationID)
 		}
 	}
-	if value.Action != "forge.delivery.execute-plan" || value.SubjectType != "delivery-plan" ||
+	if !validM1ApprovalSubject(value.Action, value.SubjectType) ||
 		value.Environment != "developer-trial" || value.Lifecycle != "open" {
-		return invalid("approval request is outside the M1 plan-review contract", correlationID)
+		return invalid("approval request is outside the M1 approval contract", correlationID)
 	}
 	if !validSHA256(value.RequestDigest) || !validSHA256(value.SubjectDigest) {
 		return invalid("approval request digest is malformed", correlationID)
@@ -385,9 +385,9 @@ func (value ApprovalRecordV2) Validate(correlationID string) error {
 			return invalid("approval record v2 has an empty required field", correlationID)
 		}
 	}
-	if value.Action != "forge.delivery.execute-plan" || value.SubjectType != "delivery-plan" ||
+	if !validM1ApprovalSubject(value.Action, value.SubjectType) ||
 		value.Environment != "developer-trial" {
-		return invalid("approval record v2 is outside the M1 plan-review contract", correlationID)
+		return invalid("approval record v2 is outside the M1 approval contract", correlationID)
 	}
 	if !validSHA256(value.RequestDigest) || !validSHA256(value.SubjectDigest) ||
 		value.Integrity.Algorithm != "sha256" || !validSHA256(value.Integrity.Digest) {
@@ -570,6 +570,11 @@ func validSHA256(value string) bool {
 	}
 	decoded, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
 	return err == nil && len(decoded) == sha256.Size
+}
+
+func validM1ApprovalSubject(action, subjectType string) bool {
+	return (action == "forge.delivery.execute-plan" && subjectType == "delivery-plan") ||
+		(action == "forge.source-control.publish-pr" && subjectType == "verified-candidate")
 }
 
 func invalid(message, correlationID string) error {

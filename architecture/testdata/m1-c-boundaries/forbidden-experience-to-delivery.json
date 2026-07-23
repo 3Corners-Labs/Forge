@@ -1,0 +1,6 @@
+{
+  "name": "Experience imports Delivery implementation",
+  "importerModule": "experience",
+  "imports": ["github.com/3corners/forge/internal/delivery"],
+  "expectedViolations": ["undeclared-internal-dependency"]
+}

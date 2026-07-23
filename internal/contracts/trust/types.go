@@ -151,6 +151,28 @@ type PlanApprovalSubject struct {
 	CorrelationID      string
 }
 
+// PublicationApprovalSubject is the immutable Delivery projection reviewed at
+// the separate publication gate. It contains no provider credential or
+// publication authority.
+type PublicationApprovalSubject struct {
+	RunID                    string
+	CandidateID              string
+	CandidateDigest          string
+	TreeDigest               string
+	ChangedPaths             []string
+	Scope                    ApprovalScope
+	RequestingActorID        string
+	Purpose                  string
+	Classification           string
+	RiskClass                string
+	VerificationResultID     string
+	VerificationResultDigest string
+	EvidenceReferences       []string
+	PolicyDecisionIDs        []string
+	ExpiresAt                time.Time
+	CorrelationID            string
+}
+
 // ApprovalRequest is an immutable review subject. It records no human
 // decision and grants no execution authority.
 type ApprovalRequest struct {

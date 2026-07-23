@@ -1,0 +1,6 @@
+{
+  "name": "Source Control imports Approval implementation",
+  "importerModule": "source-control",
+  "imports": ["github.com/3corners/forge/internal/approval"],
+  "expectedViolations": ["undeclared-internal-dependency"]
+}

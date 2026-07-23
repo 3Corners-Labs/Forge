@@ -31,3 +31,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0018](0018-developer-trial-durable-state-and-evidence.md) | Select Developer Trial durable state and evidence adapters | Accepted |
 | [ADR-0019](0019-github-developer-trial-publication-adapter.md) | Select the GitHub Developer Trial publication adapter | Accepted |
 | [ADR-0020](0020-guided-intent-and-exploratory-feedback.md) | Establish guided intent and exploratory feedback boundaries | Accepted |
+| [ADR-0021](0021-guided-resumable-m1-journey.md) | Permit a guided resumable M1 delivery session | Accepted |

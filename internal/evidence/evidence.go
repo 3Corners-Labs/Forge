@@ -129,6 +129,36 @@ func (service *Service) VerifyStream(ctx context.Context, scope trust.EvidenceSc
 	return nil
 }
 
+func (service *Service) VerifySubject(ctx context.Context, scope trust.EvidenceScope, subject trust.EvidenceSubject, requiredReferences []string, correlationID string) error {
+	if ctx == nil || subject.Type == "" || subject.ID == "" || subject.Digest == "" ||
+		len(requiredReferences) == 0 || correlationID == "" {
+		return failure.New(failure.InvalidRequest, "evidence subject verification request is invalid", correlationID, failure.RetryNone)
+	}
+	if err := service.VerifyStream(ctx, scope, correlationID); err != nil {
+		return err
+	}
+	streamKey := scope.TenantID + "\x00" + scope.ProjectID + "\x00" + scope.DeliveryRunID
+	records, err := service.store.Stream(ctx, streamKey)
+	if err != nil {
+		return failure.New(failure.DependencyUnavailable, "evidence stream is unavailable", correlationID, failure.RetryBounded)
+	}
+	for _, record := range records {
+		if record.Subject == subject && containsAll(record.References, requiredReferences) {
+			return nil
+		}
+	}
+	return failure.New(failure.EvidenceUnavailable, "required evidence subject is unavailable", correlationID, failure.RetryReconcile)
+}
+
+func containsAll(values, required []string) bool {
+	for _, expected := range required {
+		if !slices.Contains(values, expected) {
+			return false
+		}
+	}
+	return true
+}
+
 type memoryEntry struct {
 	record      trust.EvidenceRecord
 	fingerprint string

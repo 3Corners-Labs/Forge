@@ -8,9 +8,24 @@
   "project": "forge",
   "repository": "forge",
   "intent": {
-    "objective": "Add a documentation-only marker to the fixture repository",
-    "constraints": ["No source publication", "No production access"],
-    "acceptanceCriteria": ["Intent is captured for plan review"]
+    "outcome": "Add a documentation-only marker to the fixture repository and present it as a reviewable pull request",
+    "affectedUsers": ["Forge documentation maintainers"],
+    "problem": "The fixture needs a visible marker that proves the guided delivery loop without production effects",
+    "functionalBehavior": ["Create one documentation-only change", "Publish one reviewable contract-double pull request"],
+    "userExperience": ["Show immediate progress", "Require explicit proposal, plan, and publication decisions"],
+    "accessibility": ["Keep the flow usable with a keyboard and screen reader"],
+    "privacy": ["Do not expose seeded sensitive values"],
+    "security": ["Derive scope from authenticated membership", "Do not use live source-control credentials"],
+    "operations": ["Make publication idempotent and evidence-backed"],
+    "constraints": ["Contract-double source publication only", "No production access"],
+    "exclusions": ["Live GitHub", "Merge", "Release", "Deployment", "Production"],
+    "acceptanceCriteria": [
+      "The exact Requirements Proposal is explicitly promoted",
+      "The exact plan is separately approved before execution",
+      "The exact candidate passes independent verification",
+      "Publication is separately approved",
+      "Exactly one reviewable contract-double pull request is returned"
+    ]
   },
   "seededSensitiveValues": ["FORGE_TEST_SECRET_DO_NOT_RECORD"]
 }
