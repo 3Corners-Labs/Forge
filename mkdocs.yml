@@ -82,6 +82,7 @@ nav:
       - ADR-0017 Bounded Autonomous Worker: decisions/0017-bounded-autonomous-worker-and-verification.md
       - ADR-0018 Durable State and Evidence: decisions/0018-developer-trial-durable-state-and-evidence.md
       - ADR-0019 GitHub Trial Publication: decisions/0019-github-developer-trial-publication-adapter.md
+      - ADR-0020 Guided Intent and Exploration: decisions/0020-guided-intent-and-exploratory-feedback.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
