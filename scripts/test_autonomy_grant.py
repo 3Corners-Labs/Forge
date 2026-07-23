@@ -56,6 +56,8 @@ class AutonomyGrantTests(unittest.TestCase):
             validate_grant_document(signed(altered))
 
         self.assertIn("architecture/module-boundaries.json", self.grant["scope"]["pathPatterns"])
+        self.assertIn("forge.capability.source-control", self.grant["scope"]["capabilityIds"])
+        self.assertIn("mkdocs.yml", self.grant["scope"]["pathPatterns"])
         altered = copy.deepcopy(self.grant)
         altered["scope"]["pathPatterns"].append("architecture/**")
         with self.assertRaisesRegex(GrantError, "broadly include architecture"):

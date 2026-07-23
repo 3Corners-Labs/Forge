@@ -22,11 +22,13 @@ The first grant is
 path `.forge/autonomy/grants/forge.autonomy-grant.m1-bounded-delivery-v1.json`
 and is constrained to M1 work in `3Corners-Labs/Forge` on `codex/m1-*` branches.
 
-Grant version 1.0.1 includes the exact path
+Grant version 1.0.2 includes the exact path
 `architecture/module-boundaries.json` so an already accepted M1 capability can
-be registered as a modular-monolith module. It does not include broad
-`architecture/**` scope. Changing an accepted boundary or weakening the module
-oracle remains a mandatory human gate.
+be registered as a modular-monolith module. It also includes the accepted
+`forge.capability.source-control` capability and exact `mkdocs.yml` path for
+M1-C implementation and canonical evidence navigation. It does not include
+broad `architecture/**` scope. Changing an accepted boundary or weakening the
+module oracle remains a mandatory human gate.
 
 The grant is inactive by default. Its `authorized` lifecycle status means only
 that it may be considered for activation after accountable review and protected
