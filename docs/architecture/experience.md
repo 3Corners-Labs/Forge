@@ -7,6 +7,28 @@ Owner: Forge Experience Architecture
 
 Forge SHOULD provide a dedicated workbench that lets people collaborate with and inspect the agentic workforce. The workbench is a projection of versioned platform state, not a separate source of truth.
 
+## Guided collaboration
+
+Free text, chat messages, issues, attachments, mockups, repository content and
+model output are interaction input, not authority. Experience SHALL expose a
+versioned Requirements Proposal that distinguishes user statements, observed
+facts, Forge inferences, assumptions, hypotheses and unresolved material
+questions before an authenticated human explicitly promotes the exact proposal
+digest to canonical intent.
+
+Forge SHOULD ask questions that can materially change outcomes, scope,
+architecture, data handling, risk, accessibility, cost, acceptance or
+reversibility. It SHOULD permit clearly labelled exploratory mockups and
+learn-and-discard loops where they reduce uncertainty. Exploratory artefacts are
+not accepted requirements, architecture, verification evidence or production
+software and cannot become canonical without explicit promotion through the
+owning capability.
+
+CLI, Workbench and chat channels SHALL use the same public Experience and
+capability contracts. A conversation channel transports interaction and may
+hold an opaque continuation reference; it never establishes authoritative
+identity, tenant, project, repository, approval or execution scope.
+
 ## Audience modes
 
 - End-user mode explains journeys, visible behaviour, privacy, and limitations.

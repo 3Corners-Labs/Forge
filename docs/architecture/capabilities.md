@@ -15,6 +15,7 @@ Capabilities describe durable responsibilities. They are neither deployment unit
 | `forge.capability.identity` | Identity | Identity and delegation | Human, workload and agent identity; scoped delegation | Research |
 | `forge.capability.intent` | Product | Intent and portfolio | Outcomes, users, hypotheses and priorities | Research |
 | `forge.capability.delivery` | Delivery | Work orchestration | Plans, durable state, dependencies, cancellation and recovery | Research |
+| `forge.capability.source-control` | Platform | Source-control publication | Provider-neutral branch and pull-request publication, reconciliation and receipts | Research |
 | `forge.capability.knowledge` | Knowledge | Knowledge relationships | Provenance-rich, authorized and rebuildable relationships over owned artefacts | Research |
 | `forge.capability.context` | Knowledge | Context assembly | Purpose-bound selection and reproducible Context Packages | Research |
 | `forge.capability.memory` | Knowledge | Memory lifecycle | Scoped promotion, retrieval, retention and deletion | Research |
