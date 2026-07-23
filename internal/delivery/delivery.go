@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/3corners/forge/internal/contracts/failure"
+	"github.com/3corners/forge/internal/contracts/trust"
 	"github.com/3corners/forge/internal/identity"
 	"github.com/3corners/forge/internal/tenant"
 )
@@ -22,6 +23,11 @@ const (
 	CaptureIntentResultContractVersion  = "forge.capture-intent-result.v1"
 	DeliveryRunContractVersion          = "forge.delivery-run.v1"
 	CapturedState                       = "Captured"
+	ContextAuthorizingState             = "ContextAuthorizing"
+	ContextReadyState                   = "ContextReady"
+	PlannedState                        = "Planned"
+	AwaitingPlanApprovalState           = "AwaitingPlanApproval"
+	PlanApprovedState                   = "PlanApproved"
 	M1ChangePurpose                     = "forge.m1.prepare-change"
 )
 
@@ -71,6 +77,10 @@ type StoredRecord struct {
 	ID              string
 	State           string
 	Version         uint64
+	Context         *ContextRecord
+	Plan            *DeliveryPlan
+	Approval        *PlanApprovalRecord
+	Outbox          []OutboxEvent
 }
 
 type Store interface {
@@ -97,6 +107,9 @@ type DeliveryRun struct {
 	acceptanceCriteria []string
 	createdAt          time.Time
 	correlationID      string
+	context            *ContextRecord
+	plan               *DeliveryPlan
+	approval           *PlanApprovalRecord
 }
 
 func (value DeliveryRun) ContractVersion() string      { return value.contractVersion }
@@ -116,6 +129,11 @@ func (value DeliveryRun) Constraints() []string        { return slices.Clone(val
 func (value DeliveryRun) AcceptanceCriteria() []string { return slices.Clone(value.acceptanceCriteria) }
 func (value DeliveryRun) CreatedAt() time.Time         { return value.createdAt }
 func (value DeliveryRun) CorrelationID() string        { return value.correlationID }
+func (value DeliveryRun) Context() *ContextRecord      { return cloneContextRecord(value.context) }
+func (value DeliveryRun) Plan() *DeliveryPlan          { return clonePlan(value.plan) }
+func (value DeliveryRun) Approval() *PlanApprovalRecord {
+	return clonePlanApprovalRecord(value.approval)
+}
 
 type CaptureIntentResult struct {
 	ContractVersion string
@@ -251,6 +269,9 @@ func runFromStored(value StoredRecord) DeliveryRun {
 		acceptanceCriteria: slices.Clone(value.AcceptanceCriteria),
 		createdAt:          value.CreatedAt,
 		correlationID:      value.CorrelationID,
+		context:            cloneContextRecord(value.Context),
+		plan:               clonePlan(value.Plan),
+		approval:           clonePlanApprovalRecord(value.Approval),
 	}
 }
 
@@ -302,4 +323,14 @@ func cloneCaptureRecord(value CaptureRecord) CaptureRecord {
 	value.Constraints = slices.Clone(value.Constraints)
 	value.AcceptanceCriteria = slices.Clone(value.AcceptanceCriteria)
 	return value
+}
+
+// ApprovalResolver is implemented by the Approval capability. Delivery never
+// accepts a caller-supplied record as canonical current approval state.
+type ApprovalResolver interface {
+	ResolveApproval(context.Context, string, string) (trust.ApprovalRecordV2, bool, error)
+}
+
+type ApprovalRequestResolver interface {
+	ResolveApprovalRequest(context.Context, string, string) (trust.ApprovalRequest, bool, error)
 }

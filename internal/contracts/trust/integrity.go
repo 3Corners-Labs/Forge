@@ -4,6 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"slices"
+	"sort"
+	"strings"
 
 	"github.com/3corners/forge/internal/contracts/failure"
 )
@@ -94,6 +97,88 @@ func (value ContextPackage) VerifyManifest(correlationID string) error {
 	return nil
 }
 
+func BindApprovalRequestDigest(value ApprovalRequest, correlationID string) (ApprovalRequest, error) {
+	if value.ID != "" || value.RequestDigest != "" {
+		return ApprovalRequest{}, invalid("approval request is already digest-bound", correlationID)
+	}
+	value.EvidenceReferences = canonicalApprovalValues(value.EvidenceReferences)
+	value.PermittedConditions = canonicalApprovalValues(value.PermittedConditions)
+	value.PolicyDecisionIDs = canonicalApprovalValues(value.PolicyDecisionIDs)
+	value.ID = "forge.approval-request.pending"
+	value.RequestDigest = "sha256:" + strings.Repeat("0", 64)
+	if err := value.Validate(correlationID); err != nil {
+		return ApprovalRequest{}, err
+	}
+	value.ID, value.RequestDigest = "", ""
+	digest, err := approvalRequestDigest(value)
+	if err != nil {
+		return ApprovalRequest{}, failure.New(failure.Indeterminate, "approval request digest could not be calculated", correlationID, failure.RetryNone)
+	}
+	value.ID = "forge.approval-request." + digest
+	value.RequestDigest = "sha256:" + digest
+	if err := value.VerifyDigest(correlationID); err != nil {
+		return ApprovalRequest{}, err
+	}
+	return value, nil
+}
+
+func (value ApprovalRequest) VerifyDigest(correlationID string) error {
+	if err := value.Validate(correlationID); err != nil {
+		return err
+	}
+	digest, err := approvalRequestDigest(value)
+	if err != nil {
+		return failure.New(failure.Indeterminate, "approval request digest could not be verified", correlationID, failure.RetryNone)
+	}
+	if value.ID != "forge.approval-request."+digest || value.RequestDigest != "sha256:"+digest {
+		return failure.New(failure.VerificationFailed, "approval request digest verification failed", correlationID, failure.RetryNone)
+	}
+	return nil
+}
+
+func BindApprovalRecordV2Integrity(value ApprovalRecordV2, correlationID string) (ApprovalRecordV2, error) {
+	if value.ID != "" || value.Integrity != (Integrity{}) {
+		return ApprovalRecordV2{}, invalid("approval record v2 is already integrity-bound", correlationID)
+	}
+	value.Conditions = canonicalApprovalValues(value.Conditions)
+	value.PolicyDecisionIDs = canonicalApprovalValues(value.PolicyDecisionIDs)
+	value.EvidenceReferences = canonicalApprovalValues(value.EvidenceReferences)
+	value.ID = "forge.approval-record.pending"
+	value.Integrity = Integrity{Algorithm: sha256IntegrityAlgorithm, Digest: "sha256:" + strings.Repeat("0", 64)}
+	if err := value.Validate(correlationID); err != nil {
+		return ApprovalRecordV2{}, err
+	}
+	value.ID = ""
+	value.Integrity = Integrity{}
+	digest, err := approvalRecordV2Digest(value)
+	if err != nil {
+		return ApprovalRecordV2{}, failure.New(failure.Indeterminate, "approval record v2 integrity could not be calculated", correlationID, failure.RetryNone)
+	}
+	value.ID = "forge.approval-record." + digest
+	value.Integrity = Integrity{Algorithm: sha256IntegrityAlgorithm, Digest: "sha256:" + digest}
+	if err := value.VerifyIntegrity(correlationID); err != nil {
+		return ApprovalRecordV2{}, err
+	}
+	return value, nil
+}
+
+func (value ApprovalRecordV2) VerifyIntegrity(correlationID string) error {
+	if err := value.Validate(correlationID); err != nil {
+		return err
+	}
+	if value.Integrity.Algorithm != sha256IntegrityAlgorithm {
+		return failure.New(failure.VerificationFailed, "approval record v2 integrity is not verifiable", correlationID, failure.RetryNone)
+	}
+	digest, err := approvalRecordV2Digest(value)
+	if err != nil {
+		return failure.New(failure.Indeterminate, "approval record v2 integrity could not be verified", correlationID, failure.RetryNone)
+	}
+	if value.ID != "forge.approval-record."+digest || value.Integrity.Digest != "sha256:"+digest {
+		return failure.New(failure.VerificationFailed, "approval record v2 integrity verification failed", correlationID, failure.RetryNone)
+	}
+	return nil
+}
+
 func executionEnvelopeDigest(value ExecutionEnvelope) (string, error) {
 	value.ID = ""
 	value.Integrity = nil
@@ -114,4 +199,32 @@ func contextPackageDigest(value ContextPackage) (string, error) {
 	}
 	digest := sha256.Sum256(encoded)
 	return hex.EncodeToString(digest[:]), nil
+}
+
+func approvalRequestDigest(value ApprovalRequest) (string, error) {
+	value.ID = ""
+	value.RequestDigest = ""
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func approvalRecordV2Digest(value ApprovalRecordV2) (string, error) {
+	value.ID = ""
+	value.Integrity = Integrity{}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:]), nil
+}
+
+func canonicalApprovalValues(values []string) []string {
+	result := slices.Clone(values)
+	sort.Strings(result)
+	return result
 }

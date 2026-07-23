@@ -1,6 +1,9 @@
 package trust
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
 	"time"
 
 	"github.com/3corners/forge/internal/contracts/failure"
@@ -21,7 +24,7 @@ func (value PolicyDecision) Validate(correlationID string) error {
 	if value.ExpiresAt != nil && !value.ExpiresAt.After(value.EvaluatedAt) {
 		return invalid("policy decision expiry must follow evaluation", correlationID)
 	}
-	if !oneOf(value.DecisionPoint, "retrieval", "secret-resolution", "selection", "execution", "evidence-disclosure", "publication", "release") {
+	if !oneOf(value.DecisionPoint, "retrieval", "secret-resolution", "selection", "execution", "approval", "evidence-disclosure", "publication", "release") {
 		return invalid("policy decision point is invalid", correlationID)
 	}
 	if !oneOf(value.Outcome, "permit", "deny", "indeterminate") {
@@ -312,6 +315,168 @@ func (value ApprovalRecord) Authorize(action, subjectType, subjectDigest string,
 	return nil
 }
 
+func (value ApprovalRequest) Validate(correlationID string) error {
+	if value.SchemaVersion != ApprovalRequestSchemaVersion {
+		return invalid("approval request has an unsupported schema version", correlationID)
+	}
+	for _, item := range []string{
+		value.ID, value.RequestDigest, value.Issuer, value.RequestingActorID, value.IntendedApproverID,
+		value.Scope.TenantID, value.Scope.WorkspaceID, value.Scope.ProjectID, value.Scope.RepositoryID,
+		value.Scope.DeliveryRunID, value.Environment, value.Purpose, value.Classification, value.RiskClass,
+		value.Action, value.SubjectType, value.SubjectID, value.SubjectDigest, value.Lifecycle,
+		value.EvidenceCorrelationID,
+	} {
+		if item == "" {
+			return invalid("approval request has an empty required field", correlationID)
+		}
+	}
+	if value.Action != "forge.delivery.execute-plan" || value.SubjectType != "delivery-plan" ||
+		value.Environment != "developer-trial" || value.Lifecycle != "open" {
+		return invalid("approval request is outside the M1 plan-review contract", correlationID)
+	}
+	if !validSHA256(value.RequestDigest) || !validSHA256(value.SubjectDigest) {
+		return invalid("approval request digest is malformed", correlationID)
+	}
+	if !oneOf(value.Classification, "Public", "Internal", "Confidential", "Restricted") ||
+		!oneOf(value.RiskClass, "low", "moderate", "high", "critical") {
+		return invalid("approval request classification or risk is invalid", correlationID)
+	}
+	if value.CreatedAt.IsZero() || value.ExpiresAt.IsZero() || !value.ExpiresAt.After(value.CreatedAt) ||
+		value.MaxDecisionLifetime < 1 || value.ExpiresAt.After(value.CreatedAt.Add(time.Duration(value.MaxDecisionLifetime)*time.Second)) {
+		return invalid("approval request has an invalid validity window", correlationID)
+	}
+	for _, field := range []struct {
+		label    string
+		values   []string
+		required bool
+	}{
+		{"approval evidence references", value.EvidenceReferences, true},
+		{"approval permitted conditions", value.PermittedConditions, false},
+		{"approval policy decisions", value.PolicyDecisionIDs, true},
+	} {
+		var err error
+		if field.required {
+			err = validateUniqueRequired(field.values, field.label, correlationID)
+		} else {
+			err = validateUnique(field.values, field.label, correlationID)
+		}
+		if err != nil {
+			return err
+		}
+		if err := validateCanonical(field.values, field.label, correlationID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (value ApprovalRecordV2) Validate(correlationID string) error {
+	if value.SchemaVersion != ApprovalRecordV2SchemaVersion {
+		return invalid("approval record v2 has an unsupported schema version", correlationID)
+	}
+	for _, item := range []string{
+		value.ID, value.Issuer, value.RequestID, value.RequestDigest, value.ApproverID,
+		value.Scope.TenantID, value.Scope.WorkspaceID, value.Scope.ProjectID, value.Scope.RepositoryID,
+		value.Scope.DeliveryRunID, value.Environment, value.Purpose, value.Classification, value.RiskClass,
+		value.Action, value.SubjectType, value.SubjectID, value.SubjectDigest, value.Decision,
+		value.EvidenceCorrelationID,
+	} {
+		if item == "" {
+			return invalid("approval record v2 has an empty required field", correlationID)
+		}
+	}
+	if value.Action != "forge.delivery.execute-plan" || value.SubjectType != "delivery-plan" ||
+		value.Environment != "developer-trial" {
+		return invalid("approval record v2 is outside the M1 plan-review contract", correlationID)
+	}
+	if !validSHA256(value.RequestDigest) || !validSHA256(value.SubjectDigest) ||
+		value.Integrity.Algorithm != "sha256" || !validSHA256(value.Integrity.Digest) {
+		return invalid("approval record v2 digest or integrity is malformed", correlationID)
+	}
+	if !oneOf(value.Decision, "approved", "rejected", "revoked") ||
+		!oneOf(value.Classification, "Public", "Internal", "Confidential", "Restricted") ||
+		!oneOf(value.RiskClass, "low", "moderate", "high", "critical") {
+		return invalid("approval record v2 decision, classification, or risk is invalid", correlationID)
+	}
+	if value.DecidedAt.IsZero() || value.ExpiresAt.IsZero() || !value.ExpiresAt.After(value.DecidedAt) {
+		return invalid("approval record v2 has an invalid validity window", correlationID)
+	}
+	if (value.Decision == "revoked") != (value.PreviousRecordID != "") {
+		return invalid("only approval revocation may reference the previous record", correlationID)
+	}
+	for _, field := range []struct {
+		label    string
+		values   []string
+		required bool
+	}{
+		{"approval conditions", value.Conditions, false},
+		{"approval eligibility decisions", value.PolicyDecisionIDs, true},
+		{"approval evidence references", value.EvidenceReferences, true},
+	} {
+		var err error
+		if field.required {
+			err = validateUniqueRequired(field.values, field.label, correlationID)
+		} else {
+			err = validateUnique(field.values, field.label, correlationID)
+		}
+		if err != nil {
+			return err
+		}
+		if err := validateCanonical(field.values, field.label, correlationID); err != nil {
+			return err
+		}
+	}
+	return validateIntegrity(value.Integrity, correlationID)
+}
+
+type ApprovalExpectedFacts struct {
+	RequestID           string
+	RequestDigest       string
+	ApproverID          string
+	Scope               ApprovalScope
+	Environment         string
+	Purpose             string
+	Classification      string
+	RiskClass           string
+	Action              string
+	SubjectType         string
+	SubjectID           string
+	SubjectDigest       string
+	EvidenceReferences  []string
+	PermittedConditions []string
+}
+
+func (value ApprovalRecordV2) Authorize(expected ApprovalExpectedFacts, at time.Time, correlationID string) error {
+	if err := value.VerifyIntegrity(correlationID); err != nil {
+		return err
+	}
+	if at.IsZero() || at.Before(value.DecidedAt) || !at.Before(value.ExpiresAt) {
+		return failure.New(failure.Expired, "approval record v2 is not active", correlationID, failure.RetryNewAuthority)
+	}
+	if value.Decision != "approved" {
+		return failure.New(failure.Forbidden, "approval record v2 does not permit the action", correlationID, failure.RetryNone)
+	}
+	if value.RequestID != expected.RequestID || value.RequestDigest != expected.RequestDigest ||
+		value.ApproverID != expected.ApproverID || value.Scope != expected.Scope ||
+		value.Environment != expected.Environment || value.Purpose != expected.Purpose ||
+		value.Classification != expected.Classification || value.RiskClass != expected.RiskClass ||
+		value.Action != expected.Action || value.SubjectType != expected.SubjectType ||
+		value.SubjectID != expected.SubjectID || value.SubjectDigest != expected.SubjectDigest {
+		return failure.New(failure.Forbidden, "approval record v2 does not match expected authority facts", correlationID, failure.RetryNone)
+	}
+	for _, required := range expected.EvidenceReferences {
+		if !contains(value.EvidenceReferences, required) {
+			return failure.New(failure.Forbidden, "approval record v2 is missing required evidence", correlationID, failure.RetryNone)
+		}
+	}
+	for _, condition := range value.Conditions {
+		if !contains(expected.PermittedConditions, condition) {
+			return failure.New(failure.Forbidden, "approval record v2 contains an unsupported condition", correlationID, failure.RetryNone)
+		}
+	}
+	return nil
+}
+
 func (value EvidenceRecord) Validate(correlationID string) error {
 	if value.SchemaVersion != EvidenceRecordSchemaVersion {
 		return invalid("evidence record has an unsupported schema version", correlationID)
@@ -385,6 +550,23 @@ func validateNonEmpty(items []string, label, correlationID string) error {
 		}
 	}
 	return nil
+}
+
+func validateCanonical(items []string, label, correlationID string) error {
+	for index := 1; index < len(items); index++ {
+		if items[index] <= items[index-1] {
+			return invalid(label+" are not in canonical order", correlationID)
+		}
+	}
+	return nil
+}
+
+func validSHA256(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") {
+		return false
+	}
+	decoded, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
+	return err == nil && len(decoded) == sha256.Size
 }
 
 func invalid(message, correlationID string) error {

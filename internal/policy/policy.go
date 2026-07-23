@@ -24,9 +24,11 @@ import (
 const (
 	EvaluateRequestContractVersion           = "forge.policy-evaluate-request.v1"
 	EvaluateDelegationRequestContractVersion = "forge.policy-evaluate-delegation-request.v1"
+	EvaluateApprovalRequestContractVersion   = "forge.policy-evaluate-approval-request.v1"
 	DeveloperTrialEnvironment                = Environment("developer-trial")
 	ActionAssembleContext                    = Action("forge.context.assemble")
 	ActionCreateDelegation                   = Action("forge.delegation.create")
+	ActionDecideApproval                     = Action("forge.approval.decide")
 )
 
 type Action string
@@ -103,6 +105,17 @@ type EvaluateDelegationRequest struct {
 	Scope           tenant.Scope
 	Run             delivery.DeliveryRun
 	Delegation      identity.DelegationRequest
+	Environment     Environment
+	Risk            Risk
+}
+
+type EvaluateApprovalRequest struct {
+	ContractVersion string
+	CorrelationID   string
+	Principal       identity.Principal
+	Scope           tenant.Scope
+	Run             delivery.DeliveryRun
+	Request         trust.ApprovalRequest
 	Environment     Environment
 	Risk            Risk
 }
@@ -309,6 +322,63 @@ func (evaluator *Evaluator) EvaluateDelegation(ctx context.Context, request Eval
 	return decision, nil
 }
 
+// EvaluateApproval evaluates only whether the exact active human may decide
+// one digest-bound plan-review request. It does not decide for the human and
+// cannot mint an Approval Record.
+func (evaluator *Evaluator) EvaluateApproval(ctx context.Context, request EvaluateApprovalRequest) (trust.PolicyDecision, error) {
+	if evaluator == nil || evaluator.now == nil || evaluator.set.Version == "" || len(evaluator.set.Rules) == 0 {
+		return trust.PolicyDecision{}, policyUnavailable(request.CorrelationID)
+	}
+	if ctx == nil || request.ContractVersion != EvaluateApprovalRequestContractVersion || request.CorrelationID == "" {
+		return trust.PolicyDecision{}, invalidRequest(request.CorrelationID)
+	}
+	if err := ctx.Err(); err != nil {
+		return trust.PolicyDecision{}, policyUnavailable(request.CorrelationID)
+	}
+	at := evaluator.now()
+	if at.IsZero() {
+		return trust.PolicyDecision{}, policyUnavailable(request.CorrelationID)
+	}
+	if err := request.Principal.ValidateAt(at, request.CorrelationID); err != nil {
+		return trust.PolicyDecision{}, err
+	}
+	if err := request.Scope.ValidateFor(request.Principal, at, request.CorrelationID); err != nil {
+		return trust.PolicyDecision{}, err
+	}
+	if err := request.Request.VerifyDigest(request.CorrelationID); err != nil {
+		return trust.PolicyDecision{}, err
+	}
+	if !validApprovalFacts(request, at) {
+		return trust.PolicyDecision{}, failure.New(failure.Forbidden, "approval facts are outside the authenticated plan review", request.CorrelationID, failure.RetryNone)
+	}
+	matching := make([]Rule, 0, len(evaluator.set.Rules))
+	for _, rule := range evaluator.set.Rules {
+		if matchesApproval(rule, request) {
+			matching = append(matching, rule)
+		}
+	}
+	outcome, obligations, reasonCodes := evaluator.resolve(matching)
+	expiresAt := at.Add(evaluator.decisionTTL)
+	for _, candidate := range []time.Time{request.Principal.ExpiresAt(), request.Request.ExpiresAt} {
+		if candidate.Before(expiresAt) {
+			expiresAt = candidate
+		}
+	}
+	decision := trust.PolicyDecision{
+		SchemaVersion: trust.PolicyDecisionSchemaVersion, DecisionPoint: "approval",
+		SubjectID: request.Principal.SubjectID(), Action: string(ActionDecideApproval),
+		Resource: request.Request.RequestDigest, EvaluatedAt: at, ExpiresAt: &expiresAt,
+		PolicyVersions: []string{evaluator.set.Version}, Outcome: outcome, Obligations: obligations,
+		ReasonCodes: reasonCodes, EvidenceCorrelationID: request.CorrelationID,
+	}
+	decision.ID = approvalDecisionID(request, decision, matching)
+	if err := decision.Validate(request.CorrelationID); err != nil {
+		return trust.PolicyDecision{}, failure.New(failure.Indeterminate, "approval eligibility decision could not be verified", request.CorrelationID, failure.RetryNone)
+	}
+	evaluator.recordDecision(decision)
+	return decision, nil
+}
+
 // ResolvePolicyDecision returns only decisions minted by this evaluator. It
 // lets enforcement capabilities consume a Policy-owned fact without importing
 // Policy implementation or trusting a caller-constructed decision object.
@@ -418,7 +488,7 @@ func validateRule(rule Rule, seen map[string]struct{}) error {
 		return errors.New("policy rule effect is invalid")
 	}
 	for _, action := range rule.Actions {
-		if action != ActionAssembleContext && action != ActionCreateDelegation {
+		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval {
 			return errors.New("policy rule action is invalid")
 		}
 	}
@@ -543,6 +613,43 @@ func matchesDelegation(rule Rule, request EvaluateDelegationRequest) bool {
 		containsString(rule.ProjectIDs, request.Scope.ProjectID())
 }
 
+func validApprovalFacts(request EvaluateApprovalRequest, at time.Time) bool {
+	plan := request.Run.Plan()
+	return request.Environment == DeveloperTrialEnvironment && validRisk(request.Risk) &&
+		request.Principal.Kind() == identity.HumanPrincipal &&
+		request.Run.ContractVersion() == delivery.DeliveryRunContractVersion &&
+		(request.Run.State() == delivery.PlannedState || request.Run.State() == delivery.AwaitingPlanApprovalState) &&
+		plan != nil && request.Run.ActorID() == request.Principal.SubjectID() &&
+		request.Run.TenantID() == request.Scope.TenantID() &&
+		request.Run.WorkspaceID() == request.Scope.WorkspaceID() &&
+		request.Run.ProjectID() == request.Scope.ProjectID() &&
+		request.Request.IntendedApproverID == request.Principal.SubjectID() &&
+		request.Request.Scope == (trust.ApprovalScope{
+			TenantID: request.Run.TenantID(), WorkspaceID: request.Run.WorkspaceID(),
+			ProjectID: request.Run.ProjectID(), RepositoryID: request.Run.RepositoryID(),
+			DeliveryRunID: request.Run.ID(),
+		}) && request.Request.Environment == string(request.Environment) &&
+		request.Request.Purpose == request.Run.Purpose() &&
+		request.Request.Classification == request.Run.Classification() &&
+		request.Request.RiskClass == string(request.Risk) &&
+		request.Request.SubjectID == plan.ID && request.Request.SubjectDigest == plan.Digest &&
+		at.Before(request.Request.ExpiresAt)
+}
+
+func matchesApproval(rule Rule, request EvaluateApprovalRequest) bool {
+	return containsAction(rule.Actions, ActionDecideApproval) &&
+		containsEnvironment(rule.Environments, request.Environment) &&
+		containsRisk(rule.Risks, request.Risk) &&
+		containsString(rule.SubjectIDs, request.Principal.SubjectID()) &&
+		containsString(rule.ResourceIDs, request.Request.RequestDigest) &&
+		containsString(rule.DeliveryRunIDs, request.Run.ID()) &&
+		containsString(rule.Purposes, request.Run.Purpose()) &&
+		containsString(rule.Classifications, request.Run.Classification()) &&
+		containsString(rule.TenantIDs, request.Scope.TenantID()) &&
+		containsString(rule.WorkspaceIDs, request.Scope.WorkspaceID()) &&
+		containsString(rule.ProjectIDs, request.Scope.ProjectID())
+}
+
 func decisionID(request EvaluateRequest, decision trust.PolicyDecision, rules []Rule) string {
 	ruleIDs := make([]string, 0, len(rules))
 	for _, rule := range rules {
@@ -589,6 +696,34 @@ func delegationDecisionID(request EvaluateDelegationRequest, decision trust.Poli
 		MatchingRuleIDs []string
 	}{
 		Decision: decision, AgentSubjectID: request.Agent.SubjectID(),
+		DeliveryRunID: request.Run.ID(), TenantID: request.Scope.TenantID(),
+		WorkspaceID: request.Scope.WorkspaceID(), ProjectID: request.Scope.ProjectID(),
+		Purpose: request.Run.Purpose(), Classification: request.Run.Classification(),
+		Risk: request.Risk, Environment: request.Environment, MatchingRuleIDs: ruleIDs,
+	})
+	digest := sha256.Sum256(encoded)
+	return "forge.policy-decision." + hex.EncodeToString(digest[:])
+}
+
+func approvalDecisionID(request EvaluateApprovalRequest, decision trust.PolicyDecision, rules []Rule) string {
+	ruleIDs := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		ruleIDs = append(ruleIDs, rule.ID)
+	}
+	encoded, _ := json.Marshal(struct {
+		Decision        trust.PolicyDecision
+		RequestDigest   string
+		DeliveryRunID   string
+		TenantID        string
+		WorkspaceID     string
+		ProjectID       string
+		Purpose         string
+		Classification  string
+		Risk            Risk
+		Environment     Environment
+		MatchingRuleIDs []string
+	}{
+		Decision: decision, RequestDigest: request.Request.RequestDigest,
 		DeliveryRunID: request.Run.ID(), TenantID: request.Scope.TenantID(),
 		WorkspaceID: request.Scope.WorkspaceID(), ProjectID: request.Scope.ProjectID(),
 		Purpose: request.Run.Purpose(), Classification: request.Run.Classification(),

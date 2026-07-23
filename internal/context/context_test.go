@@ -183,6 +183,53 @@ func TestContextManifestBudgetFailsClosed(t *testing.T) {
 	assertContextFailure(t, err, failure.BudgetExhausted)
 }
 
+func TestContextReproductionReportsExactChangedAndCrossRunFacts(t *testing.T) {
+	fixture := newContextFixture(t)
+	assembled, err := fixture.service.AssembleContext(context.Background(), fixture.request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	authorizing, _, err := fixture.deliveryService.BeginContextAuthorization(context.Background(), delivery.TransitionRequest{
+		CorrelationID: fixture.request.CorrelationID, IdempotencyKey: "context-authorizing",
+		Run: fixture.request.Run, ExpectedVersion: fixture.request.Run.Version(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready, _, err := fixture.deliveryService.RecordContext(context.Background(), delivery.RecordContextRequest{
+		TransitionRequest: delivery.TransitionRequest{
+			CorrelationID: fixture.request.CorrelationID, IdempotencyKey: "context-ready",
+			Run: authorizing, ExpectedVersion: authorizing.Version(),
+		},
+		Package: assembled.Package, Envelope: fixture.request.Envelope,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := forgectx.ReproduceRequest{
+		ContractVersion: forgectx.ReproduceRequestContractVersion, CorrelationID: fixture.request.CorrelationID,
+		Human: fixture.request.Human, Scope: fixture.request.Scope, Run: ready,
+		PackageID: assembled.Package.ID, ExpectedManifestDigest: assembled.Package.ManifestDigest,
+	}
+	result, err := fixture.service.ReproduceContext(context.Background(), request)
+	if err != nil || !result.Exact || len(result.ChangedSourceIDs) != 0 || len(result.StaleSourceIDs) != 0 {
+		t.Fatalf("exact reproduction=%#v err=%v", result, err)
+	}
+
+	fixture.catalog.mu.Lock()
+	fixture.catalog.records[0].SourceRevision = "changed-revision"
+	fixture.catalog.mu.Unlock()
+	changed, err := fixture.service.ReproduceContext(context.Background(), request)
+	if err != nil || changed.Exact || !slices.Equal(changed.ChangedSourceIDs, []string{"intent"}) {
+		t.Fatalf("changed reproduction=%#v err=%v", changed, err)
+	}
+
+	crossRun := request
+	crossRun.ExpectedManifestDigest = "sha256:other"
+	_, err = fixture.service.ReproduceContext(context.Background(), crossRun)
+	assertContextFailure(t, err, failure.Forbidden)
+}
+
 func BenchmarkAuthorityToContext(b *testing.B) {
 	b.Run("Assemble", func(b *testing.B) {
 		fixture := newContextFixture(b)
@@ -208,11 +255,12 @@ func BenchmarkAuthorityToContext(b *testing.B) {
 }
 
 type contextFixture struct {
-	evaluator   *policy.Evaluator
-	delegations *identity.DelegationService
-	catalog     *catalogStub
-	service     *forgectx.Service
-	request     forgectx.AssembleRequest
+	evaluator       *policy.Evaluator
+	delegations     *identity.DelegationService
+	catalog         *catalogStub
+	service         *forgectx.Service
+	deliveryService *delivery.Service
+	request         forgectx.AssembleRequest
 }
 
 func newContextFixture(t testing.TB) contextFixture {
@@ -338,12 +386,13 @@ func newContextFixture(t testing.TB) contextFixture {
 	catalog := &catalogStub{records: []forgectx.SourceRecord{
 		contextSource("intent", "docs/intent.md"), contextSource("architecture", "docs/architecture/overview.md"),
 	}}
-	service, err := forgectx.NewService(delegations, evaluator, catalog, forgectx.NewMemoryStore(), validAssemblyProfile(), func() time.Time { return contextNow })
+	contextStore := forgectx.NewMemoryStore()
+	service, err := forgectx.NewService(delegations, evaluator, catalog, contextStore, validAssemblyProfile(), func() time.Time { return contextNow })
 	if err != nil {
 		t.Fatal(err)
 	}
 	return contextFixture{
-		evaluator: evaluator, delegations: delegations, catalog: catalog, service: service,
+		evaluator: evaluator, delegations: delegations, catalog: catalog, service: service, deliveryService: deliveryService,
 		request: forgectx.AssembleRequest{
 			ContractVersion: forgectx.AssembleRequestContractVersion, CorrelationID: "context-correlation", IdempotencyKey: "context-1",
 			Human: human, Agent: agent, Scope: scope, Run: captured.Run, DelegationID: delegation.Delegation.ID(),

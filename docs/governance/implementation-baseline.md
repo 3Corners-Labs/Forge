@@ -2,8 +2,8 @@
 
 Status: Accepted
 Owner: Forge Engineering and Architecture
-Version: 0.9
-Verified: 2026-07-22
+Version: 1.0
+Verified: 2026-07-23
 
 ## Purpose
 
@@ -22,15 +22,18 @@ Forge currently provides a small developer bootstrap:
 | Prerequisite diagnostics | Detects Git, Go, Docker, and Task executables | `internal/doctor` | Trial |
 | Local platform control | Invokes the developer Docker Compose profile | `internal/platform` | Trial |
 | Developer environment | Loopback-bound PostgreSQL, Keycloak, OpenBao, MinIO, OpenTelemetry Collector, Prometheus, Grafana, and Mailpit | `deploy/compose` | Trial |
-| Trust contract candidates | Closed JSON Schemas for Execution Envelope, Context Package, Policy Decision, Approval Record, and Evidence Record | `schemas/forge/trust/v1` | Research |
-| Executable trust contracts | Strict Go decoding, structural validation, exact authority binding, child-envelope narrowing, digest binding, evidence-subject binding, and normalized disclosure-safe failures for the five trust objects | `internal/contracts/trust`, `internal/contracts/failure`, and tests | Trial |
+| Trust contract candidates | Closed JSON Schemas for Execution Envelope, Context Package, Policy Decision, Approval Record v1, Approval Request v1, Approval Record v2, and Evidence Record | `schemas/forge/trust/v1` | Research |
+| Executable trust contracts | Strict Go decoding, structural validation, exact authority binding, child-envelope narrowing, canonical digest and integrity binding, Approval v1/v2 version separation, expected-fact approval validation, evidence-subject binding, and normalized disclosure-safe failures | `internal/contracts/trust`, `internal/contracts/failure`, and tests | Trial |
 | Developer Trial identity admission | Provider-neutral assertion verification, audience and lifecycle validation, immutable normalized principal, and disclosure-safe provider failure normalization; only deterministic test providers exist | `internal/identity` and tests | Trial |
 | Developer Trial scope admission | Single-test-tenant workspace membership resolution, server-derived immutable project scope, delayed repository binding discovery, and disclosure-safe cross-scope denial; storage and binding adapters remain test doubles | `internal/tenant` and tests | Trial |
 | Developer Trial intent capture | Versioned direct-human intent capture, immutable `Captured` delivery run, Tenant-derived repository/classification binding, scope-bound atomic idempotency, and a concurrency-safe in-memory store behind a replaceable port | `internal/delivery` and tests | Trial |
 | Developer Trial policy decision | Deterministic fail-closed evaluation of trusted versioned rules against exact Identity, Tenant, Delivery, action, purpose, classification, risk, and environment facts; deny precedence, mandatory obligations, bounded expiry, reason codes, and digest-bound Policy Decisions | `internal/policy`, `internal/contracts/trust`, and tests | Trial |
+| Developer Trial plan-review eligibility | Policy-owned `forge.approval.decide` evaluation bound to the exact Approval Request digest, active human, Delivery plan, Tenant scope, purpose, classification, risk, Developer Trial environment, obligations, policy versions, and expiry | `internal/policy` and tests | Trial |
 | Developer Trial root task delegation | Immutable canonical root-delegation request, digest-bound `forge.delegation.create` Policy evaluation, Identity-owned bounded issuance, atomic tenant-scoped idempotency, expiry narrowing, revocation, and disclosure-safe one-record chain resolution for one synthetic task agent | `internal/identity`, `internal/policy`, and tests | Trial |
 | Developer Trial root Execution Envelope | Policy-owned re-evaluation and decision ledger, live Identity delegation resolution, server-derived limits and expiry, canonical integrity binding, atomic idempotency, and one root envelope limited to context assembly | `internal/policy`, `internal/contracts/trust`, and tests | Trial |
-| Developer Trial context manifest assembly | Authority and obligation enforcement before source-metadata discovery, exact tenant/project/repository validation, bounded deterministic Context Package manifests, omissions, manifest integrity, and atomic replay | `internal/context`, `internal/contracts/trust`, and tests | Trial |
+| Developer Trial context manifest assembly and reproduction | Authority and obligation enforcement before source-metadata discovery; exact tenant/project/repository validation; bounded deterministic Context Package manifests; explicit omissions; integrity and atomic replay; plus capability-owned manifest reproduction that reports changed, missing, or stale source metadata without returning content | `internal/context`, `internal/contracts/trust`, and tests | Trial |
+| Developer Trial context-informed planning | Explicit in-process transitions from `Captured` through `ContextAuthorizing`, `ContextReady`, `Planned`, `AwaitingPlanApproval`, and `PlanApproved`; optimistic concurrency, scope-bound idempotency, atomic minimized outbox entries, bounded deterministic acyclic plans, canonical plan digests, and exact invalidation checks | `internal/delivery` and tests | Trial |
+| Developer Trial plan approval | Approval-owned immutable request and scope-bound Approval Record v2 lifecycle with canonical digests, exact human and Policy eligibility, evidence and condition binding, atomic idempotency, immutable revocation chains, fork prevention, and current-record resolution | `internal/approval`, `internal/contracts/trust`, and tests | Trial |
 | Assurance contract candidates | Closed JSON Schemas for journey scenarios and results | `schemas/forge/assurance/v1` | Research |
 | M1 journey assurance candidates | Reviewed allowed and denied public-CLI scenarios, synthetic fixtures, and an execution plan that remains disabled until M1 | `assurance/journeys/m1` | Research |
 | Offensive assurance safety candidate | Closed rules-of-engagement schema, disabled contract-only M1 configuration, digest-bound target/configuration, and negative safety fixtures | `schemas/forge/security/v1`, `security/assurance` | Research |
@@ -40,7 +43,7 @@ Forge currently provides a small developer bootstrap:
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 | Contributor delivery delegation | Closed, integrity-bound autonomy-grant schema; protected-revision validator; candidate non-interference, lifecycle, scope, budget, and mandatory-gate tests; inactive-by-default reviewed M1 grant | `.forge/autonomy`, `schemas/forge/contributor/v1`, `scripts/validate_autonomy_grant.py`, and tests | Trial |
 
-The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, intent capture, policy evaluation, root delegation, root-envelope issuance, and context-manifest assembly are currently callable Go modules only; they are not wired into the CLI and provide no live identity provider, durable tenant, delivery, delegation, envelope, context, or policy store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, evaluate policy, issue execution envelopes through a public path, retrieve repository content, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, request approvals, publish pull requests, or persist evidence.
+The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, intent capture, policy evaluation, root delegation, root-envelope issuance, context-manifest assembly and reproduction, context-informed planning, and plan approval are currently callable Go modules only. They are not wired into the CLI and provide no live identity provider, durable tenant, delivery, delegation, envelope, context, approval, or policy store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, evaluate policy, issue execution envelopes through a public path, retrieve repository content, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, expose plan review, publish pull requests, or persist evidence.
 
 Contributor delivery delegation is repository governance, not Forge product
 runtime functionality. It becomes active only after a separate authenticated
@@ -53,11 +56,11 @@ All capabilities in `architecture/capabilities.md` remain Research unless a late
 - durable tenant, workspace, project, membership, repository-binding, or quota management beyond the bounded in-memory Developer Trial resolver;
 - identity federation, credential acquisition, child delegation, workload identity issuance, durable delegation persistence, or distributed revocation beyond the bounded in-process root lifecycle;
 - durable policy sourcing, policy administration, durable decision or envelope persistence, revocation distribution, or distributed authorization enforcement beyond the bounded in-process Developer Trial evaluator and root issuer;
-- durable delivery-run state, transitions beyond in-memory `Captured`, transactional outbox, scheduling, cancellation, or recovery;
-- repository-content retrieval, context reproduction, ranking, indexing, embedding, or memory lifecycle beyond bounded source-metadata discovery and Context Package manifest assembly;
+- durable PostgreSQL-backed delivery-run state, durable transactional outbox, scheduling, cancellation, or recovery beyond the bounded in-process M1-A lifecycle;
+- repository-content retrieval, ranking, indexing, embedding, or memory lifecycle beyond bounded source-metadata manifest assembly and reproduction;
 - agent registry, workforce coordination, model routing, or tool brokerage;
 - isolated worker enforcement for filesystem, network, secrets, time, compute, or cost;
-- independent candidate verification or digest-bound approval;
+- worker execution, independent candidate verification, publication approval, or candidate-digest approval;
 - append-oriented integrity-protected evidence storage;
 - Workbench, Software System Twin, public product API, or journey runner;
 - release, production deployment, SaaS tenancy, or supported self-hosted operation.
