@@ -1,7 +1,7 @@
 {
   "schemaVersion": "forge.contributor-autonomy-grant.v1",
   "id": "forge.autonomy-grant.m1-bounded-delivery-v1",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "status": "authorized",
   "issuer": "Sijbren Beukenkamp",
   "accountableOwner": "Sijbren Beukenkamp",
@@ -25,6 +25,7 @@
       "forge.capability.execution",
       "forge.capability.experience",
       "forge.capability.identity",
+      "forge.capability.intelligence",
       "forge.capability.intent",
       "forge.capability.policy",
       "forge.capability.source-control",
@@ -39,7 +40,10 @@
       "architecture/module-boundaries.json",
       "architecture/testdata/**",
       "cmd/**",
+      "docs/architecture/first-slice-capability-contracts.md",
+      "docs/architecture/first-slice-data-flow.md",
       "docs/decisions/0021-guided-resumable-m1-journey.md",
+      "docs/decisions/0022-non-authoritative-model-assisted-product-discovery.md",
       "docs/decisions/README.md",
       "docs/governance/**",
       "go.mod",
@@ -48,6 +52,7 @@
       "internal/**",
       "schemas/forge/assurance/**",
       "schemas/forge/common/**",
+      "schemas/forge/intelligence/**",
       "schemas/forge/trust/**",
       "scripts/check_architecture.py"
     ],
@@ -116,6 +121,6 @@
   },
   "integrity": {
     "algorithm": "sha256",
-    "canonicalDigest": "sha256:0a6983ae7e7d83fe7c5e123f3d79c436b84001acdc69a6448cf33bccd597539b"
+    "canonicalDigest": "sha256:fa9cf77bc6ea55d18525573d5c1e8fd7f15734c5c28a1926bd0f84d069e228a5"
   }
 }
