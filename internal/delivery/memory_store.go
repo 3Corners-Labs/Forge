@@ -67,6 +67,9 @@ func cloneStoredRecord(value StoredRecord) StoredRecord {
 	value.Context = cloneContextRecord(value.Context)
 	value.Plan = clonePlan(value.Plan)
 	value.Approval = clonePlanApprovalRecord(value.Approval)
+	value.Execution = cloneExecutionRecord(value.Execution)
+	value.Candidate = cloneCandidateRecord(value.Candidate)
+	value.Verification = cloneVerificationRecord(value.Verification)
 	value.Outbox = slices.Clone(value.Outbox)
 	return value
 }

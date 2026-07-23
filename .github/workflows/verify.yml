@@ -1,0 +1,48 @@
+name: M1 durable verification
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  durable-verification:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forge-dev-only
+          POSTGRES_DB: forge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forge -d forge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      FORGE_TEST_POSTGRES_DSN: postgres://forge:forge-dev-only@127.0.0.1:5432/forge?sslmode=disable
+      FORGE_TEST_MINIO_ENDPOINT: 127.0.0.1:9000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Start Developer Trial MinIO
+        run: >-
+          docker run --detach --rm --name forge-test-minio
+          --publish 9000:9000
+          --env MINIO_ROOT_USER=minio
+          --env MINIO_ROOT_PASSWORD=minio-dev-only
+          minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+      - name: Wait for MinIO
+        run: |
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          exit 1
+      - run: go test -race ./internal/delivery ./internal/evidence ./internal/verification

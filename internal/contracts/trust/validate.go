@@ -502,6 +502,9 @@ func (value EvidenceRecord) Validate(correlationID string) error {
 	if value.Integrity.Algorithm == "" || value.Integrity.Digest == "" {
 		return invalid("evidence integrity algorithm and digest are required", correlationID)
 	}
+	if err := validateCanonical(value.References, "evidence references", correlationID); err != nil {
+		return err
+	}
 	return nil
 }
 

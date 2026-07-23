@@ -28,6 +28,10 @@ const (
 	PlannedState                        = "Planned"
 	AwaitingPlanApprovalState           = "AwaitingPlanApproval"
 	PlanApprovedState                   = "PlanApproved"
+	ExecutionAuthorizingState           = "ExecutionAuthorizing"
+	ExecutingState                      = "Executing"
+	VerifyingState                      = "Verifying"
+	AwaitingPublicationApprovalState    = "AwaitingPublicationApproval"
 	M1ChangePurpose                     = "forge.m1.prepare-change"
 )
 
@@ -80,6 +84,9 @@ type StoredRecord struct {
 	Context         *ContextRecord
 	Plan            *DeliveryPlan
 	Approval        *PlanApprovalRecord
+	Execution       *ExecutionAuthorityRecord
+	Candidate       *CandidateRecord
+	Verification    *VerificationRecord
 	Outbox          []OutboxEvent
 }
 
@@ -110,6 +117,9 @@ type DeliveryRun struct {
 	context            *ContextRecord
 	plan               *DeliveryPlan
 	approval           *PlanApprovalRecord
+	execution          *ExecutionAuthorityRecord
+	candidate          *CandidateRecord
+	verification       *VerificationRecord
 }
 
 func (value DeliveryRun) ContractVersion() string      { return value.contractVersion }
@@ -133,6 +143,15 @@ func (value DeliveryRun) Context() *ContextRecord      { return cloneContextReco
 func (value DeliveryRun) Plan() *DeliveryPlan          { return clonePlan(value.plan) }
 func (value DeliveryRun) Approval() *PlanApprovalRecord {
 	return clonePlanApprovalRecord(value.approval)
+}
+func (value DeliveryRun) Execution() *ExecutionAuthorityRecord {
+	return cloneExecutionRecord(value.execution)
+}
+func (value DeliveryRun) Candidate() *CandidateRecord {
+	return cloneCandidateRecord(value.candidate)
+}
+func (value DeliveryRun) Verification() *VerificationRecord {
+	return cloneVerificationRecord(value.verification)
 }
 
 type CaptureIntentResult struct {
@@ -272,6 +291,9 @@ func runFromStored(value StoredRecord) DeliveryRun {
 		context:            cloneContextRecord(value.Context),
 		plan:               clonePlan(value.Plan),
 		approval:           clonePlanApprovalRecord(value.Approval),
+		execution:          cloneExecutionRecord(value.Execution),
+		candidate:          cloneCandidateRecord(value.Candidate),
+		verification:       cloneVerificationRecord(value.Verification),
 	}
 }
 

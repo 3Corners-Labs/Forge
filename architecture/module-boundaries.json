@@ -11,17 +11,25 @@
     {"id":"trust-contract","path":"internal/contracts/trust","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":["failure-contract"]},
     {"id":"identity","path":"internal/identity","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","trust-contract"]},
     {"id":"tenant","path":"internal/tenant","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity"]},
-    {"id":"delivery","path":"internal/delivery","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity","tenant","trust-contract"]},
+    {"id":"delivery","path":"internal/delivery","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity","tenant","trust-contract","verification-contracts","worker-contracts"]},
     {"id":"policy","path":"internal/policy","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","identity","tenant","trust-contract"]},
     {"id":"context","path":"internal/context","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","identity","tenant","trust-contract"]},
     {"id":"approval","path":"internal/approval","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","identity","trust-contract"]},
-    {"id":"cmd-forge-worker","path":"cmd/forge-worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker"]},
-    {"id":"worker","path":"internal/worker","deploymentUnit":"forge-worker","maturity":"Research","planned":true,"allowedInternalDependencies":["worker-contracts"]},
-    {"id":"worker-contracts","path":"internal/contracts/worker","deploymentUnit":"shared-contract","maturity":"Research","planned":true,"allowedInternalDependencies":[]}
+    {"id":"execution","path":"internal/execution","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","trust-contract","worker-contracts"]},
+    {"id":"verification","path":"internal/verification","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["delivery","failure-contract","verification-contracts","worker-contracts"]},
+    {"id":"evidence","path":"internal/evidence","deploymentUnit":"forge-control-plane","maturity":"Trial","allowedInternalDependencies":["failure-contract","trust-contract"]},
+    {"id":"cmd-forge-worker","path":"cmd/forge-worker","deploymentUnit":"forge-worker","maturity":"Trial","allowedInternalDependencies":["worker","worker-contracts"]},
+    {"id":"worker","path":"internal/worker","deploymentUnit":"forge-worker","maturity":"Trial","allowedInternalDependencies":["worker-contracts"]},
+    {"id":"worker-contracts","path":"internal/contracts/worker","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":[]},
+    {"id":"cmd-forge-verifier","path":"cmd/forge-verifier","deploymentUnit":"forge-verifier","maturity":"Trial","allowedInternalDependencies":["verification-contracts","verifier","worker-contracts"]},
+    {"id":"verifier","path":"internal/verifier","deploymentUnit":"forge-verifier","maturity":"Trial","allowedInternalDependencies":["verification-contracts","worker-contracts"]},
+    {"id":"verification-contracts","path":"internal/contracts/verification","deploymentUnit":"shared-contract","maturity":"Trial","allowedInternalDependencies":[]}
   ],
   "isolationRules": [
     {"id":"control-plane-cannot-import-worker","fromUnit":"forge-control-plane","deniedToUnits":["forge-worker"]},
     {"id":"worker-cannot-import-control-plane","fromUnit":"forge-worker","deniedToUnits":["forge-control-plane"]},
-    {"id":"shared-contract-cannot-import-runtime","fromUnit":"shared-contract","deniedToUnits":["forge-control-plane","forge-worker"]}
+    {"id":"control-plane-cannot-import-verifier","fromUnit":"forge-control-plane","deniedToUnits":["forge-verifier"]},
+    {"id":"verifier-cannot-import-control-plane","fromUnit":"forge-verifier","deniedToUnits":["forge-control-plane","forge-worker"]},
+    {"id":"shared-contract-cannot-import-runtime","fromUnit":"shared-contract","deniedToUnits":["forge-control-plane","forge-worker","forge-verifier"]}
   ]
 }

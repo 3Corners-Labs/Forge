@@ -34,6 +34,11 @@ Forge currently provides a small developer bootstrap:
 | Developer Trial context manifest assembly and reproduction | Authority and obligation enforcement before source-metadata discovery; exact tenant/project/repository validation; bounded deterministic Context Package manifests; explicit omissions; integrity and atomic replay; plus capability-owned manifest reproduction that reports changed, missing, or stale source metadata without returning content | `internal/context`, `internal/contracts/trust`, and tests | Trial |
 | Developer Trial context-informed planning | Explicit in-process transitions from `Captured` through `ContextAuthorizing`, `ContextReady`, `Planned`, `AwaitingPlanApproval`, and `PlanApproved`; optimistic concurrency, scope-bound idempotency, atomic minimized outbox entries, bounded deterministic acyclic plans, canonical plan digests, and exact invalidation checks | `internal/delivery` and tests | Trial |
 | Developer Trial plan approval | Approval-owned immutable request and scope-bound Approval Record v2 lifecycle with canonical digests, exact human and Policy eligibility, evidence and condition binding, atomic idempotency, immutable revocation chains, fork prevention, and current-record resolution | `internal/approval`, `internal/contracts/trust`, and tests | Trial |
+| Developer Trial worker authority | Separate worker-phase delegation, workload principal binding, current Approval/Context/plan revalidation, Policy-owned bounded worker envelope issuance, expiry, idempotency, revocation, and PostgreSQL adapters | `internal/identity`, `internal/policy`, and tests | Trial |
+| Developer Trial candidate preparation | Closed digest-bound worker contracts, deterministic file replacement, path/source/symlink/output controls, isolated Docker invocation, candidate bundle and tree digests, and Delivery transitions through `Executing` and `Verifying` | `internal/contracts/worker`, `internal/execution`, `internal/worker`, `cmd/forge-worker`, `internal/delivery`, and tests | Trial |
+| Developer Trial independent verification | Closed Assurance Plan and result contracts, mandatory independent consequential oracle, separate verifier deployment unit, fresh-checkout integrity/path/Go-format controls, durable result adapter, and Delivery transition to `AwaitingPublicationApproval` | `internal/contracts/verification`, `internal/verification`, `internal/verifier`, `cmd/forge-verifier`, and tests | Trial |
+| Developer Trial durable control state | Capability-owned PostgreSQL adapters for Tenant, Identity worker delegation, Delivery lifecycle and outbox, Policy worker envelopes, Context manifests, Approval records, Verification records, and Evidence; adapters remain unwired from the public CLI | capability `postgres_store.go` files and integration tests | Trial |
+| Developer Trial evidence and artefacts | Append-only digest-linked Evidence streams with fork detection; bounded MinIO temporary upload, byte verification, immutable digest promotion, and PostgreSQL metadata | `internal/evidence`, dedicated durable-verification workflow, and tests | Trial |
 | Assurance contract candidates | Closed JSON Schemas for journey scenarios and results | `schemas/forge/assurance/v1` | Research |
 | M1 journey assurance candidates | Reviewed allowed and denied public-CLI scenarios, synthetic fixtures, and an execution plan that remains disabled until M1 | `assurance/journeys/m1` | Research |
 | Offensive assurance safety candidate | Closed rules-of-engagement schema, disabled contract-only M1 configuration, digest-bound target/configuration, and negative safety fixtures | `schemas/forge/security/v1`, `security/assurance` | Research |
@@ -43,7 +48,7 @@ Forge currently provides a small developer bootstrap:
 | Architecture fitness checks | Validates document metadata, F0 governance, capability identifiers, schema sets, source integrity, navigation, local links, and developer-only Compose risks and constraints | `scripts/check_architecture.py` | Trial |
 | Contributor delivery delegation | Closed, integrity-bound autonomy-grant schema; protected-revision validator; candidate non-interference, lifecycle, scope, budget, and mandatory-gate tests; inactive-by-default reviewed M1 grant | `.forge/autonomy`, `schemas/forge/contributor/v1`, `scripts/validate_autonomy_grant.py`, and tests | Trial |
 
-The default configuration sets `intelligence.enabled` to `false`. The executable trust contracts validate supplied objects but do not own or operate the capabilities that create, store, revoke, or distribute them. Identity, scope admission, intent capture, policy evaluation, root delegation, root-envelope issuance, context-manifest assembly and reproduction, context-informed planning, and plan approval are currently callable Go modules only. They are not wired into the CLI and provide no live identity provider, durable tenant, delivery, delegation, envelope, context, approval, or policy store, or repository provider. The current CLI does not authenticate users, capture intent through a public command, evaluate policy, issue execution envelopes through a public path, retrieve repository content, invoke models or tools, coordinate agents, prepare repository changes, verify candidates, expose plan review, publish pull requests, or persist evidence.
+The default configuration sets `intelligence.enabled` to `false`. The implemented M1 capabilities are currently callable Go modules and replaceable Developer Trial adapters only; they are not wired into the CLI and provide no live identity or repository provider. The current CLI does not authenticate users, capture intent through a public command, evaluate policy, issue execution envelopes through a public path, retrieve repository content, invoke models or tools, coordinate agents, expose plan review, publish pull requests, or operate the durable M1 path. PostgreSQL, MinIO, worker, verifier, and evidence modules therefore prove bounded internal behaviour, not a usable public Forge workflow.
 
 Contributor delivery delegation is repository governance, not Forge product
 runtime functionality. It becomes active only after a separate authenticated
@@ -53,15 +58,15 @@ human activation bound to an eligible protected grant revision and exact task.
 
 All capabilities in `architecture/capabilities.md` remain Research unless a later evidence record says otherwise. In particular, the repository does not yet implement:
 
-- durable tenant, workspace, project, membership, repository-binding, or quota management beyond the bounded in-memory Developer Trial resolver;
-- identity federation, credential acquisition, child delegation, workload identity issuance, durable delegation persistence, or distributed revocation beyond the bounded in-process root lifecycle;
+- durable tenant, workspace, project, membership, repository-binding, or quota administration beyond the bounded Developer Trial facts and PostgreSQL resolver;
+- identity federation, credential acquisition, general child delegation, distributed workload identity, or distributed revocation beyond the bounded M1 worker lifecycle;
 - durable policy sourcing, policy administration, durable decision or envelope persistence, revocation distribution, or distributed authorization enforcement beyond the bounded in-process Developer Trial evaluator and root issuer;
-- durable PostgreSQL-backed delivery-run state, durable transactional outbox, scheduling, cancellation, or recovery beyond the bounded in-process M1-A lifecycle;
+- scheduling, cancellation orchestration, automatic outbox dispatch, or automated recovery beyond durable checkpoint and pending-outbox resolution;
 - repository-content retrieval, ranking, indexing, embedding, or memory lifecycle beyond bounded source-metadata manifest assembly and reproduction;
 - agent registry, workforce coordination, model routing, or tool brokerage;
-- isolated worker enforcement for filesystem, network, secrets, time, compute, or cost;
-- worker execution, independent candidate verification, publication approval, or candidate-digest approval;
-- append-oriented integrity-protected evidence storage;
+- production-grade sandbox assurance, dynamic workers, models, tools, secrets, or network authority;
+- publication approval or candidate-digest approval;
+- evidence signing, production non-repudiation, retention execution, or supported backup and restore;
 - Workbench, Software System Twin, public product API, or journey runner;
 - release, production deployment, SaaS tenancy, or supported self-hosted operation.
 
