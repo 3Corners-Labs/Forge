@@ -1,7 +1,7 @@
 {
   "schemaVersion": "forge.contributor-autonomy-grant.v1",
   "id": "forge.autonomy-grant.m1-bounded-delivery-v1",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "status": "authorized",
   "issuer": "Sijbren Beukenkamp",
   "accountableOwner": "Sijbren Beukenkamp",
@@ -27,6 +27,7 @@
       "forge.capability.identity",
       "forge.capability.intent",
       "forge.capability.policy",
+      "forge.capability.source-control",
       "forge.capability.tenant",
       "forge.capability.tool",
       "forge.capability.verification"
@@ -41,6 +42,7 @@
       "docs/governance/**",
       "go.mod",
       "go.sum",
+      "mkdocs.yml",
       "internal/**",
       "schemas/forge/assurance/**",
       "schemas/forge/common/**",
@@ -112,6 +114,6 @@
   },
   "integrity": {
     "algorithm": "sha256",
-    "canonicalDigest": "sha256:1e9b2e8030d5cb7229a92909ac8099cae209c70ea7b663d7a659a4533acff0fa"
+    "canonicalDigest": "sha256:41b6beb029611f5ec87acb2854a27936e4c9b048048704d9e77278fc8f38438c"
   }
 }
