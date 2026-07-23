@@ -9,6 +9,8 @@ const (
 	ExecutionEnvelopeSchemaVersion = "forge.execution-envelope.v1"
 	ContextPackageSchemaVersion    = "forge.context-package.v1"
 	ApprovalRecordSchemaVersion    = "forge.approval-record.v1"
+	ApprovalRequestSchemaVersion   = "forge.approval-request.v1"
+	ApprovalRecordV2SchemaVersion  = "forge.approval-record.v2"
 	EvidenceRecordSchemaVersion    = "forge.evidence-record.v1"
 )
 
@@ -119,6 +121,93 @@ type ApprovalRecord struct {
 	ExpiresAt             time.Time `json:"expiresAt"`
 	Conditions            []string  `json:"conditions,omitempty"`
 	EvidenceCorrelationID string    `json:"evidenceCorrelationId"`
+}
+
+type ApprovalScope struct {
+	TenantID      string `json:"tenantId"`
+	WorkspaceID   string `json:"workspaceId"`
+	ProjectID     string `json:"projectId"`
+	RepositoryID  string `json:"repositoryId"`
+	DeliveryRunID string `json:"deliveryRunId"`
+}
+
+// PlanApprovalSubject is the minimal immutable projection shared by Delivery
+// and Approval ports. It carries no source content, human decision, or
+// execution authority.
+type PlanApprovalSubject struct {
+	RunID              string
+	PlanID             string
+	PlanDigest         string
+	Scope              ApprovalScope
+	RequestingActorID  string
+	Purpose            string
+	Classification     string
+	RiskClass          string
+	ContextPackageID   string
+	ContextManifest    string
+	EvidenceReferences []string
+	PolicyDecisionIDs  []string
+	ExpiresAt          time.Time
+	CorrelationID      string
+}
+
+// ApprovalRequest is an immutable review subject. It records no human
+// decision and grants no execution authority.
+type ApprovalRequest struct {
+	SchemaVersion         string        `json:"schemaVersion"`
+	ID                    string        `json:"id"`
+	RequestDigest         string        `json:"requestDigest"`
+	Issuer                string        `json:"issuer"`
+	RequestingActorID     string        `json:"requestingActorId"`
+	IntendedApproverID    string        `json:"intendedApproverId"`
+	Scope                 ApprovalScope `json:"scope"`
+	Environment           string        `json:"environment"`
+	Purpose               string        `json:"purpose"`
+	Classification        string        `json:"classification"`
+	RiskClass             string        `json:"riskClass"`
+	Action                string        `json:"action"`
+	SubjectType           string        `json:"subjectType"`
+	SubjectID             string        `json:"subjectId"`
+	SubjectDigest         string        `json:"subjectDigest"`
+	EvidenceReferences    []string      `json:"evidenceReferences"`
+	PermittedConditions   []string      `json:"permittedConditions"`
+	PolicyDecisionIDs     []string      `json:"policyDecisionIds"`
+	CreatedAt             time.Time     `json:"createdAt"`
+	ExpiresAt             time.Time     `json:"expiresAt"`
+	MaxDecisionLifetime   int64         `json:"maxDecisionLifetimeSeconds"`
+	Lifecycle             string        `json:"lifecycle"`
+	EvidenceCorrelationID string        `json:"evidenceCorrelationId"`
+}
+
+// ApprovalRecordV2 is the scope-bound immutable human decision contract.
+// Its integrity does not make it canonical state; consumers still resolve it
+// from the Approval capability and validate current subject and policy facts.
+type ApprovalRecordV2 struct {
+	SchemaVersion         string        `json:"schemaVersion"`
+	ID                    string        `json:"id"`
+	Issuer                string        `json:"issuer"`
+	RequestID             string        `json:"requestId"`
+	RequestDigest         string        `json:"requestDigest"`
+	ApproverID            string        `json:"approverId"`
+	DelegationReference   string        `json:"delegationReference,omitempty"`
+	Scope                 ApprovalScope `json:"scope"`
+	Environment           string        `json:"environment"`
+	Purpose               string        `json:"purpose"`
+	Classification        string        `json:"classification"`
+	RiskClass             string        `json:"riskClass"`
+	Action                string        `json:"action"`
+	SubjectType           string        `json:"subjectType"`
+	SubjectID             string        `json:"subjectId"`
+	SubjectDigest         string        `json:"subjectDigest"`
+	Decision              string        `json:"decision"`
+	DecidedAt             time.Time     `json:"decidedAt"`
+	ExpiresAt             time.Time     `json:"expiresAt"`
+	Conditions            []string      `json:"conditions"`
+	PolicyDecisionIDs     []string      `json:"policyDecisionIds"`
+	EvidenceReferences    []string      `json:"evidenceReferences"`
+	PreviousRecordID      string        `json:"previousRecordId,omitempty"`
+	EvidenceCorrelationID string        `json:"evidenceCorrelationId"`
+	Integrity             Integrity     `json:"integrity"`
 }
 
 type EvidenceRecord struct {

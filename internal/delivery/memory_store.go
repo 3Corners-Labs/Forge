@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -12,17 +13,22 @@ type MemoryStore struct {
 	mu      sync.Mutex
 	newID   func() string
 	records map[string]StoredRecord
+	byID    map[string]string
+	changes map[string]transitionEntry
 }
 
 func NewMemoryStore(newID func() string) (*MemoryStore, error) {
 	if newID == nil {
 		return nil, errors.New("delivery run ID generator is required")
 	}
-	return &MemoryStore{newID: newID, records: make(map[string]StoredRecord)}, nil
+	return &MemoryStore{
+		newID: newID, records: make(map[string]StoredRecord),
+		byID: make(map[string]string), changes: make(map[string]transitionEntry),
+	}, nil
 }
 
 func (store *MemoryStore) CreateCaptured(ctx context.Context, record CaptureRecord) (StoredRecord, bool, error) {
-	if store == nil || store.newID == nil || store.records == nil {
+	if store == nil || store.newID == nil || store.records == nil || store.byID == nil || store.changes == nil {
 		return StoredRecord{}, false, errors.New("delivery memory store is unavailable")
 	}
 	if ctx == nil {
@@ -52,10 +58,15 @@ func (store *MemoryStore) CreateCaptured(ctx context.Context, record CaptureReco
 		Version:         1,
 	}
 	store.records[key] = cloneStoredRecord(stored)
+	store.byID[id] = key
 	return cloneStoredRecord(stored), false, nil
 }
 
 func cloneStoredRecord(value StoredRecord) StoredRecord {
 	value.CaptureRecord = cloneCaptureRecord(value.CaptureRecord)
+	value.Context = cloneContextRecord(value.Context)
+	value.Plan = clonePlan(value.Plan)
+	value.Approval = clonePlanApprovalRecord(value.Approval)
+	value.Outbox = slices.Clone(value.Outbox)
 	return value
 }

@@ -375,6 +375,8 @@ def check_trust_schemas() -> None:
         "context-package.schema.json",
         "policy-decision.schema.json",
         "approval-record.schema.json",
+        "approval-request.schema.json",
+        "approval-record-v2.schema.json",
         "evidence-record.schema.json",
     }
     present = {path.name for path in schema_directory.glob("*.schema.json")}
@@ -811,6 +813,20 @@ def check_module_boundaries() -> None:
     }
     if by_id.get("policy") != expected_policy_module:
         fail("M1 policy must remain a Trial control-plane module with its accepted dependencies")
+    expected_delivery_module = {
+        "id": "delivery",
+        "path": "internal/delivery",
+        "deploymentUnit": "forge-control-plane",
+        "maturity": "Trial",
+        "allowedInternalDependencies": [
+            "failure-contract",
+            "identity",
+            "tenant",
+            "trust-contract",
+        ],
+    }
+    if by_id.get("delivery") != expected_delivery_module:
+        fail("M1 Delivery must own planning without importing Approval or Policy runtime state")
     expected_context_module = {
         "id": "context",
         "path": "internal/context",
@@ -826,6 +842,19 @@ def check_module_boundaries() -> None:
     }
     if by_id.get("context") != expected_context_module:
         fail("M1 context must remain a Trial enforcement module without Policy runtime access")
+    expected_approval_module = {
+        "id": "approval",
+        "path": "internal/approval",
+        "deploymentUnit": "forge-control-plane",
+        "maturity": "Trial",
+        "allowedInternalDependencies": [
+            "failure-contract",
+            "identity",
+            "trust-contract",
+        ],
+    }
+    if by_id.get("approval") != expected_approval_module:
+        fail("M1 Approval must own approval state without importing Delivery or Policy runtime state")
     allowed_maturities = {"Research", "Trial", "Supported", "Deprecated"}
     for module in modules:
         if module.get("maturity") not in allowed_maturities:
@@ -903,6 +932,8 @@ def check_module_boundaries() -> None:
     )
     if "trust.ExecutionEnvelope{" in delivery_source or "BindExecutionEnvelopeIntegrity(" in delivery_source:
         fail("Delivery must not construct or integrity-bind Execution Envelopes")
+    if "trust.ApprovalRecordV2{" in delivery_source or "BindApprovalRecordV2Integrity(" in delivery_source:
+        fail("Delivery must not construct or integrity-bind Approval Records")
 
     fixture_directory = ROOT / "architecture/testdata"
     expected_fixture_names = {

@@ -73,6 +73,10 @@ type Store interface {
 	Create(context.Context, trust.ContextPackage, string, string, string) (trust.ContextPackage, bool, error)
 }
 
+type ReproductionStore interface {
+	Resolve(context.Context, string, string) (trust.ContextPackage, bool, error)
+}
+
 type AssemblyProfile struct {
 	MaximumItems            int
 	MaximumSerializedBytes  int
@@ -263,10 +267,14 @@ type memoryEntry struct {
 type MemoryStore struct {
 	mu            sync.RWMutex
 	byIdempotency map[string]memoryEntry
+	byID          map[string]trust.ContextPackage
 }
 
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{byIdempotency: make(map[string]memoryEntry)}
+	return &MemoryStore{
+		byIdempotency: make(map[string]memoryEntry),
+		byID:          make(map[string]trust.ContextPackage),
+	}
 }
 
 func (store *MemoryStore) Get(_ context.Context, tenantID, idempotencyKey, fingerprint string) (trust.ContextPackage, bool, error) {
@@ -299,7 +307,146 @@ func (store *MemoryStore) Create(_ context.Context, value trust.ContextPackage, 
 		return clonePackage(existing.value), true, nil
 	}
 	store.byIdempotency[key] = memoryEntry{value: clonePackage(value), fingerprint: fingerprint}
+	store.byID[tenantID+"\x00"+value.ID] = clonePackage(value)
 	return clonePackage(value), false, nil
+}
+
+func (store *MemoryStore) Resolve(ctx context.Context, tenantID, packageID string) (trust.ContextPackage, bool, error) {
+	if store == nil || store.byID == nil || ctx == nil || tenantID == "" || packageID == "" {
+		return trust.ContextPackage{}, false, ErrContextStoreUnavailable
+	}
+	if err := ctx.Err(); err != nil {
+		return trust.ContextPackage{}, false, err
+	}
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	value, found := store.byID[tenantID+"\x00"+packageID]
+	return clonePackage(value), found, nil
+}
+
+type ReproduceRequest struct {
+	ContractVersion        string
+	CorrelationID          string
+	Human                  identity.Principal
+	Scope                  tenant.Scope
+	Run                    delivery.DeliveryRun
+	PackageID              string
+	ExpectedManifestDigest string
+}
+
+const ReproduceRequestContractVersion = "forge.reproduce-context-request.v1"
+
+type ReproductionResult struct {
+	PackageID        string
+	ManifestDigest   string
+	Exact            bool
+	SourceRevisions  []string
+	Omissions        []string
+	ChangedSourceIDs []string
+	StaleSourceIDs   []string
+	CheckedAt        time.Time
+}
+
+// ReproduceContext compares current authorized source metadata with the
+// capability-owned manifest. It does not retrieve or return source content.
+func (service *Service) ReproduceContext(ctx context.Context, request ReproduceRequest) (ReproductionResult, error) {
+	if service == nil || service.catalog == nil || service.store == nil || service.now == nil {
+		return ReproductionResult{}, unavailable(request.CorrelationID)
+	}
+	store, ok := service.store.(ReproductionStore)
+	if !ok || ctx == nil || request.ContractVersion != ReproduceRequestContractVersion ||
+		request.CorrelationID == "" || request.PackageID == "" || request.ExpectedManifestDigest == "" {
+		return ReproductionResult{}, invalid(request.CorrelationID)
+	}
+	at := service.now()
+	if at.IsZero() {
+		return ReproductionResult{}, unavailable(request.CorrelationID)
+	}
+	if err := request.Human.ValidateAt(at, request.CorrelationID); err != nil {
+		return ReproductionResult{}, err
+	}
+	if err := request.Scope.ValidateFor(request.Human, at, request.CorrelationID); err != nil {
+		return ReproductionResult{}, err
+	}
+	contextRecord := request.Run.Context()
+	if request.Run.ActorID() != request.Human.SubjectID() ||
+		request.Run.TenantID() != request.Scope.TenantID() ||
+		request.Run.WorkspaceID() != request.Scope.WorkspaceID() ||
+		request.Run.ProjectID() != request.Scope.ProjectID() ||
+		contextRecord == nil || contextRecord.PackageID != request.PackageID ||
+		contextRecord.ManifestDigest != request.ExpectedManifestDigest {
+		return ReproductionResult{}, forbidden(request.CorrelationID)
+	}
+	value, found, err := store.Resolve(ctx, request.Scope.TenantID(), request.PackageID)
+	if err != nil {
+		return ReproductionResult{}, unavailable(request.CorrelationID)
+	}
+	if !found || value.ID != request.PackageID || value.ManifestDigest != request.ExpectedManifestDigest {
+		return ReproductionResult{}, failure.New(failure.Indeterminate, "context manifest could not be resolved", request.CorrelationID, failure.RetryNone)
+	}
+	if err := value.VerifyManifest(request.CorrelationID); err != nil {
+		return ReproductionResult{}, err
+	}
+	if value.ExpiresAt == nil || !at.Before(*value.ExpiresAt) {
+		return ReproductionResult{}, failure.New(failure.Expired, "context manifest is no longer current", request.CorrelationID, failure.RetryNewAuthority)
+	}
+	sourceIDs := make([]string, 0, len(value.Items))
+	expected := make(map[string]trust.ContextItem, len(value.Items))
+	revisions := make([]string, 0, len(value.Items))
+	for _, item := range value.Items {
+		sourceIDs = append(sourceIDs, item.SourceID)
+		expected[item.SourceID] = item
+		revisions = append(revisions, item.SourceID+"@"+item.SourceRevision)
+	}
+	sort.Strings(sourceIDs)
+	sort.Strings(revisions)
+	records, err := service.catalog.Discover(ctx, SourceDiscoveryRequest{
+		TenantID: request.Scope.TenantID(), WorkspaceID: request.Scope.WorkspaceID(),
+		ProjectID: request.Scope.ProjectID(), RepositoryID: request.Run.RepositoryID(),
+		RequestedSourceIDs: sourceIDs,
+	})
+	if err != nil {
+		return ReproductionResult{}, sourceUnavailable(request.CorrelationID)
+	}
+	seen := make(map[string]struct{}, len(records))
+	changed := []string{}
+	stale := []string{}
+	for _, record := range records {
+		item, expectedSource := expected[record.SourceID]
+		if !expectedSource || record.TenantID != request.Scope.TenantID() ||
+			record.WorkspaceID != request.Scope.WorkspaceID() || record.ProjectID != request.Scope.ProjectID() ||
+			record.RepositoryID != request.Run.RepositoryID() {
+			return ReproductionResult{}, failure.New(failure.Indeterminate, "context reproduction returned unauthorized metadata", request.CorrelationID, failure.RetryNone)
+		}
+		if _, duplicate := seen[record.SourceID]; duplicate {
+			return ReproductionResult{}, failure.New(failure.Indeterminate, "context reproduction returned duplicate metadata", request.CorrelationID, failure.RetryNone)
+		}
+		seen[record.SourceID] = struct{}{}
+		if record.SourceRevision != item.SourceRevision || record.ContentDigest != item.ContentDigest ||
+			record.Locator != item.Locator || record.Classification != item.Classification ||
+			record.Authority != item.Authority || record.Purpose != item.Purpose ||
+			record.SourceRevision == "" || record.ContentDigest == "" || record.Locator == "" {
+			changed = append(changed, record.SourceID)
+		}
+		if item.FreshnessAt != nil && (record.FreshnessAt == nil || record.FreshnessAt.Before(*item.FreshnessAt)) {
+			stale = append(stale, record.SourceID)
+		}
+	}
+	omissions := slices.Clone(value.Omissions)
+	for _, sourceID := range sourceIDs {
+		if _, found := seen[sourceID]; !found {
+			omissions = append(omissions, "reproduction-source-unavailable:"+sourceID)
+		}
+	}
+	sort.Strings(omissions)
+	sort.Strings(changed)
+	sort.Strings(stale)
+	return ReproductionResult{
+		PackageID: value.ID, ManifestDigest: value.ManifestDigest,
+		Exact:           len(omissions) == len(value.Omissions) && len(changed) == 0 && len(stale) == 0,
+		SourceRevisions: revisions, Omissions: omissions, ChangedSourceIDs: changed,
+		StaleSourceIDs: stale, CheckedAt: at,
+	}, nil
 }
 
 func validRunBinding(request AssembleRequest) bool {

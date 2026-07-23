@@ -52,6 +52,28 @@ func DecodeApprovalRecord(data []byte, correlationID string) (ApprovalRecord, er
 	return value, nil
 }
 
+func DecodeApprovalRequest(data []byte, correlationID string) (ApprovalRequest, error) {
+	var value ApprovalRequest
+	if err := decodeStrict(data, &value, "approval request", correlationID); err != nil {
+		return ApprovalRequest{}, err
+	}
+	if err := value.VerifyDigest(correlationID); err != nil {
+		return ApprovalRequest{}, err
+	}
+	return value, nil
+}
+
+func DecodeApprovalRecordV2(data []byte, correlationID string) (ApprovalRecordV2, error) {
+	var value ApprovalRecordV2
+	if err := decodeStrict(data, &value, "approval record v2", correlationID); err != nil {
+		return ApprovalRecordV2{}, err
+	}
+	if err := value.VerifyIntegrity(correlationID); err != nil {
+		return ApprovalRecordV2{}, err
+	}
+	return value, nil
+}
+
 func DecodeEvidenceRecord(data []byte, correlationID string) (EvidenceRecord, error) {
 	var value EvidenceRecord
 	if err := decodeStrict(data, &value, "evidence record", correlationID); err != nil {

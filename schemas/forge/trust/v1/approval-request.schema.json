@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.example/schemas/trust/v1/approval-request.schema.json",
+  "title": "Forge Approval Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "requestDigest", "issuer", "requestingActorId", "intendedApproverId", "scope", "environment", "purpose", "classification", "riskClass", "action", "subjectType", "subjectId", "subjectDigest", "evidenceReferences", "permittedConditions", "policyDecisionIds", "createdAt", "expiresAt", "maxDecisionLifetimeSeconds", "lifecycle", "evidenceCorrelationId"],
+  "properties": {
+    "schemaVersion": {"const": "forge.approval-request.v1"},
+    "id": {"type": "string", "minLength": 1},
+    "requestDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "issuer": {"type": "string", "minLength": 1},
+    "requestingActorId": {"type": "string", "minLength": 1},
+    "intendedApproverId": {"type": "string", "minLength": 1},
+    "scope": {"$ref": "#/$defs/scope"},
+    "environment": {"const": "developer-trial"},
+    "purpose": {"type": "string", "minLength": 1},
+    "classification": {"enum": ["Public", "Internal", "Confidential", "Restricted"]},
+    "riskClass": {"enum": ["low", "moderate", "high", "critical"]},
+    "action": {"const": "forge.delivery.execute-plan"},
+    "subjectType": {"const": "delivery-plan"},
+    "subjectId": {"type": "string", "minLength": 1},
+    "subjectDigest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "evidenceReferences": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "permittedConditions": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "policyDecisionIds": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "maxDecisionLifetimeSeconds": {"type": "integer", "minimum": 1},
+    "lifecycle": {"const": "open"},
+    "evidenceCorrelationId": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenantId", "workspaceId", "projectId", "repositoryId", "deliveryRunId"],
+      "properties": {
+        "tenantId": {"type": "string", "minLength": 1},
+        "workspaceId": {"type": "string", "minLength": 1},
+        "projectId": {"type": "string", "minLength": 1},
+        "repositoryId": {"type": "string", "minLength": 1},
+        "deliveryRunId": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
