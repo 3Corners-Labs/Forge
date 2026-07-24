@@ -32,6 +32,7 @@ nav:
   - M1-C Guided Delivery to Reviewable PR: governance/m1-c-guided-delivery-to-reviewable-pr-evidence.md
   - M1 Model-Assisted Product Discovery: governance/m1-model-assisted-discovery-evidence.md
   - M1 Live Model Discovery Trial Readiness: governance/m1-live-model-discovery-trial-evidence.md
+  - M1 Discovery Resilience: governance/m1-discovery-resilience-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md

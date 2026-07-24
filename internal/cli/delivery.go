@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/3corners/forge/internal/contracts/discovery"
+	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/intent"
 )
 
@@ -275,6 +276,25 @@ func discoverIntent(ctx context.Context, journey guidedJourney, input *bufio.Rea
 		writeEvent(output, "progress", "discovering", "Forge is clarifying the product outcome. Model output has no authority.", nil)
 		stage, err := journey.Discover(ctx, request)
 		if err != nil {
+			if normalized, retryable := retryableDiscoveryFailure(err); retryable {
+				writeEvent(
+					output,
+					"discovery-paused",
+					"awaiting-retry",
+					"Forge preserved the current discovery checkpoint after a retryable failure.",
+					normalized,
+				)
+				if retryErr := requireConfirmation(
+					input,
+					output,
+					"Retry the current discovery turn? Existing answers remain in this session.",
+				); retryErr == nil {
+					continue
+				}
+				return intentInput{}, "", nil, fmt.Errorf(
+					"guided discovery remains paused: %w", err,
+				)
+			}
 			return intentInput{}, "", nil, err
 		}
 		state := "proposal-ready"
@@ -302,6 +322,15 @@ func discoverIntent(ctx context.Context, journey guidedJourney, input *bufio.Rea
 		request.PreviousQuestions = append([]discovery.Question(nil), stage.Questions...)
 	}
 	return intentInput{}, "", nil, errors.New("model-assisted discovery exceeded the maximum clarification turns")
+}
+
+func retryableDiscoveryFailure(err error) (*failure.Error, bool) {
+	var normalized *failure.Error
+	if !errors.As(err, &normalized) || normalized.Validate() != nil ||
+		normalized.Retry != failure.RetryBounded {
+		return nil, false
+	}
+	return normalized, true
 }
 
 func readDiscoveryAnswers(input *bufio.Reader, output io.Writer, questions []discovery.Question, offset int) ([]string, []string, error) {

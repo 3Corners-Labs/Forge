@@ -147,6 +147,38 @@ func TestServiceEnforcesActivationTurnBudgetBeforeAdapter(t *testing.T) {
 	}
 }
 
+func TestServiceCountsRetryableProviderFailureAgainstTurnBudget(t *testing.T) {
+	request := requestFixture()
+	activation := activationFixture()
+	activation.MaxTurns = 1
+	adapter := &adapterStub{err: context.DeadlineExceeded}
+	service, err := intelligence.NewService(
+		activation,
+		adapter,
+		func() time.Time { return intelligenceTime },
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.Propose(context.Background(), request)
+	var normalized *failure.Error
+	if !errors.As(err, &normalized) ||
+		normalized.Code != failure.DependencyUnavailable ||
+		normalized.Retry != failure.RetryBounded {
+		t.Fatalf("provider timeout was not retryable: %v", err)
+	}
+	_, err = service.Propose(context.Background(), request)
+	if !errors.As(err, &normalized) ||
+		normalized.Code != failure.BudgetExhausted ||
+		adapter.calls != 1 {
+		t.Fatalf(
+			"retry bypassed the failed-turn budget: calls=%d err=%v",
+			adapter.calls,
+			err,
+		)
+	}
+}
+
 func TestServiceReservesSessionAndProjectBudgetsBeforeAdapter(t *testing.T) {
 	request := requestFixture()
 	activation := activationFixture()
