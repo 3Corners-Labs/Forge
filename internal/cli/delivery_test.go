@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/discovery"
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/intelligence"
@@ -357,6 +358,84 @@ func TestDeveloperTrialConversationalJourneyUsesIntelligenceAndReachesReviewable
 		!strings.Contains(output.String(), `"hypotheses":["Advice reduces search time"]`) ||
 		!strings.Contains(output.String(), `"productAreaRefs":["workplace.discovery"]`) {
 		t.Fatalf("unexpected conversational journey: calls=%d\n%s", adapter.calls, output.String())
+	}
+}
+
+type scriptedChangeAdapter struct {
+	calls int
+}
+
+func (*scriptedChangeAdapter) Provider() string { return "contract-double" }
+
+func (adapter *scriptedChangeAdapter) Prepare(_ context.Context, activation intelligence.ProviderActivation, request changecontract.Request) (changecontract.Proposal, error) {
+	adapter.calls++
+	return changecontract.BindProposal(changecontract.Proposal{
+		SchemaVersion: changecontract.ProposalVersion,
+		RequestID:     request.ID, RequestDigest: request.Digest, SourceRevision: request.SourceRevision,
+		PlanDigest: request.PlanDigest, ContextDigest: request.ContextManifestDigest,
+		Replacements: []changecontract.FileReplacement{{
+			Path:      request.AllowedWritePaths[0],
+			Content:   "# Model-assisted candidate\n\nBound to the promoted requirements.\n",
+			Rationale: "Satisfies the approved Developer Trial plan.",
+		}},
+		ProposedChecks: request.TestIntent, Assumptions: []string{"Synthetic contract-double model."},
+		Uncertainty: []string{"Live provider quality is not proven."},
+		Omissions:   []string{"No external repository effect."},
+		Usage:       changecontract.Usage{InputTokens: 100, OutputTokens: 50, LatencyMs: 20, CostMicros: 100},
+		Receipt: changecontract.Receipt{
+			ActivationID: activation.ID, ActivationDigest: activation.Digest,
+			Provider: activation.Provider, ModelID: activation.AllowedModelIDs[0],
+			AdapterVersion: activation.AdapterVersion, RoleProfileID: request.RoleProfileID,
+			PromptVersion: activation.PromptVersion, ResponseSchema: changecontract.ProposalVersion,
+			ProviderRequest: "change-double-1",
+		},
+	}, request)
+}
+
+func TestDeveloperTrialModelAssistedChangeUsesSeparateAuthorityAndReachesVerification(t *testing.T) {
+	t.Setenv("FORGE_IDENTITY_PROFILE", "developer-allowed")
+	value, err := newDeveloperTrialJourney(journeyOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	journey := value.(*developerTrialJourney)
+	activation := testDiscoveryActivation(journey.now())
+	activation.ID = "activation-change-double"
+	activation.Endpoint = "contract-double://change"
+	activation.AdapterVersion = "forge.contract-double-change-adapter.v1"
+	activation.AllowedModelIDs = []string{"change-double"}
+	activation.AllowedPurposes = []string{changecontract.PurposeV1}
+	activation.PromptVersion = "forge.change-preparation.contract-double.v1"
+	adapter := &scriptedChangeAdapter{}
+	preparer, err := intelligence.NewChangeService(activation, adapter, journey.now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	journey.changePreparation, journey.changeActivation = preparer, activation
+	proposal, err := journey.Start(context.Background(), startInput{
+		Workspace: "fixture-workspace", Project: "forge", Repository: "forge",
+		Intent: intentInput{
+			Outcome: "Build from understood intent", AffectedUsers: []string{"developer"},
+			Problem:            "Fixed candidate bytes prove no product value",
+			AcceptanceCriteria: []string{"Candidate content is model proposed"},
+			Constraints:        []string{"Developer Trial only"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := journey.PromoteAndPlan(context.Background(), proposal.SessionID, proposal.ProposalDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate, err := journey.ApprovePlanAndVerify(context.Background(), plan.SessionID, plan.PlanDigest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if adapter.calls != 1 || candidate.ChangeProvider != "contract-double" ||
+		candidate.ChangeModelID != "change-double" || candidate.ChangeProposalDigest == "" ||
+		candidate.VerificationDigest == "" || !candidate.EvidenceReady {
+		t.Fatalf("model-assisted candidate did not reach independent verification: %#v calls=%d", candidate, adapter.calls)
 	}
 }
 

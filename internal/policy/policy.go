@@ -11,6 +11,7 @@ import (
 	"errors"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +30,7 @@ const (
 	ActionAssembleContext                    = Action("forge.context.assemble")
 	ActionCreateDelegation                   = Action("forge.delegation.create")
 	ActionDecideApproval                     = Action("forge.approval.decide")
+	ActionProposeChange                      = Action("forge.intelligence.propose-change")
 	ActionPrepareChange                      = Action("forge.worker.prepare-change")
 	ActionPublishPullRequest                 = Action("forge.source-control.publish-pr")
 )
@@ -491,7 +493,7 @@ func validateRule(rule Rule, seen map[string]struct{}) error {
 	}
 	for _, action := range rule.Actions {
 		if action != ActionAssembleContext && action != ActionCreateDelegation && action != ActionDecideApproval &&
-			action != ActionPrepareChange && action != ActionPublishPullRequest {
+			action != ActionProposeChange && action != ActionPrepareChange && action != ActionPublishPullRequest {
 			return errors.New("policy rule action is invalid")
 		}
 	}
@@ -566,9 +568,18 @@ func validDelegationFacts(request EvaluateDelegationRequest) bool {
 		request.Agent.Kind() == identity.AgentPrincipal && request.Agent.Synthetic() &&
 		request.Human.SubjectID() != request.Agent.SubjectID() &&
 		request.Run.ContractVersion() == delivery.DeliveryRunContractVersion &&
-		request.Run.State() == delivery.CapturedState && request.Run.ID() != "" &&
+		validDelegationRunState(request) && request.Run.ID() != "" &&
 		request.Run.RepositoryID() != "" && request.Run.Purpose() != "" &&
 		request.Run.Classification() != ""
+}
+
+func validDelegationRunState(request EvaluateDelegationRequest) bool {
+	if slices.Equal(request.Delegation.Actions(), []string{identity.DelegatedActionAssembleContext}) {
+		return request.Run.State() == delivery.CapturedState
+	}
+	return slices.Equal(request.Delegation.Actions(), []string{identity.DelegatedActionProposeChange}) &&
+		request.Run.State() == delivery.PlanApprovedState &&
+		request.Run.Plan() != nil && request.Run.Context() != nil && request.Run.Approval() != nil
 }
 
 func validDelegationBinding(request EvaluateDelegationRequest) bool {
@@ -584,8 +595,21 @@ func validDelegationBinding(request EvaluateDelegationRequest) bool {
 		delegation.ProjectID() == request.Scope.ProjectID() &&
 		delegation.RepositoryID() == request.Run.RepositoryID() &&
 		delegation.DeliveryRunID() == request.Run.ID() &&
-		slices.Equal(delegation.Resources(), []string{request.Run.RepositoryID()}) &&
+		validDelegationCapabilityScope(delegation, request.Run.RepositoryID()) &&
 		slices.Equal(delegation.Classifications(), []string{request.Run.Classification()})
+}
+
+func validDelegationCapabilityScope(delegation identity.DelegationRequest, repositoryID string) bool {
+	if slices.Equal(delegation.Actions(), []string{identity.DelegatedActionAssembleContext}) {
+		return slices.Equal(delegation.Resources(), []string{repositoryID}) &&
+			len(delegation.Destinations()) == 0 &&
+			delegation.MaximumAutonomy() == identity.ContextPreparationOnly
+	}
+	resources, destinations := delegation.Resources(), delegation.Destinations()
+	return slices.Equal(delegation.Actions(), []string{identity.DelegatedActionProposeChange}) &&
+		len(resources) == 1 && strings.HasPrefix(resources[0], "sha256:") &&
+		len(destinations) == 1 && strings.HasPrefix(destinations[0], "model:") &&
+		delegation.MaximumAutonomy() == identity.ChangeProposalOnly
 }
 
 func matches(rule Rule, request EvaluateRequest) bool {

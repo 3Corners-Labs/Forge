@@ -8,6 +8,7 @@ import (
 	"errors"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,8 +25,10 @@ const (
 
 	DelegationActionCreate         = "forge.delegation.create"
 	DelegatedActionAssembleContext = "forge.context.assemble"
+	DelegatedActionProposeChange   = "forge.intelligence.propose-change"
 	DeveloperTrialEnvironment      = "developer-trial"
 	ContextPreparationOnly         = "context-preparation-only"
+	ChangeProposalOnly             = "change-proposal-only"
 	M1ChangePurpose                = "forge.delivery.m1-change"
 	delegationRevocationSource     = "forge.identity.delegation-store"
 )
@@ -106,9 +109,9 @@ func NewDelegationRequest(input DelegationRequestInput) (DelegationRequest, erro
 		input.HumanSubjectID == "" || input.AgentSubjectID == "" || input.HumanSubjectID == input.AgentSubjectID ||
 		input.TenantID == "" || input.WorkspaceID == "" || input.ProjectID == "" || input.RepositoryID == "" ||
 		input.DeliveryRunID == "" || input.Purpose != M1ChangePurpose || input.Environment != DeveloperTrialEnvironment ||
-		input.MaximumAutonomy != ContextPreparationOnly || input.RequestedExpiresAt.IsZero() || input.ParentDelegationID != "" ||
-		!slices.Equal(actions, []string{DelegatedActionAssembleContext}) || len(resources) != 1 || resources[0] != input.RepositoryID ||
-		len(classifications) != 1 || !validDelegationClassification(classifications[0]) || len(destinations) != 0 {
+		input.RequestedExpiresAt.IsZero() || input.ParentDelegationID != "" ||
+		!validRootDelegationShape(actions, resources, destinations, input.RepositoryID, input.MaximumAutonomy) ||
+		len(classifications) != 1 || !validDelegationClassification(classifications[0]) {
 		return DelegationRequest{}, errors.New("delegation request is outside the M1 root contract")
 	}
 	value := DelegationRequest{
@@ -236,11 +239,11 @@ func (value Delegation) ValidateFor(human, agent Principal, at time.Time, correl
 		value.issuerSubjectID != human.SubjectID() ||
 		value.tenantID == "" || value.workspaceID == "" || value.projectID == "" || value.repositoryID == "" ||
 		value.deliveryRunID == "" || value.purpose != M1ChangePurpose || value.environment != DeveloperTrialEnvironment ||
-		value.maximumAutonomy != ContextPreparationOnly || value.revocationSource != delegationRevocationSource ||
+		value.revocationSource != delegationRevocationSource ||
 		value.evidenceCorrelationID == "" || value.requestDigest == "" || value.issuedAt.IsZero() ||
 		!value.expiresAt.After(value.issuedAt) ||
-		!slices.Equal(value.actions, []string{DelegatedActionAssembleContext}) || len(value.resources) != 1 ||
-		len(value.classifications) != 1 || !validDelegationClassification(value.classifications[0]) || len(value.destinations) != 0 {
+		!validRootDelegationShape(value.actions, value.resources, value.destinations, value.repositoryID, value.maximumAutonomy) ||
+		len(value.classifications) != 1 || !validDelegationClassification(value.classifications[0]) {
 		return failure.New(failure.Forbidden, "task delegation is invalid", correlationID, failure.RetryNewAuthority)
 	}
 	if at.Before(value.issuedAt) || !at.Before(value.expiresAt) {
@@ -606,6 +609,26 @@ func earliest(values ...time.Time) time.Time {
 
 func validDelegationClassification(value string) bool {
 	return value == "Public" || value == "Internal" || value == "Confidential" || value == "Restricted"
+}
+
+func validRootDelegationShape(actions, resources, destinations []string, repositoryID, autonomy string) bool {
+	if len(resources) != 1 {
+		return false
+	}
+	if slices.Equal(actions, []string{DelegatedActionAssembleContext}) {
+		return autonomy == ContextPreparationOnly && resources[0] == repositoryID && len(destinations) == 0
+	}
+	return slices.Equal(actions, []string{DelegatedActionProposeChange}) &&
+		autonomy == ChangeProposalOnly && validSHA256Digest(resources[0]) &&
+		len(destinations) == 1 && strings.HasPrefix(destinations[0], "model:")
+}
+
+func validSHA256Digest(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+sha256.Size*2 {
+		return false
+	}
+	decoded, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
+	return err == nil && len(decoded) == sha256.Size
 }
 
 func normalizeDelegationStoreError(err error, correlationID string) error {

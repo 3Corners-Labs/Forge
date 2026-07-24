@@ -63,7 +63,7 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "const": "forge.product.discovery"
+        "enum": ["forge.product.discovery", "forge.m1.prepare-change"]
       }
     },
     "allowedClassifications": {
@@ -218,17 +218,11 @@
           "endpoint": {
             "pattern": "^https://(api|eu\\.api|us\\.api)\\.openai\\.com/v1/responses$"
           },
-          "adapterVersion": {
-            "const": "forge.openai-discovery-adapter.v1"
-          },
           "allowedModelIds": {
             "maxItems": 1
           },
           "credentialRef": {
             "pattern": "^env:[A-Za-z_][A-Za-z0-9_]*$"
-          },
-          "promptVersion": {
-            "const": "forge.discovery.prompt.v1"
           },
           "region": {
             "enum": ["global", "eu", "us"]
@@ -243,7 +237,35 @@
               }
             }
           }
-        }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "allowedPurposes": {
+                "const": ["forge.product.discovery"]
+              },
+              "adapterVersion": {
+                "const": "forge.openai-discovery-adapter.v1"
+              },
+              "promptVersion": {
+                "const": "forge.discovery.prompt.v1"
+              }
+            }
+          },
+          {
+            "properties": {
+              "allowedPurposes": {
+                "const": ["forge.m1.prepare-change"]
+              },
+              "adapterVersion": {
+                "const": "forge.openai-change-preparation-adapter.v1"
+              },
+              "promptVersion": {
+                "const": "forge.change-preparation.prompt.v1"
+              }
+            }
+          }
+        ]
       }
     }
   ]

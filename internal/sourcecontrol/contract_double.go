@@ -63,7 +63,8 @@ func (provider *ContractDouble) CreateBranch(ctx context.Context, operation Oper
 	provider.states[operation.ID] = RemoteState{
 		BranchExists: true, Branch: operation.Branch, CommitID: "double-commit-" + operation.ID,
 		CandidateDigest: operation.CandidateDigest, TreeDigest: operation.TreeDigest,
-		BaseBranch: operation.BaseBranch, Marker: operation.Marker, RepositoryID: operation.RepositoryID,
+		BaseBranch: operation.BaseBranch, BaseRevision: operation.BaseRevision,
+		Marker: operation.Marker, RepositoryID: operation.RepositoryID,
 	}
 	if provider.failurePoint == FailAfterBranch && !provider.failed {
 		provider.failed = true

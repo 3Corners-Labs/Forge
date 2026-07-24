@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/3corners/forge/internal/contracts/trust"
 	workercontract "github.com/3corners/forge/internal/contracts/worker"
 )
 
@@ -36,5 +37,41 @@ func TestWorkerResultCannotExceedTrustedLimits(t *testing.T) {
 	result.CleanupOutcome = "not-completed"
 	if validWorkerResult(result, request, bundle, now) {
 		t.Fatal("unproven worker cleanup must fail")
+	}
+}
+
+func TestProposalMaterializationAuthorityIsBoundToExactProposal(t *testing.T) {
+	now := time.Now().UTC()
+	expiresAt := now.Add(time.Minute)
+	decision := trust.PolicyDecision{
+		SchemaVersion: trust.PolicyDecisionSchemaVersion,
+		ID:            "decision-1", DecisionPoint: "execution", SubjectID: "agent-1",
+		Action:      workercontract.PrepareChangeAction,
+		Resource:    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		EvaluatedAt: now, ExpiresAt: &expiresAt, PolicyVersions: []string{"policy-v1"},
+		Outcome: "permit", Obligations: []map[string]any{{"type": "proposal-admitted"}},
+		ReasonCodes: []string{"bounded-proposal"}, EvidenceCorrelationID: "correlation-1",
+	}
+	envelope := trust.ExecutionEnvelope{
+		Principal:         trust.EnvelopePrincipal{AgentID: "agent-1"},
+		PolicyDecisionIDs: []string{"decision-1"},
+	}
+	if !validProposalMaterializationAuthority(
+		decision, envelope, decision.Resource, now.Add(time.Second), "correlation-1",
+	) {
+		t.Fatal("exact proposal authority was rejected")
+	}
+	if validProposalMaterializationAuthority(
+		decision, envelope,
+		"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		now.Add(time.Second), "correlation-1",
+	) {
+		t.Fatal("authority for a different proposal must fail closed")
+	}
+	envelope.PolicyDecisionIDs = []string{"decision-other"}
+	if validProposalMaterializationAuthority(
+		decision, envelope, decision.Resource, now.Add(time.Second), "correlation-1",
+	) {
+		t.Fatal("unreferenced policy authority must fail closed")
 	}
 }

@@ -156,7 +156,8 @@ func TestPublicationConflictingRemoteStateRequiresReconciliation(t *testing.T) {
 	if err := provider.ReplaceState(operation.ID, RemoteState{
 		BranchExists: true, Branch: operation.Branch, CommitID: "foreign",
 		CandidateDigest: "sha256:" + strings.Repeat("d", 64), TreeDigest: operation.TreeDigest,
-		BaseBranch: operation.BaseBranch, Marker: operation.Marker, RepositoryID: operation.RepositoryID,
+		BaseBranch: operation.BaseBranch, BaseRevision: operation.BaseRevision,
+		Marker: operation.Marker, RepositoryID: operation.RepositoryID,
 	}); err != nil {
 		t.Fatal(err)
 	}

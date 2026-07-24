@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "forge.m1-self-build-contract-evidence.v1",
+  "status": "trial",
+  "acceptedOracleChanged": false,
+  "publicEntryPoint": "forge delivery start",
+  "implementedPath": [
+    "promoted Requirements Proposal",
+    "approved exact Delivery Plan",
+    "phase-specific task-agent delegation",
+    "Policy-issued model-proposal authority",
+    "schema-valid non-authoritative Change Proposal",
+    "proposal-digest-bound worker delegation and authority",
+    "deterministic isolated materialization contract",
+    "independent verification",
+    "separate publication approval",
+    "idempotent source-control publication"
+  ],
+  "defaultProvider": "contract-double",
+  "optionalProviderPurpose": "forge.m1.prepare-change",
+  "publicationProvidersImplemented": ["contract-double", "github-app"],
+  "forbidden": [
+    "ambient credentials",
+    "model tools or shell",
+    "model-applied repository changes",
+    "candidate tests as sole oracle",
+    "merge",
+    "release",
+    "deployment",
+    "production"
+  ],
+  "remainingLiveEvidence": [
+    "approved exact change-preparation provider activation",
+    "synthetic live change-preparation quality trial",
+    "ADR-0019 GitHub App permission and protected-branch denial review",
+    "one separately approved real reviewable pull-request publication"
+  ]
+}
