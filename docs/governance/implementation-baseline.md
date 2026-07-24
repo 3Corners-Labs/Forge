@@ -3,7 +3,7 @@
 Status: Accepted
 Owner: Forge Engineering and Architecture
 Version: 1.0
-Verified: 2026-07-23
+Verified: 2026-07-24
 
 ## Purpose
 
@@ -38,7 +38,7 @@ Forge currently provides a small developer bootstrap:
 | Developer Trial candidate preparation | Closed digest-bound worker contracts, deterministic file replacement, path/source/symlink/output controls, isolated Docker invocation, candidate bundle and tree digests, and Delivery transitions through `Executing` and `Verifying` | `internal/contracts/worker`, `internal/execution`, `internal/worker`, `cmd/forge-worker`, `internal/delivery`, and tests | Trial |
 | Developer Trial independent verification | Closed Assurance Plan and result contracts, mandatory independent consequential oracle, separate verifier deployment unit, fresh-checkout integrity/path/Go-format controls, durable result adapter, and Delivery transition to `AwaitingPublicationApproval` | `internal/contracts/verification`, `internal/verification`, `internal/verifier`, `cmd/forge-verifier`, and tests | Trial |
 | Developer Trial Requirements Proposal | Digest-bound structured proposal that separates direct human statements from assumptions, hypotheses, open questions, and experiments; exact authenticated-human promotion is required before Delivery captures intent | `internal/experience`, `internal/intent`, and tests | Trial |
-| Developer Trial model-assisted discovery | Closed provider-neutral discovery request and proposal contracts; Experience-owned conversational turns; Intelligence-owned activation, budgets, adapter invocation, receipt and disclosure-safe failures; strict OpenAI Responses adapter with storage disabled; and a contract-double conversational journey. The live provider is disabled pending exact human activation | `internal/contracts/discovery`, `internal/intelligence`, `internal/experience`, `internal/cli`, `schemas/forge/intelligence/v1`, and tests | Trial |
+| Developer Trial model-assisted discovery | Closed provider-neutral discovery request and proposal contracts; Experience-owned conversational turns; strict regular-file activation loading bound to a separately approved exact digest; Intelligence-owned eligibility, pricing, budgets, adapter invocation, activation-bound receipt and disclosure-safe failures; strict OpenAI Responses adapter with storage, redirects, and environment-proxy routing disabled; measured token, latency, and estimated-cost receipts; synthetic model-selection plan; and preserved contract-double journey. No provider is active by default | `internal/contracts/discovery`, `internal/intelligence`, `internal/experience`, `internal/cli`, `schemas/forge/intelligence/v1`, `assurance/evaluations/discovery`, and tests | Trial |
 | Developer Trial publication approval | Separate Approval Record v2 action for the exact verified candidate, current evidence references, Tenant-derived scope, environment, purpose, classification, risk, Policy eligibility, lifecycle, and expiry | `internal/approval`, `internal/policy`, `internal/contracts/trust`, and tests | Trial |
 | Developer Trial source-control publication | Provider-neutral exact-subject, tree, path, repository, base, metadata-profile, current Approval, Policy, and required Evidence validation; deterministic operation and branch identity; bounded ambiguity reconciliation; and a credential-free idempotent contract double that cannot merge | `internal/sourcecontrol` and tests | Trial |
 | Guided M1 public journey | In-process Developer Trial composition from untrusted requirements input through proposal promotion, plan approval, bounded candidate preparation, independent verification, publication approval, and one reviewable contract-double pull request; denied cross-scope identity fails before repository discovery | `internal/cli`, `assurance/journeys/m1`, and tests | Trial |
@@ -56,22 +56,27 @@ Forge currently provides a small developer bootstrap:
 The default configuration sets `intelligence.enabled` to `false`. The public
 `forge delivery start` command now accepts either the deterministic requirements
 file or a natural-language message through the same bounded M1 capabilities.
-The conversational path remains unavailable until an eligible provider is
-explicitly activated. Contract tests compose it with a credential-free model
-double. The delivery journey uses
+The conversational path remains unavailable until an accountable human
+approves one exact provider activation and digest. When both are supplied to
+the public command, Forge can configure the bounded OpenAI adapter without
+resolving its environment credential until an eligible invocation. No
+activation or credential is committed. Contract tests compose the same path
+with credential-free model and HTTP transport doubles. The delivery journey uses
 synthetic Developer Trial identity, deterministic in-process adapters, separate
 human gates, contract worker and verifier runners, append-oriented evidence,
 and a credential-free source-control contract double. It is a usable
 deterministic learning workflow, not a live repository workflow.
 
-The command does not federate a real identity, retrieve repository content,
-invoke a live model or any tool, coordinate an agent workforce, use the accepted
+The default command does not federate a real identity, retrieve repository
+content, invoke a live model or any tool, coordinate an agent workforce, use the accepted
 PostgreSQL or MinIO adapters, survive process loss, call GitHub, create a real
 branch or pull request, merge, release, deploy, or operate production. The
 separate Docker worker and verifier implementations and durable adapters remain
 internal M1-B evidence; the current guided CLI uses in-process contract runners
 and memory stores and therefore does not prove runtime isolation or durable
-resume.
+resume. The optional live discovery seam proves no provider quality, latency,
+availability, billing, retention, residency, or production fitness until a
+separately approved synthetic trial records that evidence.
 
 Contributor delivery delegation is repository governance, not Forge product
 runtime functionality. It becomes active only after a separate authenticated

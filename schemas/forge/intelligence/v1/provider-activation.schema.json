@@ -20,6 +20,8 @@
     "trainingUse",
     "region",
     "storeProviderState",
+    "reasoningEffort",
+    "pricing",
     "budgets",
     "activatedAt",
     "expiresAt"
@@ -102,6 +104,31 @@
     "storeProviderState": {
       "const": false
     },
+    "reasoningEffort": {
+      "enum": ["none", "low", "medium", "high", "xhigh", "max"]
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "currency",
+        "inputMicrosPerMillionTokens",
+        "outputMicrosPerMillionTokens"
+      ],
+      "properties": {
+        "currency": {
+          "const": "USD"
+        },
+        "inputMicrosPerMillionTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputMicrosPerMillionTokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "budgets": {
       "type": "object",
       "additionalProperties": false,
@@ -111,7 +138,12 @@
         "maxTokens",
         "maxLatencyMs",
         "maxCostMicros",
-        "maxTurns"
+        "maxTurns",
+        "maxSessionTokens",
+        "maxSessionCostMicros",
+        "maxProjectTokensPerDay",
+        "maxProjectCostMicrosPerDay",
+        "maxConcurrentRequests"
       ],
       "properties": {
         "maxInputBytes": {
@@ -138,6 +170,27 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 20
+        },
+        "maxSessionTokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxSessionCostMicros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxProjectTokensPerDay": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxProjectCostMicrosPerDay": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxConcurrentRequests": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
         }
       }
     },
@@ -149,5 +202,49 @@
       "type": "string",
       "format": "date-time"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "provider": {
+            "const": "openai"
+          }
+        },
+        "required": ["provider"]
+      },
+      "then": {
+        "properties": {
+          "endpoint": {
+            "pattern": "^https://(api|eu\\.api|us\\.api)\\.openai\\.com/v1/responses$"
+          },
+          "adapterVersion": {
+            "const": "forge.openai-discovery-adapter.v1"
+          },
+          "allowedModelIds": {
+            "maxItems": 1
+          },
+          "credentialRef": {
+            "pattern": "^env:[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "promptVersion": {
+            "const": "forge.discovery.prompt.v1"
+          },
+          "region": {
+            "enum": ["global", "eu", "us"]
+          },
+          "pricing": {
+            "properties": {
+              "inputMicrosPerMillionTokens": {
+                "minimum": 1
+              },
+              "outputMicrosPerMillionTokens": {
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

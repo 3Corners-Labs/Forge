@@ -19,6 +19,19 @@ type adapterStub struct {
 	err      error
 }
 
+type blockingAdapter struct {
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (*blockingAdapter) Provider() string { return "contract-double" }
+
+func (adapter *blockingAdapter) Propose(_ context.Context, _ intelligence.ProviderActivation, request discovery.TurnRequest) (discovery.TurnProposal, error) {
+	adapter.entered <- struct{}{}
+	<-adapter.release
+	return proposalFixture(request), nil
+}
+
 func (*adapterStub) Provider() string { return "contract-double" }
 
 func (adapter *adapterStub) Propose(context.Context, intelligence.ProviderActivation, discovery.TurnRequest) (discovery.TurnProposal, error) {
@@ -134,6 +147,77 @@ func TestServiceEnforcesActivationTurnBudgetBeforeAdapter(t *testing.T) {
 	}
 }
 
+func TestServiceReservesSessionAndProjectBudgetsBeforeAdapter(t *testing.T) {
+	request := requestFixture()
+	activation := activationFixture()
+	activation.MaxSessionTokens = request.Limits.MaxTokens
+	adapter := &adapterStub{proposal: proposalFixture(request)}
+	service, err := intelligence.NewService(activation, adapter, func() time.Time { return intelligenceTime })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Propose(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.Propose(context.Background(), request)
+	var normalized *failure.Error
+	if !errors.As(err, &normalized) || normalized.Code != failure.BudgetExhausted ||
+		adapter.calls != 1 {
+		t.Fatalf("session budget did not stop the adapter: calls=%d err=%v", adapter.calls, err)
+	}
+
+	activation = activationFixture()
+	activation.MaxSessionTokens = request.Limits.MaxTokens
+	activation.MaxProjectTokensPerDay = request.Limits.MaxTokens
+	adapter = &adapterStub{proposal: proposalFixture(request)}
+	service, err = intelligence.NewService(activation, adapter, func() time.Time { return intelligenceTime })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Propose(context.Background(), request); err != nil {
+		t.Fatal(err)
+	}
+	second := requestFixture()
+	second.SessionID = "session-2"
+	adapter.proposal = proposalFixture(second)
+	_, err = service.Propose(context.Background(), second)
+	if !errors.As(err, &normalized) || normalized.Code != failure.BudgetExhausted ||
+		adapter.calls != 1 {
+		t.Fatalf("project daily budget did not stop the adapter: calls=%d err=%v", adapter.calls, err)
+	}
+}
+
+func TestServiceEnforcesConcurrencyBeforeSecondAdapterInvocation(t *testing.T) {
+	request := requestFixture()
+	activation := activationFixture()
+	activation.MaxConcurrentRequests = 1
+	adapter := &blockingAdapter{
+		entered: make(chan struct{}, 1),
+		release: make(chan struct{}),
+	}
+	service, err := intelligence.NewService(activation, adapter, func() time.Time { return intelligenceTime })
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstResult := make(chan error, 1)
+	go func() {
+		_, proposeErr := service.Propose(context.Background(), request)
+		firstResult <- proposeErr
+	}()
+	<-adapter.entered
+	second := requestFixture()
+	second.SessionID = "session-2"
+	_, err = service.Propose(context.Background(), second)
+	var normalized *failure.Error
+	if !errors.As(err, &normalized) || normalized.Code != failure.BudgetExhausted {
+		t.Fatalf("concurrency budget did not stop the second request: %v", err)
+	}
+	close(adapter.release)
+	if err := <-firstResult; err != nil {
+		t.Fatalf("first reserved request failed: %v", err)
+	}
+}
+
 func TestServiceRejectsActivationPurposeClassificationAndDuplicateModels(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -155,6 +239,20 @@ func TestServiceRejectsActivationPurposeClassificationAndDuplicateModels(t *test
 			name: "duplicate models",
 			mutate: func(value *intelligence.ProviderActivation) {
 				value.AllowedModelIDs = []string{"discovery-double", "discovery-double"}
+			},
+		},
+		{
+			name: "invalid live credential reference",
+			mutate: func(value *intelligence.ProviderActivation) {
+				value.Provider = "openai"
+				value.Endpoint = "https://api.openai.com/v1/responses"
+				value.AdapterVersion = "forge.openai-discovery-adapter.v1"
+				value.PromptVersion = "forge.discovery.prompt.v1"
+				value.AllowedModelIDs = []string{"gpt-5.6-terra"}
+				value.CredentialRef = "env:BAD NAME"
+				value.Region = "global"
+				value.Pricing.InputMicrosPerMillionTokens = 1
+				value.Pricing.OutputMicrosPerMillionTokens = 1
 			},
 		},
 	}
@@ -196,17 +294,23 @@ func BenchmarkServiceProposeContractDouble(b *testing.B) {
 func activationFixture() intelligence.ProviderActivation {
 	return intelligence.ProviderActivation{
 		SchemaVersion: intelligence.ProviderActivationVersion,
-		ID:            "activation-1", Provider: "contract-double", Endpoint: "contract-double://discovery",
+		ID:            "activation-1",
+		Digest:        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Provider:      "contract-double", Endpoint: "contract-double://discovery",
 		AdapterVersion: "1", AllowedModelIDs: []string{"discovery-double"},
 		AllowedPurposes: []string{discovery.PurposeV1}, AllowedClassifications: []string{"Internal"},
 		CredentialRef: "none:contract-double", HumanApprovalRef: "approval:activation-1",
 		PromptVersion: "prompt.v1", Retention: "none", TrainingUse: "disabled",
+		ReasoningEffort: "none", Pricing: intelligence.Pricing{Currency: "USD"},
 		Budgets: discovery.Limits{
 			MaxInputBytes: 16 << 10, MaxOutputBytes: 16 << 10, MaxTokens: 4096,
 			MaxLatency: 10 * time.Second, MaxCostMicros: 100_000,
 		},
-		MaxTurns: 8,
-		Region:   "local", ActivatedAt: intelligenceTime.Add(-time.Minute),
+		MaxTurns:         8,
+		MaxSessionTokens: 32768, MaxSessionCostMicros: 800_000,
+		MaxProjectTokensPerDay: 131072, MaxProjectCostPerDay: 3_200_000,
+		MaxConcurrentRequests: 1,
+		Region:                "local", ActivatedAt: intelligenceTime.Add(-time.Minute),
 		ExpiresAt: intelligenceTime.Add(time.Hour),
 	}
 }
@@ -237,12 +341,16 @@ func proposalFixture(request discovery.TurnRequest) discovery.TurnProposal {
 		ProvenanceRefs: []string{"interaction:user:1"},
 		Usage:          discovery.Usage{InputTokens: 100, OutputTokens: 50, LatencyMs: 200, CostMicros: 100},
 		Receipt: discovery.Receipt{
-			Provider: "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
+			ActivationID:     requestActivationID,
+			ActivationDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Provider:         "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
 			RoleProfileID: discovery.RoleProfileV1, PromptVersion: "prompt.v1",
 			ResponseSchema: discovery.ProposalVersion, ProviderRequest: "request-1",
 		},
 	}
 }
+
+const requestActivationID = "activation-1"
 
 func contains(value, substring string) bool {
 	for index := 0; index+len(substring) <= len(value); index++ {

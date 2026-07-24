@@ -99,7 +99,9 @@ func validProposal(request discovery.TurnRequest) discovery.TurnProposal {
 		ProvenanceRefs: []string{"interaction:user:1"},
 		Usage:          discovery.Usage{InputTokens: 120, OutputTokens: 80, LatencyMs: 500, CostMicros: 200},
 		Receipt: discovery.Receipt{
-			Provider: "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
+			ActivationID:     "activation-1",
+			ActivationDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Provider:         "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
 			RoleProfileID: discovery.RoleProfileV1, PromptVersion: "prompt.v1",
 			ResponseSchema: discovery.ProposalVersion, ProviderRequest: "request-1",
 		},

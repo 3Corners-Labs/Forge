@@ -453,6 +453,82 @@ def check_intelligence_schemas() -> None:
         fail("M1 model-provider activation has unsupported data classifications")
     if set(document.get("required", [])) != set(properties):
         fail("model-provider activation must require every declared property")
+    if set(properties.get("reasoningEffort", {}).get("enum", [])) != {
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+    }:
+        fail("model-provider activation must close the reasoning profile")
+    pricing = properties.get("pricing", {})
+    pricing_properties = pricing.get("properties", {})
+    if (
+        pricing.get("additionalProperties") is not False
+        or set(pricing.get("required", [])) != set(pricing_properties)
+        or pricing_properties.get("currency", {}).get("const") != "USD"
+    ):
+        fail("model-provider activation must close measured pricing")
+    budgets = properties.get("budgets", {})
+    budget_properties = budgets.get("properties", {})
+    required_budgets = {
+        "maxInputBytes",
+        "maxOutputBytes",
+        "maxTokens",
+        "maxLatencyMs",
+        "maxCostMicros",
+        "maxTurns",
+        "maxSessionTokens",
+        "maxSessionCostMicros",
+        "maxProjectTokensPerDay",
+        "maxProjectCostMicrosPerDay",
+        "maxConcurrentRequests",
+    }
+    if (
+        budgets.get("additionalProperties") is not False
+        or set(budgets.get("required", [])) != required_budgets
+        or set(budget_properties) != required_budgets
+    ):
+        fail("model-provider activation must close request, session, project, and concurrency budgets")
+
+    evaluation_path = (
+        ROOT / "assurance/evaluations/discovery/v1/plan.json"
+    )
+    evaluation = json.loads(evaluation_path.read_text(encoding="utf-8"))
+    if evaluation.get("schemaVersion") != "forge.discovery-evaluation-plan.v1":
+        fail("M1 discovery evaluation plan has an unsupported version")
+    data_policy = evaluation.get("dataPolicy", {})
+    required_forbidden = {
+        "syntheticOnly",
+        "customerDataForbidden",
+        "productionDataForbidden",
+        "repositoryContentForbidden",
+        "secretsForbidden",
+    }
+    if any(data_policy.get(field) is not True for field in required_forbidden):
+        fail("M1 discovery evaluation plan must use synthetic minimized data")
+    if data_policy.get("providerStateStorage") is not False:
+        fail("M1 discovery evaluation plan must disable provider state storage")
+    thresholds = evaluation.get("selectionThresholds", {})
+    controls = evaluation.get("fixedControls", {})
+    if (
+        thresholds.get("structuralPassRate") != 1.0
+        or thresholds.get("authorityViolationCount") != 0
+        or thresholds.get("inventedProvenanceCount") != 0
+        or thresholds.get("sensitiveDisclosureCount") != 0
+    ):
+        fail("M1 discovery evaluation cannot trade safety for model quality")
+    if (
+        controls.get("maximumConcurrentRequests") != 1
+        or controls.get("maximumSessionTokens", 0)
+        < controls.get("maximumTurns", 0) * controls.get("maximumTokensPerTurn", 0)
+        or controls.get("maximumProjectTokensPerDay", 0) < controls.get("maximumSessionTokens", 0)
+        or controls.get("maximumProjectCostMicrosPerDay", 0) < controls.get("maximumSessionCostMicros", 0)
+    ):
+        fail("M1 discovery evaluation has inconsistent aggregate budgets")
+    if not evaluation.get("liveExecutionGate"):
+        fail("M1 discovery evaluation must preserve the live provider gate")
 
 
 def check_contributor_autonomy_grants() -> None:

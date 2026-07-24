@@ -86,13 +86,15 @@ type Usage struct {
 }
 
 type Receipt struct {
-	Provider        string `json:"provider"`
-	ModelID         string `json:"modelId"`
-	AdapterVersion  string `json:"adapterVersion"`
-	RoleProfileID   string `json:"roleProfileId"`
-	PromptVersion   string `json:"promptVersion"`
-	ResponseSchema  string `json:"responseSchema"`
-	ProviderRequest string `json:"providerRequest"`
+	ActivationID     string `json:"activationId"`
+	ActivationDigest string `json:"activationDigest"`
+	Provider         string `json:"provider"`
+	ModelID          string `json:"modelId"`
+	AdapterVersion   string `json:"adapterVersion"`
+	RoleProfileID    string `json:"roleProfileId"`
+	PromptVersion    string `json:"promptVersion"`
+	ResponseSchema   string `json:"responseSchema"`
+	ProviderRequest  string `json:"providerRequest"`
 }
 
 type TurnProposal struct {
@@ -163,16 +165,21 @@ func (value TurnProposal) Validate(request TurnRequest) error {
 	if !subset(value.ProvenanceRefs, request.ProvenanceRefs) {
 		return errors.New("discovery proposal invented provenance")
 	}
-	if blank(value.Receipt.Provider, value.Receipt.ModelID, value.Receipt.AdapterVersion,
+	if blank(value.Receipt.ActivationID, value.Receipt.ActivationDigest,
+		value.Receipt.Provider, value.Receipt.ModelID, value.Receipt.AdapterVersion,
 		value.Receipt.RoleProfileID, value.Receipt.PromptVersion, value.Receipt.ResponseSchema,
 		value.Receipt.ProviderRequest) {
 		return errors.New("discovery proposal receipt is incomplete")
+	}
+	if !validDigest(value.Receipt.ActivationDigest) {
+		return errors.New("discovery proposal activation digest is invalid")
 	}
 	if value.Receipt.RoleProfileID != request.RoleProfileID || value.Receipt.ResponseSchema != ProposalVersion {
 		return errors.New("discovery proposal receipt does not match the request")
 	}
 	if value.Usage.InputTokens < 0 || value.Usage.OutputTokens < 0 || value.Usage.LatencyMs < 0 ||
-		value.Usage.CostMicros < 0 || value.Usage.InputTokens+value.Usage.OutputTokens > request.Limits.MaxTokens ||
+		value.Usage.CostMicros < 0 || value.Usage.OutputTokens > request.Limits.MaxTokens ||
+		value.Usage.InputTokens > request.Limits.MaxTokens-value.Usage.OutputTokens ||
 		value.Usage.CostMicros > request.Limits.MaxCostMicros ||
 		time.Duration(value.Usage.LatencyMs)*time.Millisecond > request.Limits.MaxLatency {
 		return errors.New("discovery proposal exceeded its resource limits")
@@ -300,4 +307,16 @@ func blank(values ...string) bool {
 		}
 	}
 	return false
+}
+
+func validDigest(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
+		return false
+	}
+	for _, character := range strings.TrimPrefix(value, "sha256:") {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
+			return false
+		}
+	}
+	return true
 }
