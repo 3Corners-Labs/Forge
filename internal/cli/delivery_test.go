@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -22,11 +23,18 @@ type journeyStub struct {
 	calls           []string
 	discoveryStages []discoveryStage
 	discoveryIndex  int
+	discoveryInputs []discoveryInput
+	discoveryErrors map[int]error
 	startInputs     []startInput
 }
 
-func (stub *journeyStub) Discover(context.Context, discoveryInput) (discoveryStage, error) {
+func (stub *journeyStub) Discover(_ context.Context, input discoveryInput) (discoveryStage, error) {
 	stub.calls = append(stub.calls, "discover")
+	attempt := len(stub.discoveryInputs)
+	stub.discoveryInputs = append(stub.discoveryInputs, input)
+	if err, found := stub.discoveryErrors[attempt]; found {
+		return discoveryStage{}, err
+	}
 	if stub.discoveryIndex >= len(stub.discoveryStages) {
 		return discoveryStage{}, errors.New("no discovery stage configured")
 	}
@@ -106,6 +114,113 @@ func TestConversationalDeliveryClarifiesBeforeProposalAndUsesMeaningfulConfirmat
 		if !strings.Contains(output.String(), expected) {
 			t.Fatalf("conversational output missing %q:\n%s", expected, output.String())
 		}
+	}
+}
+
+func TestConversationalDeliveryPreservesCheckpointAcrossBoundedRetry(t *testing.T) {
+	journey := &journeyStub{
+		discoveryErrors: map[int]error{
+			1: failure.New(
+				failure.DependencyUnavailable,
+				"model-assisted discovery timed out",
+				"correlation-1",
+				failure.RetryBounded,
+			),
+		},
+		discoveryStages: []discoveryStage{
+			{
+				SessionID: "discovery-1",
+				Response:  "Who is the primary user?",
+				Draft: discovery.Draft{
+					Outcome:     "Find a suitable desk quickly",
+					Constraints: []string{"advice only"},
+				},
+				Questions: []discovery.Question{{
+					ID: "q-user", Text: "Who is the primary user?",
+					Consequence: "The main actor remains unclear", Material: true,
+				}},
+			},
+			{
+				SessionID: "discovery-1",
+				Response:  "I can now propose a bounded trial.",
+				Draft: discovery.Draft{
+					Outcome: "Find a suitable desk quickly", AffectedUsers: []string{"employee"},
+					Problem: "Desk choice is slow", Constraints: []string{"advice only"},
+					AcceptanceCriteria: []string{"recommendation within three seconds"},
+				},
+			},
+		},
+	}
+	var output bytes.Buffer
+	err := runDelivery([]string{
+		"start", "--workspace", "fixture-workspace", "--project", "forge",
+		"--repository", "forge", "--message", "Help employees choose a desk",
+		"--provider-activation", "approved-activation.json",
+		"--provider-activation-digest", "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"--output", "json",
+	}, bufio.NewReader(strings.NewReader(
+		"Employees who visit the office\nyes\nyes\nyes\nyes\n",
+	)), &output, &bytes.Buffer{}, func(journeyOptions) (guidedJourney, error) {
+		return journey, nil
+	})
+	if err != nil {
+		t.Fatalf("retryable conversational delivery: %v\n%s", err, output.String())
+	}
+	if len(journey.discoveryInputs) != 3 {
+		t.Fatalf("discovery attempts = %d, want 3", len(journey.discoveryInputs))
+	}
+	if strings.Count(output.String(), "Forge asks [q-user]") != 1 {
+		t.Fatalf("retry repeated an answered question:\n%s", output.String())
+	}
+	failed := journey.discoveryInputs[1]
+	retried := journey.discoveryInputs[2]
+	if failed.SessionID != "discovery-1" || retried.SessionID != failed.SessionID ||
+		!slices.Equal(retried.UserStatements, failed.UserStatements) ||
+		!slices.Equal(retried.ProvenanceRefs, failed.ProvenanceRefs) ||
+		retried.CurrentDraft.Outcome != failed.CurrentDraft.Outcome ||
+		len(retried.PreviousQuestions) != len(failed.PreviousQuestions) {
+		t.Fatalf("retry did not preserve checkpoint:\nfailed=%#v\nretried=%#v", failed, retried)
+	}
+	for _, expected := range []string{
+		`"type":"discovery-paused"`,
+		`"state":"awaiting-retry"`,
+		`"retry":"bounded"`,
+		"Retry the current discovery turn? Existing answers remain in this session. [yes/no]",
+		`"state":"awaiting-promotion"`,
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("retry output missing %q:\n%s", expected, output.String())
+		}
+	}
+}
+
+func TestConversationalDeliveryDoesNotRetryWithoutBoundedRetryClassification(t *testing.T) {
+	expected := failure.New(
+		failure.BudgetExhausted,
+		"model-assisted discovery budget is exhausted",
+		"correlation-1",
+		failure.RetryNewAuthority,
+	)
+	journey := &journeyStub{discoveryErrors: map[int]error{0: expected}}
+	var output bytes.Buffer
+	_, _, _, err := discoverIntent(
+		context.Background(),
+		journey,
+		bufio.NewReader(strings.NewReader("yes\n")),
+		&output,
+		discoveryInput{
+			Workspace: "fixture-workspace", Project: "forge", Repository: "forge",
+			UserStatements: []string{"Help employees choose a desk"},
+			ProvenanceRefs: []string{"interaction:user:1"},
+		},
+	)
+	var normalized *failure.Error
+	if !errors.As(err, &normalized) || normalized != expected {
+		t.Fatalf("non-retryable failure changed: %v", err)
+	}
+	if len(journey.discoveryInputs) != 1 ||
+		strings.Contains(output.String(), `"type":"discovery-paused"`) {
+		t.Fatalf("non-retryable failure was retried or paused:\n%s", output.String())
 	}
 }
 
@@ -245,7 +360,7 @@ func TestDeveloperTrialLoadsExactProviderActivationWithoutResolvingCredential(t 
     "maxInputBytes": 32768,
     "maxOutputBytes": 32768,
     "maxTokens": 4096,
-    "maxLatencyMs": 20000,
+    "maxLatencyMs": 45000,
     "maxCostMicros": 250000,
     "maxTurns": 8,
     "maxSessionTokens": 32768,
@@ -274,6 +389,14 @@ func TestDeveloperTrialLoadsExactProviderActivationWithoutResolvingCredential(t 
 	journey := value.(*developerTrialJourney)
 	if journey.discovery == nil {
 		t.Fatal("approved provider activation was not wired into discovery")
+	}
+	if journey.discoveryLimits != loaded.Budgets ||
+		journey.discoveryLimits.MaxLatency != 45*time.Second {
+		t.Fatalf(
+			"approved provider budgets were not wired into Experience: got=%#v want=%#v",
+			journey.discoveryLimits,
+			loaded.Budgets,
+		)
 	}
 	if _, err := newDeveloperTrialJourney(journeyOptions{
 		ProviderActivationPath:   path,

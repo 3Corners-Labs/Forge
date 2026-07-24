@@ -199,25 +199,26 @@ type trialSession struct {
 }
 
 type developerTrialJourney struct {
-	now           func() time.Time
-	human         identity.Principal
-	taskAgent     identity.Principal
-	worker        identity.Principal
-	directory     *tenant.Directory
-	bindingSource *trialBindingSource
-	scope         tenant.Scope
-	binding       tenant.RepositoryBinding
-	experience    *experience.Service
-	discovery     *experience.DiscoveryService
-	intent        *intent.Service
-	delivery      *delivery.Service
-	policies      *policyResolvers
-	approvals     *approval.Service
-	evidence      *evidence.Service
-	sourceControl *sourcecontrol.Service
-	provider      *sourcecontrol.ContractDouble
-	sessions      map[string]*trialSession
-	nextID        int
+	now             func() time.Time
+	human           identity.Principal
+	taskAgent       identity.Principal
+	worker          identity.Principal
+	directory       *tenant.Directory
+	bindingSource   *trialBindingSource
+	scope           tenant.Scope
+	binding         tenant.RepositoryBinding
+	experience      *experience.Service
+	discovery       *experience.DiscoveryService
+	intent          *intent.Service
+	delivery        *delivery.Service
+	policies        *policyResolvers
+	approvals       *approval.Service
+	evidence        *evidence.Service
+	sourceControl   *sourcecontrol.Service
+	provider        *sourcecontrol.ContractDouble
+	sessions        map[string]*trialSession
+	discoveryLimits discovery.Limits
+	nextID          int
 }
 
 func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
@@ -321,7 +322,9 @@ func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 		if serviceErr != nil {
 			return nil, serviceErr
 		}
-		if configureErr := value.configureDiscoveryWithClock(advisor, liveClock); configureErr != nil {
+		if configureErr := value.configureDiscoveryWithClock(
+			advisor, liveClock, activation.Budgets,
+		); configureErr != nil {
 			return nil, configureErr
 		}
 	}
@@ -342,22 +345,30 @@ func (journey *developerTrialJourney) newIdentifier() string {
 }
 
 func (journey *developerTrialJourney) configureDiscovery(advisor experience.DiscoveryAdvisor) error {
-	return journey.configureDiscoveryWithClock(advisor, journey.now)
+	return journey.configureDiscoveryWithClock(advisor, journey.now, defaultDiscoveryLimits())
 }
 
-func (journey *developerTrialJourney) configureDiscoveryWithClock(advisor experience.DiscoveryAdvisor, clock func() time.Time) error {
+func (journey *developerTrialJourney) configureDiscoveryWithClock(
+	advisor experience.DiscoveryAdvisor,
+	clock func() time.Time,
+	limits discovery.Limits,
+) error {
 	service, err := experience.NewDiscoveryService(
-		advisor, clock, journey.newIdentifier,
-		discovery.Limits{
-			MaxInputBytes: 32 << 10, MaxOutputBytes: 32 << 10, MaxTokens: 4096,
-			MaxLatency: 20 * time.Second, MaxCostMicros: 250_000,
-		},
+		advisor, clock, journey.newIdentifier, limits,
 	)
 	if err != nil {
 		return err
 	}
 	journey.discovery = service
+	journey.discoveryLimits = limits
 	return nil
+}
+
+func defaultDiscoveryLimits() discovery.Limits {
+	return discovery.Limits{
+		MaxInputBytes: 32 << 10, MaxOutputBytes: 32 << 10, MaxTokens: 4096,
+		MaxLatency: 20 * time.Second, MaxCostMicros: 250_000,
+	}
 }
 
 func (journey *developerTrialJourney) Discover(ctx context.Context, input discoveryInput) (discoveryStage, error) {
