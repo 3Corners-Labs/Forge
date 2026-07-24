@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,7 +58,10 @@ type intentInput struct {
 type proposalStage struct {
 	SessionID          string            `json:"sessionId"`
 	ProposalID         string            `json:"proposalId"`
+	ProposalVersion    uint64            `json:"proposalVersion"`
 	ProposalDigest     string            `json:"proposalDigest"`
+	PreviousDigest     string            `json:"previousDigest,omitempty"`
+	ChangeExplanation  string            `json:"changeExplanation"`
 	Outcome            string            `json:"outcome"`
 	AffectedUsers      []string          `json:"affectedUsers"`
 	Problem            string            `json:"problem"`
@@ -76,6 +80,13 @@ type proposalStage struct {
 	Questions          []intent.Question `json:"questions"`
 	Experiments        []string          `json:"experiments"`
 	ProductAreaRefs    []string          `json:"productAreaRefs"`
+}
+
+type proposalEditInput struct {
+	Field             string
+	Item              int
+	Replacement       string
+	ChangeExplanation string
 }
 
 type discoveryInput struct {
@@ -140,6 +151,7 @@ type publicationStage struct {
 type guidedJourney interface {
 	Discover(context.Context, discoveryInput) (discoveryStage, error)
 	Start(context.Context, startInput) (proposalStage, error)
+	ReviseProposal(context.Context, string, string, proposalEditInput) (proposalStage, error)
 	PromoteAndPlan(context.Context, string, string) (planStage, error)
 	ApprovePlanAndVerify(context.Context, string, string) (candidateStage, error)
 	ApprovePublicationAndPublish(context.Context, string, string) (publicationStage, error)
@@ -219,8 +231,13 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	}
 	writeEvent(output, "requirements-proposal", "awaiting-promotion", "Review the proposal. It has no delivery authority.", proposal)
 	if conversational {
-		if err := requireConfirmation(input, output, "Promote this exact Requirements Proposal?"); err != nil {
+		var promote bool
+		proposal, promote, err = reviewRequirementsProposal(ctx, journey, input, output, proposal)
+		if err != nil {
 			return err
+		}
+		if !promote {
+			return nil
 		}
 	} else {
 		if err := requireExact(input, output, "promote "+proposal.ProposalDigest, "Promote the exact proposal"); err != nil {
@@ -264,6 +281,90 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	}
 	writeEvent(output, "publication-receipt", "reviewable", "Pull request published. Human review and merge remain required.", publication)
 	return nil
+}
+
+func reviewRequirementsProposal(ctx context.Context, journey guidedJourney, input *bufio.Reader, output io.Writer, proposal proposalStage) (proposalStage, bool, error) {
+	const maximumEdits = 16
+	for edits := 0; ; {
+		fmt.Fprintln(output, "Review Requirements Proposal [promote/edit/reject]")
+		action, err := readLine(input, "proposal review action")
+		if err != nil {
+			return proposalStage{}, false, err
+		}
+		switch strings.ToLower(action) {
+		case "promote":
+			return proposal, true, nil
+		case "reject":
+			writeEvent(output, "requirements-proposal", "rejected", "Proposal rejected. No canonical intent or delivery authority was created.", proposal)
+			return proposal, false, nil
+		case "edit":
+			if edits >= maximumEdits {
+				return proposalStage{}, false, errors.New("requirements proposal exceeded the maximum review edits")
+			}
+			edit, readErr := readProposalEdit(input, output)
+			if readErr != nil {
+				return proposalStage{}, false, readErr
+			}
+			revised, reviseErr := journey.ReviseProposal(ctx, proposal.SessionID, proposal.ProposalDigest, edit)
+			if reviseErr != nil {
+				writeEvent(output, "proposal-edit-rejected", "awaiting-review", "The edit was not applied. The current proposal remains unchanged.", nil)
+				continue
+			}
+			proposal = revised
+			edits++
+			writeEvent(output, "requirements-proposal", "awaiting-promotion", "Review the revised proposal. Only its exact current digest can be promoted.", proposal)
+		default:
+			fmt.Fprintln(output, "Choose promote, edit, or reject.")
+		}
+	}
+}
+
+func readProposalEdit(input *bufio.Reader, output io.Writer) (proposalEditInput, error) {
+	fmt.Fprintln(output, "Editable fields: outcome, problem, affected-users, functional-behavior, ux-expectations, accessibility, privacy, security, operations, constraints, exclusions, acceptance-criteria, inferences, assumptions, hypotheses, experiments, product-area-refs")
+	fmt.Fprint(output, "Field: ")
+	field, err := readLine(input, "proposal field")
+	if err != nil {
+		return proposalEditInput{}, err
+	}
+	field = strings.ToLower(field)
+	item := 0
+	if field != "outcome" && field != "problem" {
+		fmt.Fprint(output, "Item number (1-based): ")
+		rawItem, readErr := readLine(input, "proposal item")
+		if readErr != nil {
+			return proposalEditInput{}, readErr
+		}
+		item, err = strconv.Atoi(rawItem)
+		if err != nil || item < 1 {
+			return proposalEditInput{}, errors.New("proposal item must be a positive number")
+		}
+	}
+	fmt.Fprint(output, "Replacement: ")
+	replacement, err := readLine(input, "proposal replacement")
+	if err != nil {
+		return proposalEditInput{}, err
+	}
+	fmt.Fprint(output, "Why this changes the proposal: ")
+	explanation, err := readLine(input, "proposal change explanation")
+	if err != nil {
+		return proposalEditInput{}, err
+	}
+	return proposalEditInput{
+		Field: field, Item: item,
+		Replacement: replacement, ChangeExplanation: explanation,
+	}, nil
+}
+
+func readLine(input *bufio.Reader, label string) (string, error) {
+	line, err := input.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", fmt.Errorf("read %s: %w", label, err)
+	}
+	value := strings.TrimSpace(line)
+	if value == "" {
+		return "", fmt.Errorf("%s is required", label)
+	}
+	return value, nil
 }
 
 func discoverIntent(ctx context.Context, journey guidedJourney, input *bufio.Reader, output io.Writer, request discoveryInput) (intentInput, string, []string, error) {

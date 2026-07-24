@@ -5,7 +5,9 @@ package experience
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -119,8 +121,16 @@ type CreateProposal struct {
 	ChangeExplanation  string
 }
 
+type ProposalEdit struct {
+	Field             string
+	Item              int
+	Replacement       string
+	ChangeExplanation string
+}
+
 type Store interface {
 	Create(context.Context, RequirementsProposal) error
+	Revise(context.Context, string, RequirementsProposal) error
 	Resolve(context.Context, string, string) (RequirementsProposal, bool, error)
 }
 
@@ -181,6 +191,111 @@ func (service *Service) Create(ctx context.Context, session Session, request Cre
 	return cloneProposal(proposal), nil
 }
 
+func (service *Service) Revise(ctx context.Context, session Session, proposalID, expectedDigest string, edit ProposalEdit) (RequirementsProposal, error) {
+	if service == nil || service.store == nil || service.now == nil {
+		return RequirementsProposal{}, unavailable(session.correlation)
+	}
+	if ctx == nil || session.actorID == "" || session.tenantID == "" || session.repositoryID == "" ||
+		proposalID == "" || expectedDigest == "" || strings.TrimSpace(edit.Replacement) == "" ||
+		strings.TrimSpace(edit.ChangeExplanation) == "" {
+		return RequirementsProposal{}, failure.New(failure.InvalidRequest, "requirements proposal edit is invalid", session.correlation, failure.RetryNone)
+	}
+	current, found, err := service.store.Resolve(ctx, session.tenantID, proposalID)
+	if err != nil {
+		return RequirementsProposal{}, unavailable(session.correlation)
+	}
+	if !found || !current.Current || current.Digest != expectedDigest ||
+		current.ActorID != session.actorID || current.WorkspaceID != session.workspaceID ||
+		current.ProjectID != session.projectID || current.RepositoryID != session.repositoryID ||
+		current.CorrelationID != session.correlation {
+		return RequirementsProposal{}, failure.New(failure.Conflict, "requirements proposal edit is not based on the current version", session.correlation, failure.RetryReconcile)
+	}
+	revised := cloneProposal(current)
+	if err := applyProposalEdit(&revised, edit); err != nil {
+		return RequirementsProposal{}, failure.New(failure.InvalidRequest, err.Error(), session.correlation, failure.RetryNone)
+	}
+	at := service.now()
+	if at.IsZero() {
+		return RequirementsProposal{}, unavailable(session.correlation)
+	}
+	revised.Version++
+	revised.Digest = ""
+	revised.PreviousDigest = current.Digest
+	revised.ChangeExplanation = edit.ChangeExplanation
+	revised.CreatedAt = at
+	revised.Current = true
+	revised.Statements = append(revised.Statements, Statement{Kind: "human-correction", Text: edit.Replacement})
+	revised.Provenance = append(revised.Provenance, "interaction:human-edit")
+	revised.Digest = intent.BindProposalDigest(toPromotionSubject(revised)).ProposalDigest
+	if err := service.store.Revise(ctx, expectedDigest, revised); err != nil {
+		if errors.Is(err, ErrProposalConflict) {
+			return RequirementsProposal{}, failure.New(failure.Conflict, "requirements proposal changed during editing", session.correlation, failure.RetryReconcile)
+		}
+		return RequirementsProposal{}, unavailable(session.correlation)
+	}
+	return cloneProposal(revised), nil
+}
+
+func applyProposalEdit(proposal *RequirementsProposal, edit ProposalEdit) error {
+	if proposal == nil {
+		return errors.New("requirements proposal edit is invalid")
+	}
+	switch edit.Field {
+	case "outcome":
+		return replaceScalar(&proposal.Outcome, edit)
+	case "problem":
+		return replaceScalar(&proposal.Problem, edit)
+	case "affected-users":
+		return replaceListItem(proposal.AffectedUsers, edit)
+	case "functional-behavior":
+		return replaceListItem(proposal.FunctionalBehavior, edit)
+	case "ux-expectations":
+		return replaceListItem(proposal.UXExpectations, edit)
+	case "accessibility":
+		return replaceListItem(proposal.Accessibility, edit)
+	case "privacy":
+		return replaceListItem(proposal.Privacy, edit)
+	case "security":
+		return replaceListItem(proposal.Security, edit)
+	case "operations":
+		return replaceListItem(proposal.Operations, edit)
+	case "constraints":
+		return replaceListItem(proposal.Constraints, edit)
+	case "exclusions":
+		return replaceListItem(proposal.Exclusions, edit)
+	case "acceptance-criteria":
+		return replaceListItem(proposal.AcceptanceCriteria, edit)
+	case "inferences":
+		return replaceListItem(proposal.Inferences, edit)
+	case "assumptions":
+		return replaceListItem(proposal.Assumptions, edit)
+	case "hypotheses":
+		return replaceListItem(proposal.Hypotheses, edit)
+	case "experiments":
+		return replaceListItem(proposal.Experiments, edit)
+	case "product-area-refs":
+		return replaceListItem(proposal.ProductAreaRefs, edit)
+	default:
+		return errors.New("requirements proposal field is not editable")
+	}
+}
+
+func replaceScalar(target *string, edit ProposalEdit) error {
+	if edit.Item != 0 {
+		return errors.New("scalar requirements proposal edit must use item zero")
+	}
+	*target = edit.Replacement
+	return nil
+}
+
+func replaceListItem(target []string, edit ProposalEdit) error {
+	if edit.Item < 1 || edit.Item > len(target) {
+		return errors.New("requirements proposal list item is outside the current field")
+	}
+	target[edit.Item-1] = edit.Replacement
+	return nil
+}
+
 func (service *Service) ResolvePromotionSubject(ctx context.Context, tenantID, proposalID string) (intent.PromotionSubject, bool, error) {
 	if service == nil || service.store == nil || ctx == nil || tenantID == "" || proposalID == "" {
 		return intent.PromotionSubject{}, false, errors.New("proposal resolution is unavailable")
@@ -206,11 +321,14 @@ func toPromotionSubject(value RequirementsProposal) intent.PromotionSubject {
 		Accessibility: slices.Clone(value.Accessibility), Privacy: slices.Clone(value.Privacy),
 		Security: slices.Clone(value.Security), Operations: slices.Clone(value.Operations),
 		Constraints: slices.Clone(value.Constraints), Exclusions: slices.Clone(value.Exclusions),
-		AcceptanceCriteria:   slices.Clone(value.AcceptanceCriteria),
-		DirectUserStatements: statementTexts(value.Statements, "direct-user-statement"),
-		Inferences:           slices.Clone(value.Inferences),
-		Assumptions:          slices.Clone(value.Assumptions),
-		Hypotheses:           slices.Clone(value.Hypotheses), EvidenceReferences: slices.Clone(value.EvidenceReferences),
+		AcceptanceCriteria: slices.Clone(value.AcceptanceCriteria),
+		DirectUserStatements: append(
+			statementTexts(value.Statements, "direct-user-statement"),
+			statementTexts(value.Statements, "human-correction")...,
+		),
+		Inferences:  slices.Clone(value.Inferences),
+		Assumptions: slices.Clone(value.Assumptions),
+		Hypotheses:  slices.Clone(value.Hypotheses), EvidenceReferences: slices.Clone(value.EvidenceReferences),
 		Questions: slices.Clone(value.Questions), Experiments: slices.Clone(value.Experiments),
 		ProductAreaRefs: slices.Clone(value.ProductAreaRefs), Provenance: slices.Clone(value.Provenance),
 		ChangeExplanation: value.ChangeExplanation,
@@ -239,10 +357,14 @@ func statements(kind string, values []string) []Statement {
 type MemoryStore struct {
 	mu      sync.RWMutex
 	records map[string]RequirementsProposal
+	history map[string]RequirementsProposal
 }
 
 func NewMemoryStore() *MemoryStore {
-	return &MemoryStore{records: make(map[string]RequirementsProposal)}
+	return &MemoryStore{
+		records: make(map[string]RequirementsProposal),
+		history: make(map[string]RequirementsProposal),
+	}
 }
 
 func (store *MemoryStore) Create(_ context.Context, value RequirementsProposal) error {
@@ -252,7 +374,26 @@ func (store *MemoryStore) Create(_ context.Context, value RequirementsProposal) 
 	if _, found := store.records[key]; found {
 		return errors.New("proposal already exists")
 	}
-	store.records[key] = cloneProposal(value)
+	stored := cloneProposal(value)
+	store.records[key] = stored
+	store.history[proposalVersionKey(value.TenantID, value.ID, value.Version)] = stored
+	return nil
+}
+
+var ErrProposalConflict = errors.New("requirements proposal conflict")
+
+func (store *MemoryStore) Revise(_ context.Context, expectedDigest string, value RequirementsProposal) error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	key := value.TenantID + "\x00" + value.ID
+	current, found := store.records[key]
+	if !found || !current.Current || current.Digest != expectedDigest ||
+		value.Version != current.Version+1 || value.PreviousDigest != current.Digest || !value.Current {
+		return ErrProposalConflict
+	}
+	stored := cloneProposal(value)
+	store.records[key] = stored
+	store.history[proposalVersionKey(value.TenantID, value.ID, value.Version)] = stored
 	return nil
 }
 
@@ -261,6 +402,17 @@ func (store *MemoryStore) Resolve(_ context.Context, tenantID, proposalID string
 	defer store.mu.RUnlock()
 	value, found := store.records[tenantID+"\x00"+proposalID]
 	return cloneProposal(value), found, nil
+}
+
+func (store *MemoryStore) ResolveVersion(tenantID, proposalID string, version uint64) (RequirementsProposal, bool) {
+	store.mu.RLock()
+	defer store.mu.RUnlock()
+	value, found := store.history[proposalVersionKey(tenantID, proposalID, version)]
+	return cloneProposal(value), found
+}
+
+func proposalVersionKey(tenantID, proposalID string, version uint64) string {
+	return tenantID + "\x00" + proposalID + "\x00" + fmt.Sprint(version)
 }
 
 func cloneProposal(value RequirementsProposal) RequirementsProposal {

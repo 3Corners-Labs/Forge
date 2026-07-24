@@ -2,9 +2,11 @@ package experience_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/experience"
 	"github.com/3corners/forge/internal/identity"
 	"github.com/3corners/forge/internal/intent"
@@ -102,6 +104,116 @@ func TestProposalDigestChangesWithDirectUserStatementAndIsStableForSetOrdering(t
 	}
 	if third.Digest == first.Digest {
 		t.Fatal("changed direct user statement did not change the digest")
+	}
+}
+
+func TestRequirementsProposalRevisionIsImmutableCurrentAndHumanSourced(t *testing.T) {
+	session := proposalSession(t, "human-1", "correlation-proposal")
+	store := experience.NewMemoryStore()
+	revisionTime := proposalTime
+	service, err := experience.NewService(store, func() time.Time {
+		revisionTime = revisionTime.Add(time.Second)
+		return revisionTime
+	}, func() string { return "proposal-1" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.Create(context.Background(), session, validProposal())
+	if err != nil {
+		t.Fatal(err)
+	}
+	revised, err := service.Revise(context.Background(), session, created.ID, created.Digest, experience.ProposalEdit{
+		Field: "privacy", Item: 1,
+		Replacement:       "Document which personal data is used and why it is necessary",
+		ChangeExplanation: "Replace an absolute prohibition with accountable data use.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if revised.ID != created.ID || revised.Version != 2 || revised.PreviousDigest != created.Digest ||
+		revised.Digest == created.Digest || !revised.Current ||
+		revised.Privacy[0] != "Document which personal data is used and why it is necessary" ||
+		revised.Statements[len(revised.Statements)-1].Kind != "human-correction" ||
+		revised.Provenance[len(revised.Provenance)-1] != "interaction:human-edit" {
+		t.Fatalf("unexpected revised proposal: %#v", revised)
+	}
+	historical, found := store.ResolveVersion(created.TenantID, created.ID, 1)
+	if !found || !historical.Current || historical.Digest != created.Digest ||
+		historical.Privacy[0] != created.Privacy[0] {
+		t.Fatalf("immutable history was not retained: found=%t proposal=%#v", found, historical)
+	}
+	subject, found, err := service.ResolvePromotionSubject(context.Background(), revised.TenantID, revised.ID)
+	if err != nil || !found || subject.ProposalVersion != 2 || subject.ProposalDigest != revised.Digest ||
+		subject.DirectUserStatements[len(subject.DirectUserStatements)-1] != revised.Privacy[0] {
+		t.Fatalf("revised promotion subject found=%t err=%v subject=%#v", found, err, subject)
+	}
+}
+
+func TestRequirementsProposalRevisionFailsClosedForStaleDigestAndInvalidField(t *testing.T) {
+	session := proposalSession(t, "human-1", "correlation-proposal")
+	service, err := experience.NewService(experience.NewMemoryStore(), func() time.Time { return proposalTime }, func() string { return "proposal-1" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.Create(context.Background(), session, validProposal())
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = service.Revise(context.Background(), session, created.ID, "sha256:stale", experience.ProposalEdit{
+		Field: "privacy", Item: 1, Replacement: "Changed", ChangeExplanation: "Correction",
+	})
+	assertProposalFailure(t, err, failure.Conflict)
+	_, err = service.Revise(context.Background(), session, created.ID, created.Digest, experience.ProposalEdit{
+		Field: "questions", Item: 1, Replacement: "Changed", ChangeExplanation: "Correction",
+	})
+	assertProposalFailure(t, err, failure.InvalidRequest)
+	_, err = service.Revise(context.Background(), session, created.ID, created.Digest, experience.ProposalEdit{
+		Field: "privacy", Item: 2, Replacement: "Changed", ChangeExplanation: "Correction",
+	})
+	assertProposalFailure(t, err, failure.InvalidRequest)
+}
+
+func TestConcurrentRequirementsProposalRevisionHasOneCurrentWinner(t *testing.T) {
+	session := proposalSession(t, "human-1", "correlation-proposal")
+	service, err := experience.NewService(experience.NewMemoryStore(), func() time.Time { return proposalTime }, func() string { return "proposal-1" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	created, err := service.Create(context.Background(), session, validProposal())
+	if err != nil {
+		t.Fatal(err)
+	}
+	results := make(chan error, 2)
+	for _, replacement := range []string{"Document purpose", "Document necessity"} {
+		go func(value string) {
+			_, reviseErr := service.Revise(context.Background(), session, created.ID, created.Digest, experience.ProposalEdit{
+				Field: "privacy", Item: 1, Replacement: value, ChangeExplanation: "Concurrent correction",
+			})
+			results <- reviseErr
+		}(replacement)
+	}
+	var successes, conflicts int
+	for range 2 {
+		err := <-results
+		if err == nil {
+			successes++
+			continue
+		}
+		var normalized *failure.Error
+		if errors.As(err, &normalized) && normalized.Code == failure.Conflict {
+			conflicts++
+		}
+	}
+	if successes != 1 || conflicts != 1 {
+		t.Fatalf("successes=%d conflicts=%d", successes, conflicts)
+	}
+}
+
+func assertProposalFailure(t *testing.T, err error, want failure.Code) {
+	t.Helper()
+	var normalized *failure.Error
+	if err == nil || !errors.As(err, &normalized) || normalized.Code != want {
+		t.Fatalf("error=%v want code=%s", err, want)
 	}
 }
 
