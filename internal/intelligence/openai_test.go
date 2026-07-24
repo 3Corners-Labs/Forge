@@ -68,6 +68,14 @@ func TestOpenAIAdapterDisablesStorageAndParsesStructuredOutput(t *testing.T) {
 		if stored, ok := value["store"].(bool); !ok || stored {
 			t.Fatalf("provider storage was not disabled: %s", body)
 		}
+		if maximum, ok := value["max_output_tokens"].(float64); !ok ||
+			int64(maximum) != request.Limits.MaxTokens {
+			t.Fatalf("provider output token budget was not applied: %s", body)
+		}
+		reasoning, ok := value["reasoning"].(map[string]any)
+		if !ok || reasoning["effort"] != "medium" {
+			t.Fatalf("approved reasoning profile was not used: %s", body)
+		}
 		text, ok := value["text"].(map[string]any)
 		if !ok {
 			t.Fatalf("structured output configuration missing: %s", body)
@@ -93,29 +101,18 @@ func TestOpenAIAdapterDisablesStorageAndParsesStructuredOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := intelligence.ProviderActivation{
-		SchemaVersion: intelligence.ProviderActivationVersion,
-		ID:            "activation-openai-1", Provider: "openai",
-		Endpoint:        "https://eu.api.openai.com/v1/responses",
-		AdapterVersion:  "forge.openai-discovery-adapter.v1",
-		AllowedModelIDs: []string{"model-approved"},
-		AllowedPurposes: []string{discovery.PurposeV1}, AllowedClassifications: []string{"Internal"},
-		CredentialRef: "env:OPENAI_API_KEY", HumanApprovalRef: "approval:provider-1",
-		PromptVersion: "forge.discovery.prompt.v1", Retention: "provider-default-up-to-30-days",
-		Budgets: discovery.Limits{
-			MaxInputBytes: 16 << 10, MaxOutputBytes: 16 << 10, MaxTokens: 4096,
-			MaxLatency: 10 * time.Second, MaxCostMicros: 100_000,
-		},
-		MaxTurns:    8,
-		TrainingUse: "disabled", Region: "eu", ActivatedAt: intelligenceTime.Add(-time.Minute),
-		ExpiresAt: intelligenceTime.Add(time.Hour),
-	}
+	activation := openAIActivationFixture()
+	activation.Endpoint = "https://eu.api.openai.com/v1/responses"
+	activation.Region = "eu"
 	proposal, err := adapter.Propose(context.Background(), activation, request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if tokens.calls != 1 || proposal.Receipt.ProviderRequest != "resp-1" ||
-		proposal.Receipt.ModelID != "model-approved" || proposal.Questions[0].ID != "q-1" {
+		proposal.Receipt.ModelID != "model-approved" || proposal.Questions[0].ID != "q-1" ||
+		proposal.Receipt.ActivationID != activation.ID ||
+		proposal.Receipt.ActivationDigest != activation.Digest ||
+		proposal.Usage.CostMicros != 1000 {
 		t.Fatalf("unexpected proposal: %#v", proposal)
 	}
 }
@@ -126,11 +123,8 @@ func TestOpenAIAdapterRejectsUnapprovedEndpointBeforeCredentialResolution(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := intelligence.ProviderActivation{
-		Provider: "openai", Endpoint: "https://attacker.invalid/v1/responses",
-		AdapterVersion:  "forge.openai-discovery-adapter.v1",
-		AllowedModelIDs: []string{"model-approved"},
-	}
+	activation := openAIActivationFixture()
+	activation.Endpoint = "https://attacker.invalid/v1/responses"
 	_, err = adapter.Propose(context.Background(), activation, requestFixture())
 	if err == nil || tokens.calls != 0 {
 		t.Fatalf("unapproved endpoint reached credential source: calls=%d err=%v", tokens.calls, err)
@@ -153,11 +147,7 @@ func TestOpenAIAdapterEnforcesWireInputAndOutputBudgets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := intelligence.ProviderActivation{
-		Endpoint:        "https://api.openai.com/v1/responses",
-		AdapterVersion:  "forge.openai-discovery-adapter.v1",
-		AllowedModelIDs: []string{"model-approved"}, CredentialRef: "env:OPENAI_API_KEY",
-	}
+	activation := openAIActivationFixture()
 	request.Limits.MaxInputBytes = 1
 	if _, err := adapter.Propose(context.Background(), activation, request); err == nil ||
 		networkCalls != 0 || tokens.calls != 0 {
@@ -212,11 +202,7 @@ func TestOpenAIProviderErrorDoesNotIncludeResponseBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := intelligence.ProviderActivation{
-		Endpoint:        "https://api.openai.com/v1/responses",
-		AdapterVersion:  "forge.openai-discovery-adapter.v1",
-		AllowedModelIDs: []string{"model-approved"}, CredentialRef: "env:OPENAI_API_KEY",
-	}
+	activation := openAIActivationFixture()
 	_, err = adapter.Propose(context.Background(), activation, requestFixture())
 	if err == nil || strings.Contains(err.Error(), "FORGE_TEST_SECRET_DO_NOT_RECORD") {
 		t.Fatalf("provider response body leaked: %v", err)
@@ -239,13 +225,45 @@ func TestOpenAIAdapterDoesNotFollowRedirects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	activation := intelligence.ProviderActivation{
-		Endpoint:        "https://api.openai.com/v1/responses",
-		AdapterVersion:  "forge.openai-discovery-adapter.v1",
-		AllowedModelIDs: []string{"model-approved"}, CredentialRef: "env:OPENAI_API_KEY",
-	}
+	activation := openAIActivationFixture()
 	_, err = adapter.Propose(context.Background(), activation, requestFixture())
 	if err == nil || requests != 1 || tokens.calls != 1 {
 		t.Fatalf("redirect was not stopped: requests=%d tokenCalls=%d err=%v", requests, tokens.calls, err)
+	}
+}
+
+func openAIActivationFixture() intelligence.ProviderActivation {
+	return intelligence.ProviderActivation{
+		SchemaVersion:          intelligence.ProviderActivationVersion,
+		ID:                     "activation-openai-1",
+		Digest:                 "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		Provider:               "openai",
+		Endpoint:               "https://api.openai.com/v1/responses",
+		AdapterVersion:         "forge.openai-discovery-adapter.v1",
+		AllowedModelIDs:        []string{"model-approved"},
+		AllowedPurposes:        []string{discovery.PurposeV1},
+		AllowedClassifications: []string{"Internal"},
+		CredentialRef:          "env:OPENAI_API_KEY",
+		HumanApprovalRef:       "approval:provider-1",
+		PromptVersion:          "forge.discovery.prompt.v1",
+		Retention:              "provider-default-up-to-30-days",
+		TrainingUse:            "disabled",
+		Region:                 "global",
+		ReasoningEffort:        "medium",
+		Pricing: intelligence.Pricing{
+			Currency:                     "USD",
+			InputMicrosPerMillionTokens:  2_500_000,
+			OutputMicrosPerMillionTokens: 15_000_000,
+		},
+		Budgets: discovery.Limits{
+			MaxInputBytes: 16 << 10, MaxOutputBytes: 16 << 10, MaxTokens: 4096,
+			MaxLatency: 10 * time.Second, MaxCostMicros: 100_000,
+		},
+		MaxTurns:         8,
+		MaxSessionTokens: 32768, MaxSessionCostMicros: 1_000_000,
+		MaxProjectTokensPerDay: 131072, MaxProjectCostPerDay: 4_000_000,
+		MaxConcurrentRequests: 1,
+		ActivatedAt:           intelligenceTime.Add(-time.Minute),
+		ExpiresAt:             intelligenceTime.Add(time.Hour),
 	}
 }

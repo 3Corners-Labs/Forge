@@ -22,6 +22,7 @@ import (
 	"github.com/3corners/forge/internal/execution"
 	"github.com/3corners/forge/internal/experience"
 	"github.com/3corners/forge/internal/identity"
+	"github.com/3corners/forge/internal/intelligence"
 	"github.com/3corners/forge/internal/intent"
 	"github.com/3corners/forge/internal/policy"
 	"github.com/3corners/forge/internal/sourcecontrol"
@@ -219,7 +220,7 @@ type developerTrialJourney struct {
 	nextID        int
 }
 
-func newDeveloperTrialJourney() (guidedJourney, error) {
+func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 	anchor := time.Now().UTC()
 	now := func() time.Time { return anchor }
 	profile := os.Getenv("FORGE_IDENTITY_PROFILE")
@@ -304,6 +305,26 @@ func newDeveloperTrialJourney() (guidedJourney, error) {
 	if err != nil {
 		return nil, err
 	}
+	if options.ProviderActivationPath != "" {
+		activation, loadErr := intelligence.LoadProviderActivation(options.ProviderActivationPath, anchor)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if activation.Digest != options.ProviderActivationDigest {
+			return nil, errors.New("provider activation does not match its separately approved digest")
+		}
+		if activation.Provider != "openai" {
+			return nil, errors.New("only the approved OpenAI Developer Trial adapter is runnable")
+		}
+		liveClock := func() time.Time { return time.Now().UTC() }
+		advisor, serviceErr := intelligence.NewOpenAIDiscoveryService(activation, liveClock)
+		if serviceErr != nil {
+			return nil, serviceErr
+		}
+		if configureErr := value.configureDiscoveryWithClock(advisor, liveClock); configureErr != nil {
+			return nil, configureErr
+		}
+	}
 	return value, nil
 }
 
@@ -321,8 +342,12 @@ func (journey *developerTrialJourney) newIdentifier() string {
 }
 
 func (journey *developerTrialJourney) configureDiscovery(advisor experience.DiscoveryAdvisor) error {
+	return journey.configureDiscoveryWithClock(advisor, journey.now)
+}
+
+func (journey *developerTrialJourney) configureDiscoveryWithClock(advisor experience.DiscoveryAdvisor, clock func() time.Time) error {
 	service, err := experience.NewDiscoveryService(
-		advisor, journey.now, journey.newIdentifier,
+		advisor, clock, journey.newIdentifier,
 		discovery.Limits{
 			MaxInputBytes: 32 << 10, MaxOutputBytes: 32 << 10, MaxTokens: 4096,
 			MaxLatency: 20 * time.Second, MaxCostMicros: 250_000,
@@ -373,7 +398,9 @@ func (journey *developerTrialJourney) Discover(ctx context.Context, input discov
 		Questions: proposal.Questions, Uncertainty: proposal.Uncertainty,
 		Limitations: proposal.Limitations, Refusal: proposal.Refusal, Incomplete: proposal.Incomplete,
 		Usage: proposal.Usage, Provider: proposal.Receipt.Provider, ModelID: proposal.Receipt.ModelID,
-		RoleProfileID: proposal.Receipt.RoleProfileID, PromptVersion: proposal.Receipt.PromptVersion,
+		ActivationID:     proposal.Receipt.ActivationID,
+		ActivationDigest: proposal.Receipt.ActivationDigest,
+		RoleProfileID:    proposal.Receipt.RoleProfileID, PromptVersion: proposal.Receipt.PromptVersion,
 		ResponseSchema: proposal.Receipt.ResponseSchema,
 	}, nil
 }

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +17,10 @@ import (
 	"github.com/3corners/forge/internal/contracts/discovery"
 )
 
-const openAIAdapterVersion = "forge.openai-discovery-adapter.v1"
+const (
+	openAIAdapterVersion   = "forge.openai-discovery-adapter.v1"
+	discoveryPromptVersion = "forge.discovery.prompt.v1"
+)
 
 type TokenSource interface {
 	Token(context.Context, string) (string, error)
@@ -52,13 +56,35 @@ func NewOpenAIAdapter(client *http.Client, tokens TokenSource) (*OpenAIAdapter, 
 	return &OpenAIAdapter{client: client, tokens: tokens}, nil
 }
 
+func NewOpenAIDiscoveryService(activation ProviderActivation, now func() time.Time) (*Service, error) {
+	if now == nil {
+		return nil, errors.New("OpenAI discovery clock is unavailable")
+	}
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, errors.New("OpenAI discovery transport is unavailable")
+	}
+	boundedTransport := transport.Clone()
+	boundedTransport.Proxy = nil
+	adapter, err := NewOpenAIAdapter(
+		&http.Client{Transport: boundedTransport, Timeout: activation.Budgets.MaxLatency},
+		EnvironmentTokenSource{},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return NewService(activation, adapter, now)
+}
+
 func (*OpenAIAdapter) Provider() string { return "openai" }
 
 func (adapter *OpenAIAdapter) Propose(ctx context.Context, activation ProviderActivation, request discovery.TurnRequest) (discovery.TurnProposal, error) {
 	if adapter == nil || adapter.client == nil || adapter.tokens == nil {
 		return discovery.TurnProposal{}, errors.New("OpenAI discovery adapter is unavailable")
 	}
-	if activation.AdapterVersion != openAIAdapterVersion || !allowedOpenAIEndpoint(activation.Endpoint) ||
+	if activation.AdapterVersion != openAIAdapterVersion ||
+		activation.PromptVersion != discoveryPromptVersion ||
+		!allowedOpenAIEndpoint(activation.Endpoint, activation.Region) ||
 		len(activation.AllowedModelIDs) != 1 {
 		return discovery.TurnProposal{}, errors.New("OpenAI discovery activation is invalid")
 	}
@@ -68,6 +94,8 @@ func (adapter *OpenAIAdapter) Propose(ctx context.Context, activation ProviderAc
 	}
 	body, err := json.Marshal(openAIRequest{
 		Model: activation.AllowedModelIDs[0], Store: false,
+		MaxOutputTokens: request.Limits.MaxTokens,
+		Reasoning:       openAIReasoning{Effort: activation.ReasoningEffort},
 		Input: []openAIInput{
 			{Role: "developer", Content: []openAIContent{{Type: "input_text", Text: discoveryRolePrompt}}},
 			{Role: "user", Content: []openAIContent{{Type: "input_text", Text: string(input)}}},
@@ -134,6 +162,14 @@ func (adapter *OpenAIAdapter) Propose(ctx context.Context, activation ProviderAc
 	if latency < 0 {
 		latency = 0
 	}
+	cost, err := usageCostMicros(
+		provider.Usage.InputTokens,
+		provider.Usage.OutputTokens,
+		activation.Pricing,
+	)
+	if err != nil {
+		return discovery.TurnProposal{}, err
+	}
 	return discovery.TurnProposal{
 		SchemaVersion: discovery.ProposalVersion, SessionID: request.SessionID,
 		CorrelationID: request.CorrelationID, Response: model.Response,
@@ -142,9 +178,10 @@ func (adapter *OpenAIAdapter) Propose(ctx context.Context, activation ProviderAc
 		Refusal: model.Refusal, Incomplete: model.Incomplete,
 		Usage: discovery.Usage{
 			InputTokens: provider.Usage.InputTokens, OutputTokens: provider.Usage.OutputTokens,
-			LatencyMs: latency,
+			LatencyMs: latency, CostMicros: cost,
 		},
 		Receipt: discovery.Receipt{
+			ActivationID: activation.ID, ActivationDigest: activation.Digest,
 			Provider: "openai", ModelID: provider.Model, AdapterVersion: openAIAdapterVersion,
 			RoleProfileID: request.RoleProfileID, PromptVersion: activation.PromptVersion,
 			ResponseSchema: discovery.ProposalVersion, ProviderRequest: provider.ID,
@@ -161,10 +198,16 @@ Never claim authority, approval, verification, repository access, tool access, o
 Return only the required schema. Use only provenance references present in the request.`
 
 type openAIRequest struct {
-	Model string        `json:"model"`
-	Store bool          `json:"store"`
-	Input []openAIInput `json:"input"`
-	Text  openAIText    `json:"text"`
+	Model           string          `json:"model"`
+	Store           bool            `json:"store"`
+	MaxOutputTokens int64           `json:"max_output_tokens"`
+	Reasoning       openAIReasoning `json:"reasoning"`
+	Input           []openAIInput   `json:"input"`
+	Text            openAIText      `json:"text"`
+}
+
+type openAIReasoning struct {
+	Effort string `json:"effort"`
 }
 
 type openAIInput struct {
@@ -225,18 +268,48 @@ type modelProposal struct {
 	Incomplete     bool                 `json:"incomplete"`
 }
 
-func allowedOpenAIEndpoint(raw string) bool {
+func allowedOpenAIEndpoint(raw, region string) bool {
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed.Scheme != "https" || parsed.Path != "/v1/responses" ||
 		parsed.RawQuery != "" || parsed.Fragment != "" || parsed.User != nil {
 		return false
 	}
 	switch parsed.Hostname() {
-	case "api.openai.com", "eu.api.openai.com", "us.api.openai.com":
-		return parsed.Port() == ""
+	case "api.openai.com":
+		return parsed.Port() == "" && region == "global"
+	case "eu.api.openai.com":
+		return parsed.Port() == "" && region == "eu"
+	case "us.api.openai.com":
+		return parsed.Port() == "" && region == "us"
 	default:
 		return false
 	}
+}
+
+func usageCostMicros(inputTokens, outputTokens int64, pricing Pricing) (int64, error) {
+	input, err := tokenCostMicros(inputTokens, pricing.InputMicrosPerMillionTokens)
+	if err != nil {
+		return 0, err
+	}
+	output, err := tokenCostMicros(outputTokens, pricing.OutputMicrosPerMillionTokens)
+	if err != nil || output > math.MaxInt64-input {
+		return 0, errors.New("OpenAI discovery usage is invalid")
+	}
+	return input + output, nil
+}
+
+func tokenCostMicros(tokens, rate int64) (int64, error) {
+	if tokens < 0 || rate < 0 || (rate > 0 && tokens > math.MaxInt64/rate) {
+		return 0, errors.New("OpenAI discovery usage is invalid")
+	}
+	product := tokens * rate
+	if product == 0 {
+		return 0, nil
+	}
+	if product > math.MaxInt64-999_999 {
+		return 0, errors.New("OpenAI discovery usage is invalid")
+	}
+	return (product + 999_999) / 1_000_000, nil
 }
 
 func discoveryOutputSchema() map[string]any {

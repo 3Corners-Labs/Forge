@@ -16,7 +16,12 @@ import (
 	"github.com/3corners/forge/internal/intent"
 )
 
-type journeyFactory func() (guidedJourney, error)
+type journeyOptions struct {
+	ProviderActivationPath   string
+	ProviderActivationDigest string
+}
+
+type journeyFactory func(journeyOptions) (guidedJourney, error)
 
 type startInput struct {
 	Workspace  string
@@ -84,20 +89,22 @@ type discoveryInput struct {
 }
 
 type discoveryStage struct {
-	SessionID      string               `json:"sessionId"`
-	Response       string               `json:"response"`
-	Draft          discovery.Draft      `json:"draft"`
-	Questions      []discovery.Question `json:"questions"`
-	Uncertainty    []string             `json:"uncertainty"`
-	Limitations    []string             `json:"limitations"`
-	Refusal        bool                 `json:"refusal"`
-	Incomplete     bool                 `json:"incomplete"`
-	Usage          discovery.Usage      `json:"usage"`
-	Provider       string               `json:"provider"`
-	ModelID        string               `json:"modelId"`
-	RoleProfileID  string               `json:"roleProfileId"`
-	PromptVersion  string               `json:"promptVersion"`
-	ResponseSchema string               `json:"responseSchema"`
+	SessionID        string               `json:"sessionId"`
+	Response         string               `json:"response"`
+	Draft            discovery.Draft      `json:"draft"`
+	Questions        []discovery.Question `json:"questions"`
+	Uncertainty      []string             `json:"uncertainty"`
+	Limitations      []string             `json:"limitations"`
+	Refusal          bool                 `json:"refusal"`
+	Incomplete       bool                 `json:"incomplete"`
+	Usage            discovery.Usage      `json:"usage"`
+	ActivationID     string               `json:"activationId"`
+	ActivationDigest string               `json:"activationDigest"`
+	Provider         string               `json:"provider"`
+	ModelID          string               `json:"modelId"`
+	RoleProfileID    string               `json:"roleProfileId"`
+	PromptVersion    string               `json:"promptVersion"`
+	ResponseSchema   string               `json:"responseSchema"`
 }
 
 type planStage struct {
@@ -148,7 +155,7 @@ type event struct {
 
 func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writer, journeys journeyFactory) error {
 	if len(args) == 0 || args[0] != "start" {
-		return errors.New("usage: forge delivery start --workspace <workspace> --project <project> --repository <repository> (--intent-file <path> | --message <request>) --output json")
+		return errors.New("usage: forge delivery start --workspace <workspace> --project <project> --repository <repository> (--intent-file <path> | --message <request> --provider-activation <path> --provider-activation-digest <sha256>) --output json")
 	}
 	fs := flag.NewFlagSet("delivery start", flag.ContinueOnError)
 	fs.SetOutput(errorOutput)
@@ -157,6 +164,8 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	repository := fs.String("repository", "", "repository selector")
 	intentFile := fs.String("intent-file", "", "requirements input JSON")
 	message := fs.String("message", "", "natural-language product request")
+	providerActivation := fs.String("provider-activation", "", "exact approved model-provider activation JSON")
+	providerActivationDigest := fs.String("provider-activation-digest", "", "separately approved exact activation digest")
 	outputFormat := fs.String("output", "json", "output format")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -165,7 +174,16 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 		((*intentFile == "") == (*message == "")) {
 		return errors.New("delivery start requires selectors, JSON output, and exactly one of intent file or message")
 	}
-	journey, err := journeys()
+	if *intentFile != "" && (*providerActivation != "" || *providerActivationDigest != "") {
+		return errors.New("provider activation is only valid with a natural-language message")
+	}
+	if (*providerActivation == "") != (*providerActivationDigest == "") {
+		return errors.New("provider activation file and approved digest must be supplied together")
+	}
+	journey, err := journeys(journeyOptions{
+		ProviderActivationPath:   *providerActivation,
+		ProviderActivationDigest: *providerActivationDigest,
+	})
 	if err != nil {
 		return err
 	}

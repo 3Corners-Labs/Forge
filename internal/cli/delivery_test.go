@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -65,16 +66,28 @@ func TestConversationalDeliveryClarifiesBeforeProposalAndUsesMeaningfulConfirmat
 		},
 	}}
 	var output bytes.Buffer
+	activationPath := filepath.Join(t.TempDir(), "approved-activation.json")
+	activationDigest := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	var receivedOptions journeyOptions
 	err := execute([]string{
 		"delivery", "start", "--workspace", "fixture-workspace", "--project", "forge",
-		"--repository", "forge", "--message", "Help employees choose a desk", "--output", "json",
+		"--repository", "forge", "--message", "Help employees choose a desk",
+		"--provider-activation", activationPath,
+		"--provider-activation-digest", activationDigest, "--output", "json",
 	}, strings.NewReader("Employees who come to the office\nyes\nyes\nyes\n"),
-		&output, &bytes.Buffer{}, func() (guidedJourney, error) { return journey, nil })
+		&output, &bytes.Buffer{}, func(options journeyOptions) (guidedJourney, error) {
+			receivedOptions = options
+			return journey, nil
+		})
 	if err != nil {
 		t.Fatalf("conversational delivery: %v\n%s", err, output.String())
 	}
 	if strings.Join(journey.calls, ",") != "discover,discover,start,promote,execute,publish" {
 		t.Fatalf("unexpected conversational sequence: %v", journey.calls)
+	}
+	if receivedOptions.ProviderActivationPath != activationPath ||
+		receivedOptions.ProviderActivationDigest != activationDigest {
+		t.Fatalf("provider activation was not passed to the journey: %#v", receivedOptions)
 	}
 	if len(journey.startInputs) != 1 ||
 		journey.startInputs[0].Intent.Outcome != "Find a suitable desk quickly" ||
@@ -109,7 +122,9 @@ func (adapter *scriptedDiscoveryAdapter) Propose(_ context.Context, _ intelligen
 		CorrelationID: request.CorrelationID, ProvenanceRefs: request.ProvenanceRefs,
 		Usage: discovery.Usage{InputTokens: 100, OutputTokens: 50, LatencyMs: 20, CostMicros: 100},
 		Receipt: discovery.Receipt{
-			Provider: "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
+			ActivationID:     "activation-contract-double",
+			ActivationDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Provider:         "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
 			RoleProfileID: request.RoleProfileID, PromptVersion: "forge.discovery.prompt.v1",
 			ResponseSchema: discovery.ProposalVersion, ProviderRequest: "provider-request",
 		},
@@ -141,7 +156,7 @@ func (adapter *scriptedDiscoveryAdapter) Propose(_ context.Context, _ intelligen
 
 func TestDeveloperTrialConversationalJourneyUsesIntelligenceAndReachesReviewableState(t *testing.T) {
 	t.Setenv("FORGE_IDENTITY_PROFILE", "developer-allowed")
-	value, err := newDeveloperTrialJourney()
+	value, err := newDeveloperTrialJourney(journeyOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +174,7 @@ func TestDeveloperTrialConversationalJourneyUsesIntelligenceAndReachesReviewable
 		"start", "--workspace", "fixture-workspace", "--project", "forge",
 		"--repository", "forge", "--message", "Help employees choose a desk", "--output", "json",
 	}, bufio.NewReader(strings.NewReader("Employees who visit the office\nyes\nyes\nyes\n")),
-		&output, &bytes.Buffer{}, func() (guidedJourney, error) { return journey, nil })
+		&output, &bytes.Buffer{}, func(journeyOptions) (guidedJourney, error) { return journey, nil })
 	if err != nil {
 		t.Fatalf("conversational Developer Trial: %v\n%s", err, output.String())
 	}
@@ -173,7 +188,7 @@ func TestDeveloperTrialConversationalJourneyUsesIntelligenceAndReachesReviewable
 
 func TestDeniedConversationalJourneyStopsBeforeRepositoryAndModelDiscovery(t *testing.T) {
 	t.Setenv("FORGE_IDENTITY_PROFILE", "observer-denied")
-	value, err := newDeveloperTrialJourney()
+	value, err := newDeveloperTrialJourney(journeyOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,21 +215,95 @@ func TestDeniedConversationalJourneyStopsBeforeRepositoryAndModelDiscovery(t *te
 	}
 }
 
+func TestDeveloperTrialLoadsExactProviderActivationWithoutResolvingCredential(t *testing.T) {
+	t.Setenv("FORGE_OPENAI_API_KEY", "")
+	now := time.Now().UTC()
+	path := filepath.Join(t.TempDir(), "activation.json")
+	raw := fmt.Sprintf(`{
+  "schemaVersion": "forge.model-provider-activation.v1",
+  "id": "forge.provider-activation.openai-terra-developer-trial-v1",
+  "provider": "openai",
+  "endpoint": "https://eu.api.openai.com/v1/responses",
+  "adapterVersion": "forge.openai-discovery-adapter.v1",
+  "allowedModelIds": ["gpt-5.6-terra"],
+  "allowedPurposes": ["forge.product.discovery"],
+  "allowedClassifications": ["Internal"],
+  "credentialRef": "env:FORGE_OPENAI_API_KEY",
+  "humanApprovalRef": "approval:provider-trial-1",
+  "promptVersion": "forge.discovery.prompt.v1",
+  "retention": "provider-default-up-to-30-days",
+  "trainingUse": "disabled",
+  "region": "eu",
+  "storeProviderState": false,
+  "reasoningEffort": "medium",
+  "pricing": {
+    "currency": "USD",
+    "inputMicrosPerMillionTokens": 2500000,
+    "outputMicrosPerMillionTokens": 15000000
+  },
+  "budgets": {
+    "maxInputBytes": 32768,
+    "maxOutputBytes": 32768,
+    "maxTokens": 4096,
+    "maxLatencyMs": 20000,
+    "maxCostMicros": 250000,
+    "maxTurns": 8,
+    "maxSessionTokens": 32768,
+    "maxSessionCostMicros": 1000000,
+    "maxProjectTokensPerDay": 131072,
+    "maxProjectCostMicrosPerDay": 4000000,
+    "maxConcurrentRequests": 1
+  },
+  "activatedAt": %q,
+  "expiresAt": %q
+}`, now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339))
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := intelligence.LoadProviderActivation(path, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, err := newDeveloperTrialJourney(journeyOptions{
+		ProviderActivationPath:   path,
+		ProviderActivationDigest: loaded.Digest,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	journey := value.(*developerTrialJourney)
+	if journey.discovery == nil {
+		t.Fatal("approved provider activation was not wired into discovery")
+	}
+	if _, err := newDeveloperTrialJourney(journeyOptions{
+		ProviderActivationPath:   path,
+		ProviderActivationDigest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+	}); err == nil || !strings.Contains(err.Error(), "separately approved digest") {
+		t.Fatalf("activation digest substitution was accepted: %v", err)
+	}
+}
+
 func testDiscoveryActivation(now time.Time) intelligence.ProviderActivation {
 	return intelligence.ProviderActivation{
 		SchemaVersion: intelligence.ProviderActivationVersion,
-		ID:            "activation-contract-double", Provider: "contract-double",
-		Endpoint: "contract-double://discovery", AdapterVersion: "1",
+		ID:            "activation-contract-double",
+		Digest:        "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Provider:      "contract-double",
+		Endpoint:      "contract-double://discovery", AdapterVersion: "1",
 		AllowedModelIDs: []string{"discovery-double"},
 		AllowedPurposes: []string{discovery.PurposeV1}, AllowedClassifications: []string{"Internal"},
 		CredentialRef: "none:contract-double", HumanApprovalRef: "approval:test",
 		PromptVersion: "forge.discovery.prompt.v1", Retention: "none", TrainingUse: "disabled",
+		ReasoningEffort: "none", Pricing: intelligence.Pricing{Currency: "USD"},
 		Budgets: discovery.Limits{
 			MaxInputBytes: 32 << 10, MaxOutputBytes: 32 << 10, MaxTokens: 4096,
 			MaxLatency: 20 * time.Second, MaxCostMicros: 250_000,
 		},
-		MaxTurns: 8,
-		Region:   "local", ActivatedAt: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
+		MaxTurns:         8,
+		MaxSessionTokens: 32768, MaxSessionCostMicros: 1_000_000,
+		MaxProjectTokensPerDay: 131072, MaxProjectCostPerDay: 4_000_000,
+		MaxConcurrentRequests: 1,
+		Region:                "local", ActivatedAt: now.Add(-time.Minute), ExpiresAt: now.Add(time.Hour),
 	}
 }
 func (stub *journeyStub) PromoteAndPlan(context.Context, string, string) (planStage, error) {
@@ -238,7 +327,7 @@ func TestDeliveryStartRequiresThreeExactHumanActions(t *testing.T) {
 	err := execute([]string{
 		"delivery", "start", "--workspace", "fixture-workspace", "--project", "forge",
 		"--repository", "forge", "--intent-file", intentFile, "--output", "json",
-	}, input, &output, &errorOutput, func() (guidedJourney, error) { return journey, nil })
+	}, input, &output, &errorOutput, func(journeyOptions) (guidedJourney, error) { return journey, nil })
 	if err != nil {
 		t.Fatalf("delivery start: %v\n%s", err, errorOutput.String())
 	}
@@ -263,7 +352,7 @@ func TestDeliveryStartStopsBeforePlanForWrongProposalDigest(t *testing.T) {
 	err := execute([]string{
 		"delivery", "start", "--workspace", "fixture-workspace", "--project", "forge",
 		"--repository", "forge", "--intent-file", intentFile, "--output", "json",
-	}, strings.NewReader("promote sha256:wrong\n"), &output, &bytes.Buffer{}, func() (guidedJourney, error) { return journey, nil })
+	}, strings.NewReader("promote sha256:wrong\n"), &output, &bytes.Buffer{}, func(journeyOptions) (guidedJourney, error) { return journey, nil })
 	if err == nil || strings.Join(journey.calls, ",") != "start" {
 		t.Fatalf("wrong digest advanced journey: calls=%v err=%v", journey.calls, err)
 	}
@@ -323,7 +412,7 @@ func TestDeveloperTrialPublicJourneyReachesReviewableContractDoublePullRequest(t
 
 func TestDeniedDeveloperTrialJourneyStopsBeforeRepositoryDiscovery(t *testing.T) {
 	t.Setenv("FORGE_IDENTITY_PROFILE", "observer-denied")
-	value, err := newDeveloperTrialJourney()
+	value, err := newDeveloperTrialJourney(journeyOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

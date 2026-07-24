@@ -40,7 +40,9 @@ func TestDiscoveryTurnUsesResolvedScopeAndReturnsProposalOnly(t *testing.T) {
 		}},
 		Usage: discovery.Usage{InputTokens: 10, OutputTokens: 10, LatencyMs: 10},
 		Receipt: discovery.Receipt{
-			Provider: "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
+			ActivationID:     "activation-1",
+			ActivationDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			Provider:         "contract-double", ModelID: "discovery-double", AdapterVersion: "1",
 			PromptVersion: "prompt.v1", ProviderRequest: "provider-request-1",
 		},
 	}}

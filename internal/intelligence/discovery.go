@@ -18,10 +18,12 @@ import (
 
 const ProviderActivationVersion = "forge.model-provider-activation.v1"
 const maxTrackedDiscoverySessions = 256
+const maxTrackedDiscoveryProjects = 256
 
 type ProviderActivation struct {
 	SchemaVersion          string
 	ID                     string
+	Digest                 string
 	Provider               string
 	Endpoint               string
 	AdapterVersion         string
@@ -35,10 +37,23 @@ type ProviderActivation struct {
 	TrainingUse            string
 	Region                 string
 	StoreProviderState     bool
+	ReasoningEffort        string
+	Pricing                Pricing
 	Budgets                discovery.Limits
 	MaxTurns               int
+	MaxSessionTokens       int64
+	MaxSessionCostMicros   int64
+	MaxProjectTokensPerDay int64
+	MaxProjectCostPerDay   int64
+	MaxConcurrentRequests  int
 	ActivatedAt            time.Time
 	ExpiresAt              time.Time
+}
+
+type Pricing struct {
+	Currency                     string
+	InputMicrosPerMillionTokens  int64
+	OutputMicrosPerMillionTokens int64
 }
 
 type Adapter interface {
@@ -52,11 +67,28 @@ type Service struct {
 	now        func() time.Time
 	turnMu     sync.Mutex
 	turns      map[string]trackedTurns
+	projects   map[string]trackedUsage
+	inFlight   int
 }
 
 type trackedTurns struct {
-	count     int
-	expiresAt time.Time
+	count int
+	trackedUsage
+}
+
+type trackedUsage struct {
+	usedTokens     int64
+	usedCost       int64
+	reservedTokens int64
+	reservedCost   int64
+	expiresAt      time.Time
+}
+
+type reservation struct {
+	sessionID  string
+	projectKey string
+	tokens     int64
+	cost       int64
 }
 
 func NewService(activation ProviderActivation, adapter Adapter, now func() time.Time) (*Service, error) {
@@ -71,7 +103,7 @@ func NewService(activation ProviderActivation, adapter Adapter, now func() time.
 	}
 	return &Service{
 		activation: cloneActivation(activation), adapter: adapter, now: now,
-		turns: make(map[string]trackedTurns),
+		turns: make(map[string]trackedTurns), projects: make(map[string]trackedUsage),
 	}, nil
 }
 
@@ -112,12 +144,19 @@ func (service *Service) Propose(ctx context.Context, request discovery.TurnReque
 			request.CorrelationID, failure.RetryNewAuthority,
 		)
 	}
-	if !service.reserveTurn(request.SessionID, request.ExpiresAt, now) {
+	reserved, ok := service.reserve(request, now)
+	if !ok {
 		return discovery.TurnProposal{}, failure.New(
-			failure.BudgetExhausted, "model-assisted discovery turn budget is exhausted",
+			failure.BudgetExhausted, "model-assisted discovery session or project budget is exhausted",
 			request.CorrelationID, failure.RetryNone,
 		)
 	}
+	release := true
+	defer func() {
+		if release {
+			service.release(reserved)
+		}
+	}()
 	encoded, err := json.Marshal(request)
 	if err != nil || int64(len(encoded)) > request.Limits.MaxInputBytes {
 		return discovery.TurnProposal{}, failure.New(
@@ -151,6 +190,8 @@ func (service *Service) Propose(ctx context.Context, request discovery.TurnReque
 		)
 	}
 	if proposal.Receipt.Provider != service.activation.Provider ||
+		proposal.Receipt.ActivationID != service.activation.ID ||
+		proposal.Receipt.ActivationDigest != service.activation.Digest ||
 		!contains(service.activation.AllowedModelIDs, proposal.Receipt.ModelID) ||
 		proposal.Receipt.AdapterVersion != service.activation.AdapterVersion ||
 		proposal.Receipt.PromptVersion != service.activation.PromptVersion {
@@ -166,10 +207,12 @@ func (service *Service) Propose(ctx context.Context, request discovery.TurnReque
 			request.CorrelationID, failure.RetryNone,
 		)
 	}
+	service.commit(reserved, proposal.Usage)
+	release = false
 	return cloneProposal(proposal), nil
 }
 
-func (service *Service) reserveTurn(sessionID string, expiresAt, now time.Time) bool {
+func (service *Service) reserve(request discovery.TurnRequest, now time.Time) (reservation, bool) {
 	service.turnMu.Lock()
 	defer service.turnMu.Unlock()
 	for id, tracked := range service.turns {
@@ -177,28 +220,93 @@ func (service *Service) reserveTurn(sessionID string, expiresAt, now time.Time) 
 			delete(service.turns, id)
 		}
 	}
-	tracked, found := service.turns[sessionID]
-	if !found && len(service.turns) >= maxTrackedDiscoverySessions {
-		return false
+	today := now.UTC().Format("2006-01-02")
+	for key := range service.projects {
+		if !strings.HasSuffix(key, ":"+today) {
+			delete(service.projects, key)
+		}
 	}
-	if tracked.count >= service.activation.MaxTurns {
-		return false
+	tracked, found := service.turns[request.SessionID]
+	if !found && len(service.turns) >= maxTrackedDiscoverySessions {
+		return reservation{}, false
+	}
+	projectKey := request.ProjectID + ":" + today
+	project, projectFound := service.projects[projectKey]
+	if !projectFound && len(service.projects) >= maxTrackedDiscoveryProjects {
+		return reservation{}, false
+	}
+	if tracked.count >= service.activation.MaxTurns ||
+		exceedsLimit(tracked.usedTokens+tracked.reservedTokens, request.Limits.MaxTokens, service.activation.MaxSessionTokens) ||
+		exceedsLimit(tracked.usedCost+tracked.reservedCost, request.Limits.MaxCostMicros, service.activation.MaxSessionCostMicros) ||
+		exceedsLimit(project.usedTokens+project.reservedTokens, request.Limits.MaxTokens, service.activation.MaxProjectTokensPerDay) ||
+		exceedsLimit(project.usedCost+project.reservedCost, request.Limits.MaxCostMicros, service.activation.MaxProjectCostPerDay) ||
+		service.inFlight >= service.activation.MaxConcurrentRequests {
+		return reservation{}, false
 	}
 	tracked.count++
-	if expiresAt.After(tracked.expiresAt) {
-		tracked.expiresAt = expiresAt
-	}
-	service.turns[sessionID] = tracked
-	return true
+	tracked.reservedTokens += request.Limits.MaxTokens
+	tracked.reservedCost += request.Limits.MaxCostMicros
+	tracked.expiresAt = service.activation.ExpiresAt
+	project.reservedTokens += request.Limits.MaxTokens
+	project.reservedCost += request.Limits.MaxCostMicros
+	project.expiresAt = endOfUTCDate(now)
+	service.turns[request.SessionID] = tracked
+	service.projects[projectKey] = project
+	service.inFlight++
+	return reservation{
+		sessionID: request.SessionID, projectKey: projectKey,
+		tokens: request.Limits.MaxTokens, cost: request.Limits.MaxCostMicros,
+	}, true
+}
+
+func (service *Service) release(value reservation) {
+	service.turnMu.Lock()
+	defer service.turnMu.Unlock()
+	service.finishReservation(value, discovery.Usage{})
+}
+
+func (service *Service) commit(value reservation, usage discovery.Usage) {
+	service.turnMu.Lock()
+	defer service.turnMu.Unlock()
+	service.finishReservation(value, usage)
+}
+
+func (service *Service) finishReservation(value reservation, usage discovery.Usage) {
+	tracked := service.turns[value.sessionID]
+	tracked.reservedTokens -= value.tokens
+	tracked.reservedCost -= value.cost
+	tracked.usedTokens += usage.InputTokens + usage.OutputTokens
+	tracked.usedCost += usage.CostMicros
+	service.turns[value.sessionID] = tracked
+	project := service.projects[value.projectKey]
+	project.reservedTokens -= value.tokens
+	project.reservedCost -= value.cost
+	project.usedTokens += usage.InputTokens + usage.OutputTokens
+	project.usedCost += usage.CostMicros
+	service.projects[value.projectKey] = project
+	service.inFlight--
+}
+
+func exceedsLimit(current, requested, maximum int64) bool {
+	return current < 0 || requested < 0 || maximum < 0 ||
+		current > maximum || requested > maximum-current
+}
+
+func endOfUTCDate(now time.Time) time.Time {
+	year, month, day := now.UTC().Date()
+	return time.Date(year, month, day+1, 0, 0, 0, 0, time.UTC)
 }
 
 func (value ProviderActivation) validate(now time.Time) error {
 	if value.SchemaVersion != ProviderActivationVersion {
 		return errors.New("provider activation version is unsupported")
 	}
-	if blank(value.ID, value.Provider, value.Endpoint, value.AdapterVersion, value.CredentialRef,
+	if blank(value.ID, value.Digest, value.Provider, value.Endpoint, value.AdapterVersion, value.CredentialRef,
 		value.HumanApprovalRef, value.PromptVersion, value.Retention, value.TrainingUse, value.Region) {
 		return errors.New("provider activation is incomplete")
+	}
+	if !validSHA256(value.Digest) {
+		return errors.New("provider activation digest is invalid")
 	}
 	if value.Provider != "openai" && value.Provider != "contract-double" {
 		return fmt.Errorf("unsupported discovery provider %q", value.Provider)
@@ -225,9 +333,34 @@ func (value ProviderActivation) validate(now time.Time) error {
 	if value.StoreProviderState || value.TrainingUse != "disabled" {
 		return errors.New("provider storage and training use must be disabled")
 	}
+	if !contains([]string{"none", "low", "medium", "high", "xhigh", "max"}, value.ReasoningEffort) {
+		return errors.New("provider activation reasoning effort is invalid")
+	}
+	if value.Pricing.Currency != "USD" || value.Pricing.InputMicrosPerMillionTokens < 0 ||
+		value.Pricing.OutputMicrosPerMillionTokens < 0 {
+		return errors.New("provider activation pricing is invalid")
+	}
+	if value.Provider == "openai" &&
+		(value.Pricing.InputMicrosPerMillionTokens == 0 ||
+			value.Pricing.OutputMicrosPerMillionTokens == 0) {
+		return errors.New("live provider activation pricing is required")
+	}
+	if value.Provider == "openai" &&
+		(value.AdapterVersion != openAIAdapterVersion ||
+			value.PromptVersion != discoveryPromptVersion ||
+			len(value.AllowedModelIDs) != 1 ||
+			!validEnvironmentCredentialReference(value.CredentialRef) ||
+			!allowedOpenAIEndpoint(value.Endpoint, value.Region)) {
+		return errors.New("OpenAI provider activation is invalid")
+	}
 	if value.Budgets.MaxInputBytes <= 0 || value.Budgets.MaxOutputBytes <= 0 ||
 		value.Budgets.MaxTokens <= 0 || value.Budgets.MaxLatency <= 0 ||
-		value.Budgets.MaxCostMicros < 0 || value.MaxTurns <= 0 || value.MaxTurns > 20 {
+		value.Budgets.MaxCostMicros < 0 || value.MaxTurns <= 0 || value.MaxTurns > 20 ||
+		value.MaxSessionTokens < value.Budgets.MaxTokens ||
+		value.MaxSessionCostMicros < value.Budgets.MaxCostMicros ||
+		value.MaxProjectTokensPerDay < value.MaxSessionTokens ||
+		value.MaxProjectCostPerDay < value.MaxSessionCostMicros ||
+		value.MaxConcurrentRequests <= 0 || value.MaxConcurrentRequests > 16 {
 		return errors.New("provider activation budgets are invalid")
 	}
 	if value.ActivatedAt.IsZero() || value.ExpiresAt.IsZero() ||
@@ -235,6 +368,38 @@ func (value ProviderActivation) validate(now time.Time) error {
 		return errors.New("provider activation lifetime is invalid")
 	}
 	return nil
+}
+
+func validSHA256(value string) bool {
+	if !strings.HasPrefix(value, "sha256:") || len(value) != len("sha256:")+64 {
+		return false
+	}
+	for _, character := range strings.TrimPrefix(value, "sha256:") {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func validEnvironmentCredentialReference(value string) bool {
+	const prefix = "env:"
+	if !strings.HasPrefix(value, prefix) {
+		return false
+	}
+	name := strings.TrimPrefix(value, prefix)
+	if name == "" || !((name[0] >= 'A' && name[0] <= 'Z') ||
+		(name[0] >= 'a' && name[0] <= 'z') || name[0] == '_') {
+		return false
+	}
+	for _, character := range name[1:] {
+		if !((character >= 'A' && character <= 'Z') ||
+			(character >= 'a' && character <= 'z') ||
+			(character >= '0' && character <= '9') || character == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func cloneActivation(value ProviderActivation) ProviderActivation {
