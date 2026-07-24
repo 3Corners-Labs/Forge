@@ -85,9 +85,33 @@ func TestPromotionFailsClosedForDigestScopeAndMaterialQuestion(t *testing.T) {
 	}
 }
 
+func TestPromotionRejectsSupersededProposalAndAcceptsExactRevision(t *testing.T) {
+	fixture := newFixture(t, nil)
+	originalDigest := fixture.request.ProposalDigest
+	revised, err := fixture.proposals.Revise(
+		context.Background(), fixture.session, fixture.request.ProposalID, originalDigest,
+		experience.ProposalEdit{
+			Field: "security", Item: 1, Replacement: "Treat raw input and model output as untrusted",
+			ChangeExplanation: "Clarify the trust requirement.",
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = fixture.intents.Promote(context.Background(), fixture.request)
+	assertFailure(t, err, failure.Forbidden)
+	fixture.request.ProposalDigest = revised.Digest
+	result, err := fixture.intents.Promote(context.Background(), fixture.request)
+	if err != nil || result.Intent.ProposalDigest != revised.Digest {
+		t.Fatalf("revised promotion=%#v err=%v", result, err)
+	}
+}
+
 type fixture struct {
-	intents *intent.Service
-	request intent.PromoteRequest
+	intents   *intent.Service
+	proposals *experience.Service
+	session   experience.Session
+	request   intent.PromoteRequest
 }
 
 func newFixture(t *testing.T, questions []intent.Question) fixture {
@@ -129,7 +153,7 @@ func newFixture(t *testing.T, questions []intent.Question) fixture {
 		t.Fatal(err)
 	}
 	return fixture{
-		intents: intents,
+		intents: intents, proposals: proposals, session: session,
 		request: intent.PromoteRequest{
 			ContractVersion: intent.PromotionRequestVersion, CorrelationID: "correlation-promotion",
 			IdempotencyKey: "promotion-1", ProposalID: proposal.ID, ProposalDigest: proposal.Digest,

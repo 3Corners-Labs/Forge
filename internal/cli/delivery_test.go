@@ -26,6 +26,7 @@ type journeyStub struct {
 	discoveryInputs []discoveryInput
 	discoveryErrors map[int]error
 	startInputs     []startInput
+	proposalEdits   []proposalEditInput
 }
 
 func (stub *journeyStub) Discover(_ context.Context, input discoveryInput) (discoveryStage, error) {
@@ -46,6 +47,18 @@ func (stub *journeyStub) Start(_ context.Context, input startInput) (proposalSta
 	stub.calls = append(stub.calls, "start")
 	stub.startInputs = append(stub.startInputs, input)
 	return proposalStage{SessionID: "session-1", ProposalID: "proposal-1", ProposalDigest: "sha256:proposal", Outcome: "Test Forge"}, nil
+}
+func (stub *journeyStub) ReviseProposal(_ context.Context, sessionID, digest string, edit proposalEditInput) (proposalStage, error) {
+	stub.calls = append(stub.calls, "revise")
+	stub.proposalEdits = append(stub.proposalEdits, edit)
+	if sessionID != "session-1" || digest == "" {
+		return proposalStage{}, errors.New("current proposal not found")
+	}
+	return proposalStage{
+		SessionID: sessionID, ProposalID: "proposal-1", ProposalVersion: 2,
+		ProposalDigest: "sha256:revised", PreviousDigest: digest,
+		ChangeExplanation: edit.ChangeExplanation, Privacy: []string{edit.Replacement},
+	}, nil
 }
 
 func TestConversationalDeliveryClarifiesBeforeProposalAndUsesMeaningfulConfirmations(t *testing.T) {
@@ -82,7 +95,7 @@ func TestConversationalDeliveryClarifiesBeforeProposalAndUsesMeaningfulConfirmat
 		"--repository", "forge", "--message", "Help employees choose a desk",
 		"--provider-activation", activationPath,
 		"--provider-activation-digest", activationDigest, "--output", "json",
-	}, strings.NewReader("Employees who come to the office\nyes\nyes\nyes\n"),
+	}, strings.NewReader("Employees who come to the office\npromote\nyes\nyes\n"),
 		&output, &bytes.Buffer{}, func(options journeyOptions) (guidedJourney, error) {
 			receivedOptions = options
 			return journey, nil
@@ -107,13 +120,59 @@ func TestConversationalDeliveryClarifiesBeforeProposalAndUsesMeaningfulConfirmat
 	}
 	for _, expected := range []string{
 		`"state":"awaiting-clarification"`, `"state":"proposal-ready"`,
-		"Promote this exact Requirements Proposal? [yes/no]",
+		"Review Requirements Proposal [promote/edit/reject]",
 		"Approve execution of this exact plan? [yes/no]",
 		"Approve contract-double publication of this exact candidate? [yes/no]",
 	} {
 		if !strings.Contains(output.String(), expected) {
 			t.Fatalf("conversational output missing %q:\n%s", expected, output.String())
 		}
+	}
+}
+
+func TestRequirementsProposalReviewCanEditThenPromoteExactRevision(t *testing.T) {
+	journey := &journeyStub{}
+	input := bufio.NewReader(strings.NewReader(
+		"edit\nprivacy\n1\nDocument which personal data is used and why\nReplace the absolute prohibition\npromote\n",
+	))
+	var output bytes.Buffer
+	proposal, promote, err := reviewRequirementsProposal(
+		context.Background(), journey, input, &output,
+		proposalStage{
+			SessionID: "session-1", ProposalID: "proposal-1", ProposalVersion: 1,
+			ProposalDigest: "sha256:proposal", Privacy: []string{"No personal data"},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !promote || proposal.ProposalVersion != 2 || proposal.ProposalDigest != "sha256:revised" ||
+		proposal.PreviousDigest != "sha256:proposal" || len(journey.proposalEdits) != 1 ||
+		journey.proposalEdits[0].Field != "privacy" || journey.proposalEdits[0].Item != 1 {
+		t.Fatalf("review result=%#v promote=%t edits=%#v", proposal, promote, journey.proposalEdits)
+	}
+	for _, expected := range []string{
+		"Review Requirements Proposal [promote/edit/reject]",
+		`"proposalVersion":2`,
+		`"previousDigest":"sha256:proposal"`,
+		`"state":"awaiting-promotion"`,
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("review output missing %q:\n%s", expected, output.String())
+		}
+	}
+}
+
+func TestRequirementsProposalReviewCanRejectWithoutPromotion(t *testing.T) {
+	journey := &journeyStub{}
+	var output bytes.Buffer
+	_, promote, err := reviewRequirementsProposal(
+		context.Background(), journey, bufio.NewReader(strings.NewReader("reject\n")), &output,
+		proposalStage{SessionID: "session-1", ProposalDigest: "sha256:proposal"},
+	)
+	if err != nil || promote || len(journey.calls) != 0 ||
+		!strings.Contains(output.String(), `"state":"rejected"`) {
+		t.Fatalf("reject promote=%t calls=%v err=%v output=%s", promote, journey.calls, err, output.String())
 	}
 }
 
@@ -159,7 +218,7 @@ func TestConversationalDeliveryPreservesCheckpointAcrossBoundedRetry(t *testing.
 		"--provider-activation-digest", "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 		"--output", "json",
 	}, bufio.NewReader(strings.NewReader(
-		"Employees who visit the office\nyes\nyes\nyes\nyes\n",
+		"Employees who visit the office\nyes\npromote\nyes\nyes\n",
 	)), &output, &bytes.Buffer{}, func(journeyOptions) (guidedJourney, error) {
 		return journey, nil
 	})
@@ -288,7 +347,7 @@ func TestDeveloperTrialConversationalJourneyUsesIntelligenceAndReachesReviewable
 	err = runDelivery([]string{
 		"start", "--workspace", "fixture-workspace", "--project", "forge",
 		"--repository", "forge", "--message", "Help employees choose a desk", "--output", "json",
-	}, bufio.NewReader(strings.NewReader("Employees who visit the office\nyes\nyes\nyes\n")),
+	}, bufio.NewReader(strings.NewReader("Employees who visit the office\npromote\nyes\nyes\n")),
 		&output, &bytes.Buffer{}, func(journeyOptions) (guidedJourney, error) { return journey, nil })
 	if err != nil {
 		t.Fatalf("conversational Developer Trial: %v\n%s", err, output.String())

@@ -460,16 +460,42 @@ func (journey *developerTrialJourney) Start(ctx context.Context, input startInpu
 	}
 	journey.scope, journey.binding = scope, binding
 	journey.sessions[proposal.ID] = &trialSession{proposal: proposal}
+	return proposalToStage(proposal), nil
+}
+
+func (journey *developerTrialJourney) ReviseProposal(ctx context.Context, sessionID, expectedDigest string, edit proposalEditInput) (proposalStage, error) {
+	current, ok := journey.sessions[sessionID]
+	if !ok || current.proposal.Digest != expectedDigest {
+		return proposalStage{}, errors.New("current requirements proposal was not found")
+	}
+	session, err := experience.NewSession(journey.human, journey.scope, journey.binding, journey.now(), trialCorrelation)
+	if err != nil {
+		return proposalStage{}, err
+	}
+	revised, err := journey.experience.Revise(ctx, session, current.proposal.ID, expectedDigest, experience.ProposalEdit{
+		Field: edit.Field, Item: edit.Item, Replacement: edit.Replacement,
+		ChangeExplanation: edit.ChangeExplanation,
+	})
+	if err != nil {
+		return proposalStage{}, err
+	}
+	current.proposal = revised
+	return proposalToStage(revised), nil
+}
+
+func proposalToStage(proposal experience.RequirementsProposal) proposalStage {
 	return proposalStage{
-		SessionID: proposal.ID, ProposalID: proposal.ID, ProposalDigest: proposal.Digest,
-		Outcome: proposal.Outcome, AffectedUsers: proposal.AffectedUsers, Problem: proposal.Problem,
+		SessionID: proposal.ID, ProposalID: proposal.ID, ProposalVersion: proposal.Version,
+		ProposalDigest: proposal.Digest, PreviousDigest: proposal.PreviousDigest,
+		ChangeExplanation: proposal.ChangeExplanation,
+		Outcome:           proposal.Outcome, AffectedUsers: proposal.AffectedUsers, Problem: proposal.Problem,
 		FunctionalBehavior: proposal.FunctionalBehavior, UXExpectations: proposal.UXExpectations,
 		Accessibility: proposal.Accessibility, Privacy: proposal.Privacy, Security: proposal.Security,
 		Operations: proposal.Operations, Constraints: proposal.Constraints, Exclusions: proposal.Exclusions,
 		AcceptanceCriteria: proposal.AcceptanceCriteria, Inferences: proposal.Inferences,
 		Assumptions: proposal.Assumptions, Hypotheses: proposal.Hypotheses, Questions: proposal.Questions,
 		Experiments: proposal.Experiments, ProductAreaRefs: proposal.ProductAreaRefs,
-	}, nil
+	}
 }
 
 func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessionID, proposalDigest string) (planStage, error) {
