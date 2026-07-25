@@ -3,6 +3,8 @@
 Status: Accepted
 Owner: Workplace Orchestrator Product
 
+> **Revised by [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md).** Workplace delivery begins after M1 exit rather than at the former M6, proceeds in a **separate repository**, and is subject to the sovereignty tiers recorded below. Market positioning and the load-bearing product assumption are recorded separately in [Workplace Orchestrator positioning](workplace-orchestrator-positioning.md).
+
 ## Relationship to Forge
 
 Workplace Orchestrator is the first business application commissioned to the Forge development team after Forge reaches its controlled change-preparation stage. It is simultaneously:
@@ -13,6 +15,26 @@ Workplace Orchestrator is the first business application commissioned to the For
 - a validation of identical signed artefacts across SaaS and self-hosted profiles.
 
 Workplace does not become part of the Forge platform core. It consumes Forge capabilities through versioned contracts in the same way that future applications will.
+
+## Repository boundary
+
+Workplace Orchestrator SHALL be developed in a separate repository with its own lifecycle, license, and decision register.
+
+Forge modules SHALL NOT contain workplace reservation, occupancy, navigation, sensor, or collaboration-domain logic. Workplace SHALL NOT depend on unreleased Forge runtime internals.
+
+The separation is not only a capability boundary. It is the only honest test of whether Forge can deliver into a codebase it did not generate, which is the question the [AI delivery experiment](../governance/ai-delivery-experiment.md) measures.
+
+## Sovereignty tiers
+
+The product is positioned for organizations reducing hyperscaler dependency. That obligation reaches into how the product is built, not only how it runs.
+
+| Tier | Requirement |
+|---|---|
+| Workplace runtime | SHALL function completely without any external model provider. Model-assisted features are optional enhancements that degrade to deterministic behaviour. |
+| Forge build-time, accountable owner | MAY use an external cloud model. This is a tool choice by the accountable engineer, not a product dependency. |
+| Forge build-time, community contributor | SHALL be operable against a locally hosted model or small language model for at least one complete delivery path, before any claim that the application is community-maintainable. |
+
+No claim of community maintainability, sovereignty, or hyperscaler independence SHALL be published before tier-three evidence exists.
 
 ## Existing product baseline
 

@@ -34,3 +34,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0021](0021-guided-resumable-m1-journey.md) | Permit a guided resumable M1 delivery session | Accepted |
 | [ADR-0022](0022-non-authoritative-model-assisted-product-discovery.md) | Permit non-authoritative model-assisted product discovery | Accepted |
 | [ADR-0023](0023-bounded-model-assisted-change-preparation.md) | Permit bounded model-assisted change preparation for M1 exit | Accepted |
+| [ADR-0024](0024-rebaseline-forge-as-bounded-means.md) | Rebaseline Forge as a bounded means for sovereign application delivery | Accepted |

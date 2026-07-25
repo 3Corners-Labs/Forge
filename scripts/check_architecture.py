@@ -206,12 +206,20 @@ def check_roadmap_structure() -> None:
     if missing_intent:
         fail("roadmap lost required foundation intent: " + ", ".join(missing_intent))
 
+    # ADR-0024 rebaselined Forge as a bounded means for application delivery.
+    # M1 through M3 remain committed and fully specified. M4 through M9 were
+    # demoted to evidence label Vision and are recorded as direction rather than
+    # as a plan, so they are no longer required to carry milestone sections.
     milestone_matches = list(
         re.finditer(r"^## M([1-9]) — .+$", text, re.MULTILINE)
     )
     found_numbers = [int(match.group(1)) for match in milestone_matches]
-    if found_numbers != list(range(1, 10)):
-        fail(f"roadmap milestones must be M1 through M9 in order, found {found_numbers}")
+    if found_numbers != [1, 2, 3]:
+        fail(f"roadmap committed milestones must be M1 through M3 in order, found {found_numbers}")
+    if "## Vision direction (M4–M9)" not in text:
+        fail("roadmap lost the Vision direction section recording M4 through M9")
+    if "decisions/0024-rebaseline-forge-as-bounded-means.md" not in text:
+        fail("roadmap does not reference the ADR-0024 rebaseline that scoped it")
     required_sections = (
         "### Objective",
         "### Deliverables",
@@ -224,7 +232,7 @@ def check_roadmap_structure() -> None:
         end = (
             milestone_matches[index + 1].start()
             if index + 1 < len(milestone_matches)
-            else text.find("\n## Cross-milestone success measures", match.end())
+            else text.find("\n## Vision direction (M4–M9)", match.end())
         )
         section = text[match.start():end if end != -1 else len(text)]
         missing_sections = [item for item in required_sections if item not in section]

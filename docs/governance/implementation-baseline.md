@@ -11,6 +11,16 @@ This document separates verified repository state from target architecture. It i
 
 The presence of a document, schema, development dependency, or candidate technology does not prove that the corresponding Forge capability is implemented or supported.
 
+## Framing change
+
+Accepted [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md) rebaselined Forge as a bounded means for delivering 3Corners applications rather than a product developed for independent sale. Three consequences affect how this baseline is read:
+
+1. **The contributor harness is the recognized primary delivery mechanism.** Every material change recorded below was produced by the [ADR-0011](../decisions/0011-bounded-autonomous-contributor-delivery.md) contributor harness under human review, not by the Forge runtime. The runtime has produced no real repository change: its source-control adapter is not live-configured and no model provider is active by default. This remains true as of the verified date.
+2. **Runtime capability is extended only on demonstrated delivery need.** Absence of a capability below is no longer evidence of a gap to be closed on schedule. Roadmap milestones M4 through M9 carry evidence label Vision.
+3. **Sovereignty tiers now apply.** No claim of community maintainability or hyperscaler independence may be published before at least one complete Forge delivery path is measured against a locally hosted model.
+
+The verified state below is unchanged by that decision. Nothing was implemented, withdrawn, or promoted by it.
+
 ## Verified current state
 
 Forge currently provides a small developer bootstrap:
