@@ -24,6 +24,12 @@ type journeyOptions struct {
 	ProviderActivationDigest string
 	ChangeActivationPath     string
 	ChangeActivationDigest   string
+	RuntimeMode              string
+	RepositoryRoot           string
+	RuntimeRoot              string
+	SourceRevision           string
+	WorkerImage              string
+	VerifierImage            string
 }
 
 type journeyFactory func(journeyOptions) (guidedJourney, error)
@@ -191,6 +197,12 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	providerActivationDigest := fs.String("provider-activation-digest", "", "separately approved exact activation digest")
 	changeActivation := fs.String("change-activation", "", "exact approved change-preparation activation JSON")
 	changeActivationDigest := fs.String("change-activation-digest", "", "separately approved exact change-preparation activation digest")
+	runtimeMode := fs.String("runtime", runtimeContract, "execution runtime: contract or docker")
+	repositoryRoot := fs.String("repository-root", "", "exact local Forge checkout used for bounded source projection")
+	runtimeRoot := fs.String("runtime-root", "", "project-local ephemeral runtime root")
+	sourceRevision := fs.String("source-revision", "", "exact immutable source revision")
+	workerImage := fs.String("worker-image", "", "immutable worker OCI digest or local image ID")
+	verifierImage := fs.String("verifier-image", "", "immutable verifier OCI digest or local image ID")
 	outputFormat := fs.String("output", "json", "output format")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -213,9 +225,18 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 		ProviderActivationDigest: *providerActivationDigest,
 		ChangeActivationPath:     *changeActivation,
 		ChangeActivationDigest:   *changeActivationDigest,
+		RuntimeMode:              *runtimeMode,
+		RepositoryRoot:           *repositoryRoot,
+		RuntimeRoot:              *runtimeRoot,
+		SourceRevision:           *sourceRevision,
+		WorkerImage:              *workerImage,
+		VerifierImage:            *verifierImage,
 	})
 	if err != nil {
 		return err
+	}
+	if closer, ok := journey.(interface{ Close() error }); ok {
+		defer closer.Close()
 	}
 	ctx := context.Background()
 	var intent intentInput

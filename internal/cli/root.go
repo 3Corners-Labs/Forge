@@ -28,7 +28,14 @@ func execute(args []string, input io.Reader, output, errorOutput io.Writer, jour
 		fmt.Fprintln(output, "forge 0.2.0")
 		return nil
 	case "doctor":
-		if doctor.Print(doctor.Run()) {
+		checks := doctor.Run()
+		if len(args) > 2 || (len(args) == 2 && args[1] != "--operational") {
+			return errors.New("usage: forge doctor [--operational]")
+		}
+		if len(args) == 2 {
+			checks = doctor.RunOperational()
+		}
+		if doctor.PrintTo(output, checks) {
 			return nil
 		}
 		return errors.New("one or more prerequisites are missing")

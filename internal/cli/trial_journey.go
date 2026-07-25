@@ -189,6 +189,7 @@ func (runner trialVerifierRunner) Verify(_ context.Context, plan verificationcon
 
 type trialSession struct {
 	proposal              experience.RequirementsProposal
+	contextPackage        trust.ContextPackage
 	run                   delivery.DeliveryRun
 	planRequest           trust.ApprovalRequest
 	planRecord            trust.ApprovalRecordV2
@@ -218,15 +219,25 @@ type developerTrialJourney struct {
 	approvals         *approval.Service
 	evidence          *evidence.Service
 	sourceControl     *sourcecontrol.Service
-	provider          *sourcecontrol.ContractDouble
+	provider          sourcecontrol.Provider
 	sessions          map[string]*trialSession
 	discoveryLimits   discovery.Limits
+	catalog           *forgecontext.RepositoryCatalog
+	workerRunner      execution.Runner
+	verifierRunner    verification.Runner
+	runtimeRoot       string
+	operational       bool
+	persistence       journeyPersistence
 	nextID            int
 }
 
 func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 	anchor := time.Now().UTC()
 	now := func() time.Time { return anchor }
+	runtime, err := newOperationalRuntime(options, now)
+	if err != nil {
+		return nil, err
+	}
 	profile := os.Getenv("FORGE_IDENTITY_PROFILE")
 	humanID := "synthetic-developer-allowed"
 	if profile == "observer-denied" {
@@ -258,17 +269,18 @@ func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 	if err != nil {
 		return nil, err
 	}
-	deliveryStore, err := delivery.NewMemoryStore(func() string { return fmt.Sprintf("forge-run-%d", now().UnixNano()) })
+	persistence, err := newJourneyPersistence(runtime.operational)
 	if err != nil {
 		return nil, err
 	}
-	deliveryService, err := delivery.NewService(deliveryStore, now)
+	deliveryService, err := delivery.NewService(persistence.delivery, now)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
 	policies := &policyResolvers{}
 	approvals, err := approval.NewServiceWithPublication(
-		deliveryService, deliveryService, policies, approval.NewMemoryStore(),
+		deliveryService, deliveryService, policies, persistence.approval,
 		approval.Profile{
 			Issuer: "forge.approval.developer-trial", MaximumDecisionLifetime: 30 * time.Minute,
 			SupportedConditions:     []string{"require-independent-verification"},
@@ -276,37 +288,43 @@ func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 		}, now,
 	)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
-	evidenceService, err := evidence.NewService(evidence.NewMemoryStore(), now)
+	evidenceService, err := evidence.NewService(persistence.evidence, now)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
 	value := &developerTrialJourney{
 		now: now, human: human, taskAgent: taskAgent, worker: worker,
 		directory: directory, bindingSource: bindings, delivery: deliveryService,
 		policies: policies, approvals: approvals, evidence: evidenceService,
-		provider: sourcecontrol.NewContractDouble(sourcecontrol.FailNone),
-		sessions: make(map[string]*trialSession),
+		provider: persistence.publication,
+		sessions: make(map[string]*trialSession), catalog: runtime.catalog,
+		workerRunner: runtime.worker, verifierRunner: runtime.verifier,
+		runtimeRoot: runtime.runtimeRoot, operational: runtime.operational, persistence: persistence,
 	}
-	experienceStore := experience.NewMemoryStore()
-	value.experience, err = experience.NewService(experienceStore, now, value.newIdentifier)
+	value.experience, err = experience.NewService(persistence.experience, now, value.newIdentifier)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
-	value.intent, err = intent.NewService(experienceStoreResolver{value.experience}, deliveryService, intent.NewMemoryStore(), now, value.newIdentifier)
+	value.intent, err = intent.NewService(experienceStoreResolver{value.experience}, deliveryService, persistence.intent, now, value.newIdentifier)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
 	value.sourceControl, err = sourcecontrol.NewService(
 		deliveryService, approvals, policies, evidenceService, value.provider,
-		sourcecontrol.NewMemoryStore(), sourcecontrol.PublicationProfile{
+		persistence.sourceControl, sourcecontrol.PublicationProfile{
 			Provider: "contract-double", BaseBranch: "main", BaseRevision: "developer-trial-base",
 			Title: "Forge M1 Developer Trial candidate",
 			Body:  "Verified synthetic candidate. Human review and merge remain required.",
 		}, now,
 	)
 	if err != nil {
+		_ = persistence.Close()
 		return nil, err
 	}
 	if options.ProviderActivationPath != "" {
@@ -352,6 +370,13 @@ func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 		value.changeActivation = activation
 	}
 	return value, nil
+}
+
+func (journey *developerTrialJourney) Close() error {
+	if journey == nil {
+		return nil
+	}
+	return journey.persistence.Close()
 }
 
 type experienceStoreResolver struct {
@@ -570,7 +595,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 	if err != nil {
 		return planStage{}, err
 	}
-	delegations, err := identity.NewDelegationService(identity.NewMemoryDelegationStore(), 20*time.Minute, journey.now)
+	delegations, err := identity.NewDelegationService(journey.persistence.delegation, 20*time.Minute, journey.now)
 	if err != nil {
 		return planStage{}, err
 	}
@@ -591,7 +616,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 		return planStage{}, err
 	}
 	envelopeIssuer, err := policy.NewEnvelopeIssuer(
-		evaluator, delegations, policy.NewMemoryEnvelopeStore(),
+		evaluator, delegations, journey.persistence.envelope,
 		policy.EnvelopeProfile{
 			Issuer: "forge.policy.developer-trial", Environment: policy.DeveloperTrialEnvironment,
 			Risk: policy.RiskLow, AllowedPolicyVersions: []string{"policy.m1-c.context.v1"},
@@ -612,7 +637,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 		return planStage{}, err
 	}
 	contextService, err := forgecontext.NewService(
-		delegations, evaluator, trialContextCatalog{}, forgecontext.NewMemoryStore(),
+		delegations, evaluator, journey.catalog, journey.persistence.context,
 		forgecontext.AssemblyProfile{
 			MaximumItems: 10, MaximumSerializedBytes: 1 << 20, MaximumLifetime: 10 * time.Minute,
 			EnforcedObligationTypes: []string{"context-evidence"},
@@ -626,7 +651,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 		IdempotencyKey: "context:" + run.ID(), Human: journey.human, Agent: journey.taskAgent,
 		Scope: journey.scope, Run: run, DelegationID: delegationResult.Delegation.ID(),
 		Envelope: envelopeResult.Envelope, PolicyDecisionID: contextDecision.ID,
-		RequestedSourceIDs: []string{"accepted-architecture", "promoted-intent"},
+		RequestedSourceIDs: []string{"accepted-architecture", "planned-target"},
 	})
 	if err != nil {
 		return planStage{}, err
@@ -642,7 +667,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 	if err != nil {
 		return planStage{}, err
 	}
-	profiles, err := delivery.NewStaticPlanProfiles([]delivery.PlanProfile{trialPlanProfile()})
+	profiles, err := delivery.NewStaticPlanProfiles([]delivery.PlanProfile{trialPlanProfile(journey.operational)})
 	if err != nil {
 		return planStage{}, err
 	}
@@ -667,7 +692,7 @@ func (journey *developerTrialJourney) PromoteAndPlan(ctx context.Context, sessio
 	if err != nil {
 		return planStage{}, err
 	}
-	session.run, session.planRequest = awaiting, approvalRequest
+	session.run, session.planRequest, session.contextPackage = awaiting, approvalRequest, assembled.Package
 	plan := awaiting.Plan()
 	return planStage{
 		SessionID: sessionID, RunID: awaiting.ID(), PlanID: plan.ID,
@@ -725,6 +750,16 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 			MaxChangedFiles: int64(len(plan.ChangePaths)),
 		}
 	}
+	projected, err := journey.catalog.Project([]string{m1ArchitecturePath, m1TargetPath})
+	if err != nil {
+		return candidateStage{}, err
+	}
+	projectedSources := make([]changecontract.SourceFile, len(projected))
+	for index, source := range projected {
+		projectedSources[index] = changecontract.SourceFile{
+			Path: source.Path, Digest: source.Digest, Content: source.Content,
+		}
+	}
 	changeRequest, err := changecontract.BindRequest(changecontract.Request{
 		SchemaVersion: changecontract.RequestVersion, CorrelationID: trialCorrelation,
 		TenantID: approved.TenantID(), WorkspaceID: approved.WorkspaceID(),
@@ -734,8 +769,9 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		ContextManifestDigest: contextRecord.ManifestDigest,
 		RequirementsRecordID:  session.proposal.ID, SourceRevision: contextRecord.SourceRevisions[0],
 		RoleProfileID: changecontract.RoleProfileV1, Purpose: changecontract.PurposeV1,
-		Classification: approved.Classification(), AllowedReadPaths: plan.ChangePaths,
-		AllowedWritePaths: plan.ChangePaths, Sources: []changecontract.SourceFile{},
+		Classification:    approved.Classification(),
+		AllowedReadPaths:  []string{m1ArchitecturePath, m1TargetPath},
+		AllowedWritePaths: plan.ChangePaths, Sources: projectedSources,
 		AcceptanceCriteria: session.proposal.AcceptanceCriteria,
 		TestIntent:         plan.VerificationIntent, Exclusions: session.proposal.Exclusions,
 		ControlReferences: plan.GuardrailReferences,
@@ -796,7 +832,7 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 			return candidateStage{}, delegationErr
 		}
 		changeDelegations, delegationErr := identity.NewDelegationService(
-			identity.NewMemoryDelegationStore(), 15*time.Minute, journey.now,
+			journey.persistence.delegation, 15*time.Minute, journey.now,
 		)
 		if delegationErr != nil {
 			return candidateStage{}, delegationErr
@@ -809,7 +845,7 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 			return candidateStage{}, delegationErr
 		}
 		issuer, issuerErr := policy.NewChangeAuthorityIssuer(
-			changeEvaluator, changeDelegations, policy.NewMemoryEnvelopeStore(),
+			changeEvaluator, changeDelegations, journey.persistence.envelope,
 			policy.ChangeAuthorityProfile{
 				Issuer: "forge.policy.developer-trial", Provider: journey.changeActivation.Provider,
 				ModelID:                 journey.changeActivation.AllowedModelIDs[0],
@@ -843,6 +879,23 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 			return candidateStage{}, err
 		}
 	}
+	changeProposalReference := ""
+	if journey.persistence.artifacts != nil {
+		encoded, encodeErr := json.Marshal(changeProposal)
+		if encodeErr != nil {
+			return candidateStage{}, encodeErr
+		}
+		metadata, artifactErr := journey.persistence.artifacts.Put(ctx, evidence.PutArtifactRequest{
+			TenantID: approved.TenantID(), ProjectID: approved.ProjectID(), DeliveryRunID: approved.ID(),
+			MediaType:      "application/vnd.forge.change-proposal+json",
+			Classification: approved.Classification(), RetentionClass: "developer-trial-m1",
+			CreatorCapability: "forge.capability.intelligence", Bytes: encoded,
+		})
+		if artifactErr != nil {
+			return candidateStage{}, artifactErr
+		}
+		changeProposalReference = "artifact:" + metadata.ObjectKey + "#" + metadata.Digest
+	}
 	workerRequest, err := identity.BindWorkerDelegationRequest(identity.WorkerDelegationRequest{
 		SchemaVersion: identity.WorkerDelegationRequestVersion, IdempotencyKey: "worker-delegation:" + approved.ID(),
 		CorrelationID: trialCorrelation, HumanSubjectID: journey.human.SubjectID(),
@@ -857,7 +910,7 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		ChangePaths: plan.ChangePaths, Classification: approved.Classification(), RiskClass: plan.RiskClass,
 		Environment: identity.DeveloperTrialEnvironment, Action: identity.WorkerPrepareChangeAction,
 		Purpose: identity.WorkerM1Purpose, MaximumAutonomy: identity.WorkerMaximumAutonomy,
-		MaxDurationSeconds: 60, MaxProcesses: 2, MaxOutputBytes: 1 << 20,
+		MaxDurationSeconds: 60, MaxProcesses: 8, MaxOutputBytes: 1 << 20,
 		MaxChangedFiles: int64(len(plan.ChangePaths)), MaxAttempts: plan.Budgets.MaxAttempts,
 		RequestedExpiresAt: journey.now().Add(15 * time.Minute),
 	})
@@ -888,7 +941,7 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	if err != nil {
 		return candidateStage{}, err
 	}
-	workerDelegations, err := identity.NewWorkerDelegationService(identity.NewMemoryWorkerDelegationStore(), 15*time.Minute, journey.now)
+	workerDelegations, err := identity.NewWorkerDelegationService(journey.persistence.workerDelegation, 15*time.Minute, journey.now)
 	if err != nil {
 		return candidateStage{}, err
 	}
@@ -901,7 +954,7 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		return candidateStage{}, err
 	}
 	workerIssuer, err := policy.NewWorkerEnvelopeIssuer(
-		workerEvaluator, journey.approvals, workerDelegations, policy.NewMemoryEnvelopeStore(),
+		workerEvaluator, journey.approvals, workerDelegations, journey.persistence.envelope,
 		policy.WorkerEnvelopeProfile{
 			Issuer: "forge.policy.developer-trial", MaximumLifetime: 10 * time.Minute,
 			EnforcedObligationTypes: []string{"proposal-admitted"},
@@ -948,11 +1001,13 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	if err != nil {
 		return candidateStage{}, err
 	}
-	executionService, err := execution.NewService(trialWorkerRunner{now: journey.now}, journey.now)
+	executionService, err := execution.NewService(journey.workerRunner, journey.now)
 	if err != nil {
 		return candidateStage{}, err
 	}
-	workspace, err := os.MkdirTemp("", "forge-m1-worker-")
+	workspace, err := execution.PrepareSourceWorkspace(
+		journey.runtimeRoot, workerSources(changeRequest.Sources, plan.ChangePaths),
+	)
 	if err != nil {
 		return candidateStage{}, err
 	}
@@ -961,21 +1016,41 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		CorrelationID: trialCorrelation, IdempotencyKey: "prepare:" + approved.ID(),
 		Run: executing, Envelope: workerEnvelope, MaterializeDecision: materializeDecision,
 		ChangeRequest: changeRequest, Proposal: changeProposal,
-		Workspace: workspace, Attempt: 1, MaxProcesses: 2, MaxOutputBytes: 1 << 20,
+		Workspace: workspace, Attempt: 1, MaxProcesses: 8, MaxOutputBytes: 1 << 20,
 	})
 	if err != nil {
 		return candidateStage{}, err
 	}
+	artefactReferences := []string{"candidate:" + prepared.Bundle.Digest}
+	if changeProposalReference != "" {
+		artefactReferences = append(artefactReferences, changeProposalReference)
+	}
+	if journey.persistence.artifacts != nil {
+		encoded, encodeErr := workercontract.EncodeCanonical(prepared.Bundle)
+		if encodeErr != nil {
+			return candidateStage{}, encodeErr
+		}
+		metadata, artifactErr := journey.persistence.artifacts.Put(ctx, evidence.PutArtifactRequest{
+			TenantID: approved.TenantID(), ProjectID: approved.ProjectID(), DeliveryRunID: approved.ID(),
+			MediaType:      "application/vnd.forge.candidate-bundle+json",
+			Classification: approved.Classification(), RetentionClass: "developer-trial-m1",
+			CreatorCapability: "forge.capability.execution", Bytes: encoded,
+		})
+		if artifactErr != nil {
+			return candidateStage{}, artifactErr
+		}
+		artefactReferences = append(artefactReferences, "artifact:"+metadata.ObjectKey+"#"+metadata.Digest)
+	}
 	verifying, _, err := journey.delivery.RecordCandidate(ctx, delivery.RecordCandidateRequest{
 		TransitionRequest: trialTransition(executing, "verifying"), WorkerRequest: prepared.Request,
 		Bundle: prepared.Bundle, Result: prepared.Result,
-		ArtefactReferences: []string{"candidate:" + prepared.Bundle.Digest},
+		ArtefactReferences: artefactReferences,
 	})
 	if err != nil {
 		return candidateStage{}, err
 	}
 	verificationService, err := verification.NewService(
-		trialVerifierRunner{now: journey.now}, newTrialVerificationStore(),
+		journey.verifierRunner, journey.persistence.verification,
 		verification.Profile{
 			Version: "forge.m1-c.verification.v1", MaximumLifetime: 10 * time.Minute,
 			Controls: []verificationcontract.Control{
@@ -987,7 +1062,13 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	if err != nil {
 		return candidateStage{}, err
 	}
-	fresh, err := os.MkdirTemp("", "forge-m1-verifier-")
+	verificationSources := make([]verification.SourceFile, 0, len(plan.ChangePaths))
+	for _, source := range workerSources(changeRequest.Sources, plan.ChangePaths) {
+		verificationSources = append(verificationSources, verification.SourceFile{
+			Path: source.Path, Digest: source.Digest, Content: source.Content,
+		})
+	}
+	fresh, err := verification.PrepareFreshCheckout(journey.runtimeRoot, verificationSources)
 	if err != nil {
 		return candidateStage{}, err
 	}
@@ -1087,7 +1168,7 @@ func (journey *developerTrialJourney) ApprovePublicationAndPublish(ctx context.C
 	}
 	journey.policies.add(publicationEvaluator)
 	issuer, err := policy.NewPublicationEnvelopeIssuer(
-		publicationEvaluator, journey.delivery, journey.approvals, policy.NewMemoryEnvelopeStore(),
+		publicationEvaluator, journey.delivery, journey.approvals, journey.persistence.envelope,
 		policy.PublicationEnvelopeProfile{
 			Issuer: "forge.policy.developer-trial", MaximumLifetime: 10 * time.Minute,
 			EnforcedObligationTypes: []string{"evidence-ready", "human-publication-approval"},
@@ -1174,7 +1255,13 @@ func trialTransition(run delivery.DeliveryRun, key string) delivery.TransitionRe
 	}
 }
 
-func trialPlanProfile() delivery.PlanProfile {
+func trialPlanProfile(operational bool) delivery.PlanProfile {
+	risks := []string{"Contract runners prove trust contracts but not process isolation."}
+	assumptions := []string{"The contract double represents the publication provider."}
+	if operational {
+		risks = []string{"Developer Trial Docker isolation is not a production isolation claim."}
+		assumptions = []string{"Worker and verifier images are bound by immutable image digests."}
+	}
 	return delivery.PlanProfile{
 		Version: "forge.m1-c-plan-profile.v1",
 		Steps: []delivery.PlanStep{
@@ -1185,9 +1272,9 @@ func trialPlanProfile() delivery.PlanProfile {
 		AllowedCapabilities: []string{
 			"forge.capability.delivery", "forge.capability.source-control", "forge.capability.verification",
 		},
-		AllowedPathPrefixes: []string{"docs"}, ChangePaths: []string{"docs/forge-m1-developer-trial.md"},
-		Assumptions:         []string{"The contract double represents the publication provider."},
-		Risks:               []string{"Synthetic in-process adapters do not prove production isolation."},
+		AllowedPathPrefixes: []string{"docs"}, ChangePaths: []string{m1TargetPath},
+		Assumptions:         assumptions,
+		Risks:               risks,
 		Limitations:         []string{"No live GitHub credential, merge, release, deployment, or production effect."},
 		StopConditions:      []string{"Architecture change", "Changed digest", "Failed verification", "Unavailable evidence"},
 		Budgets:             delivery.PlanBudgets{MaxDurationSeconds: 600, MaxConcurrency: 1, MaxAttempts: 2},
@@ -1219,9 +1306,13 @@ func deterministicTrialChangeProposal(request changecontract.Request, proposal e
 	}
 	content.WriteString("\n")
 	replacements := make([]changecontract.FileReplacement, len(request.AllowedWritePaths))
+	sourceDigests := make(map[string]string, len(request.Sources))
+	for _, source := range request.Sources {
+		sourceDigests[source.Path] = source.Digest
+	}
 	for index, target := range request.AllowedWritePaths {
 		replacements[index] = changecontract.FileReplacement{
-			Path: target, Content: content.String(),
+			Path: target, ExpectedSourceDigest: sourceDigests[target], Content: content.String(),
 			Rationale: "Materializes the promoted requirements and approved verification intent for M1 review.",
 		}
 	}
@@ -1246,6 +1337,6 @@ func deterministicTrialChangeProposal(request changecontract.Request, proposal e
 
 var _ execution.Runner = trialWorkerRunner{}
 var _ verification.Runner = trialVerifierRunner{}
-var _ forgecontext.SourceCatalog = trialContextCatalog{}
+var _ forgecontext.SourceCatalog = (*forgecontext.RepositoryCatalog)(nil)
 var _ approval.PolicyResolver = (*policyResolvers)(nil)
 var _ sourcecontrol.PolicyResolver = (*policyResolvers)(nil)

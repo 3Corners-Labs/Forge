@@ -69,7 +69,12 @@ gh api repos/3corners-labs/forge/branches/main/protection
 
 ## Deferred evidence
 
-M1 exit SHALL run the dependency and isolation rules against the implemented worker and control-plane modules. Before Trial SHALL pass all required checks from a clean checkout in the protected workflow.
+The M1-exit candidate runs the dependency and isolation rules against the
+implemented control plane, shared contracts, worker, and verifier modules.
+Local architecture checks pass without a capability-boundary exception. The
+real Docker journey additionally proves separate deployment images and no
+control-plane implementation inside either runtime. Before Trial SHALL pass
+all required checks from a clean checkout in the protected workflow.
 
 ## Review record
 

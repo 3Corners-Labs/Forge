@@ -104,6 +104,13 @@ func TestMinIOArtifactIsDigestAddressedAndMetadataIsDurable(t *testing.T) {
 	if _, err := client.StatObject(ctx, bucket, value.ObjectKey, minio.StatObjectOptions{}); err != nil {
 		t.Fatal(err)
 	}
+	loaded, err := store.Get(ctx, GetArtifactRequest{
+		TenantID: "tenant", ProjectID: "project", DeliveryRunID: runID,
+		ObjectKey: value.ObjectKey, Digest: value.Digest,
+	})
+	if err != nil || string(loaded) != `{"outcome":"passed"}` {
+		t.Fatalf("artifact read=%q err=%v", loaded, err)
+	}
 	if _, err := store.Put(ctx, PutArtifactRequest{
 		TenantID: "../escape", ProjectID: "project", DeliveryRunID: runID,
 		MediaType: "application/json", Classification: "Internal",

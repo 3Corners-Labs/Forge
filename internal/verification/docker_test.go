@@ -74,7 +74,7 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 	}
 	for _, required := range []string{
 		"--network none", "--read-only", "--cap-drop ALL", "no-new-privileges",
-		"--user 65532:65532", "dst=/workspace,readonly", "dst=/input,readonly",
+		"--user 65532:65532", "GOMAXPROCS=1", "dst=/workspace,readonly", "dst=/input,readonly",
 	} {
 		if !strings.Contains(invoked, required) {
 			t.Fatalf("Docker invocation lacks %q: %s", required, invoked)
@@ -82,6 +82,20 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 	}
 	if got.Digest != result.Digest {
 		t.Fatalf("result digest=%q want %q", got.Digest, result.Digest)
+	}
+}
+
+func TestVerifierDockerRunnerAcceptsImmutableLocalImageIDAndRejectsTag(t *testing.T) {
+	config := DockerConfig{
+		Image: "sha256:" + strings.Repeat("a", 64), TempRoot: t.TempDir(),
+		Memory: "256m", CPUs: "1", PIDs: "8", MaxOutputBytes: 1 << 20,
+	}
+	if _, err := NewDockerRunner(config, verifierCommandFunc(func(context.Context, string, ...string) error { return nil })); err != nil {
+		t.Fatalf("immutable local image ID rejected: %v", err)
+	}
+	config.Image = "forge-verifier:latest"
+	if _, err := NewDockerRunner(config, verifierCommandFunc(func(context.Context, string, ...string) error { return nil })); err == nil {
+		t.Fatal("mutable Docker tag was admitted")
 	}
 }
 

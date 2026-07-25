@@ -57,7 +57,14 @@ task verify
 
 ## Deferred evidence
 
-M1 exit SHALL prove that the implemented authority, worker, tool, and public CLI paths cannot reinterpret or bypass this prohibition. Before Trial, any proposal for active security testing requires separate human authorization, isolated resettable targets, external network enforcement, emergency termination testing, and independent validation. No such Trial is authorized here.
+The M1-exit candidate gives neither the public CLI nor worker, verifier, model,
+Tool, or source-control paths an offensive-assurance action. Both runtime
+containers have no network and accept closed plan-controlled inputs; the
+architecture checker continues to require the disabled contract-only rules of
+engagement. Before Trial, any proposal for active security testing requires
+separate human authorization, isolated resettable targets, external network
+enforcement, emergency termination testing, and independent validation. No
+such Trial is authorized here.
 
 ## Review record
 
