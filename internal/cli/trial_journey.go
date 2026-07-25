@@ -1053,9 +1053,17 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		journey.verifierRunner, journey.persistence.verification,
 		verification.Profile{
 			Version: "forge.m1-c.verification.v1", MaximumLifetime: 10 * time.Minute,
+			// The first two controls are integrity preconditions that cannot fail
+			// once the lifecycle has admitted the candidate. The remaining three
+			// are the controls capable of failing; the verifier refuses any plan
+			// whose independent controls are all inapplicable to the changed
+			// paths.
 			Controls: []verificationcontract.Control{
-				{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
-				{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlCandidateIntegrity, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlDeclaredPathScope, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlGoFormat, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlDocumentMetadata, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlMarkdownLinks, Version: "1", Consequential: true},
 			},
 		}, journey.now,
 	)

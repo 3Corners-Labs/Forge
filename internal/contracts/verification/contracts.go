@@ -50,6 +50,18 @@ func DecodeResult(encoded []byte) (Result, error) {
 	return value, nil
 }
 
+// Forge-owned control identifiers. They live in the shared contract because
+// both the control plane, when it composes an assurance profile, and the
+// isolated verifier, when it evaluates one, must name the same controls without
+// the control plane depending on the verifier deployment unit.
+const (
+	ControlCandidateIntegrity = "forge.candidate-integrity"
+	ControlDeclaredPathScope  = "forge.declared-path-scope"
+	ControlGoFormat           = "forge.go-format"
+	ControlDocumentMetadata   = "forge.document-metadata"
+	ControlMarkdownLinks      = "forge.markdown-links"
+)
+
 type Control struct {
 	ID             string `json:"id"`
 	Version        string `json:"version"`

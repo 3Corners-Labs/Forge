@@ -92,6 +92,52 @@ exist:
 Point 3 is the durable fix. Without it, adding controls only postpones the same
 weakness to the next file type Forge learns to change.
 
+## Remediation applied
+
+All three recommendations were implemented, with one deliberate deviation.
+
+**Deviation.** The recommendation was to execute `scripts/check_architecture.py`
+inside the verifier. That was rejected on inspection: the verifier image is
+`FROM scratch` with no shell, interpreter or toolchain, and adding them would
+enlarge the attack surface of the one component whose entire purpose is being
+trustworthy. The controls are instead compiled into the verifier binary, so the
+image stays minimal and a candidate cannot alter a control's rule.
+
+**Applicability, the durable fix.** `Applicable(controlID, changedPaths)` reports
+whether a control is capable of failing for the paths under change. The two
+integrity controls are permanently inapplicable, by design and with the reason
+recorded in the code. `Verify` now refuses any plan whose independent
+consequential controls are all inapplicable, returning `ErrNoApplicableOracle`.
+Forge fails closed rather than certifying what it cannot check.
+
+**Two controls capable of failing.** `forge.document-metadata` requires every
+canonical document the candidate touches to declare a valid lifecycle status and
+an owner, because authority in this repository is resolved by status.
+`forge.markdown-links` requires every relative link in a changed Markdown file to
+resolve, against either another candidate file or the independently
+reconstructed checkout; external URLs and fragments are ignored.
+
+**Boundary correction.** The first attempt placed the control identifiers in the
+verifier package and referenced them from the control plane. The module boundary
+check rejected it: `control-plane-cannot-import-verifier`. The identifiers now
+live in the shared verification contract, which both sides may depend on. The
+fitness checks caught this, unprompted, during implementation.
+
+### Measured effect
+
+| Scenario | Before | After |
+|---|---|---|
+| Documentation change, clean | certified, no control able to fail | refused under the old profile; passes on its merits under the new one |
+| Documentation change, broken link | would have been certified | `failed` |
+| Go change | `forge.go-format` applicable | unchanged |
+
+The shipped M1-C profile carried only the two integrity controls, so before this
+change the live journey certified strictly nothing. It now carries five.
+
+Tests cover the refusal, both new controls in their passing and failing forms,
+and link resolution against source, sibling candidate files, external URLs and
+fragments.
+
 ## Not established
 
 - **Agent identity is not bound anywhere.** Nothing records which model or
