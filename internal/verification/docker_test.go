@@ -99,6 +99,52 @@ func TestVerifierDockerRunnerAcceptsImmutableLocalImageIDAndRejectsTag(t *testin
 	}
 }
 
+func TestVerifierDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) {
+	image := os.Getenv("FORGE_TEST_VERIFIER_IMAGE")
+	if image == "" {
+		t.Skip("FORGE_TEST_VERIFIER_IMAGE is not configured")
+	}
+	now := time.Now().UTC()
+	bundle, err := workercontract.BindBundle(workercontract.CandidateBundle{
+		SchemaVersion: workercontract.BundleVersion, SourceRevision: "revision-integration",
+		PlanDigest: verifierDigest('a'),
+		Files: []workercontract.CandidateFile{{
+			Path: "docs/result.md", Content: []byte("# Result\n"),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := verificationcontract.BindPlan(verificationcontract.AssurancePlan{
+		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
+		PlanDigest: bundle.PlanDigest, RiskClass: "low", Classification: "Internal",
+		AffectedCapabilities: []string{"forge.capability.delivery"}, ChangedPaths: []string{"docs/result.md"},
+		Controls: []verificationcontract.Control{
+			{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
+			{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
+		},
+		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
+		EvidenceCorrelationID: "correlation-integration",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := NewDockerRunner(DockerConfig{
+		Image: image, TempRoot: t.TempDir(), Memory: "256m", CPUs: "1",
+		PIDs: "8", MaxOutputBytes: 1 << 20,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := runner.Verify(context.Background(), plan, bundle, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Outcome != "passed" || !result.Independent {
+		t.Fatalf("unexpected verifier result: %#v", result)
+	}
+}
+
 func verifierMountedSource(arguments []string, destination string) string {
 	for index, argument := range arguments {
 		if argument != "--mount" || index+1 >= len(arguments) {
