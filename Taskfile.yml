@@ -11,6 +11,14 @@ tasks:
     cmds:
       - go test ./... -cover
       - python3 -m unittest scripts/test_autonomy_grant.py
+  workbench-web:
+    desc: Verify and build the embedded Forge Workbench web client
+    dir: internal/experience/workbench/ui
+    cmds:
+      - corepack pnpm install --frozen-lockfile
+      - corepack pnpm test
+      - corepack pnpm run build
+      - corepack pnpm run test:e2e
   build:
     cmds:
       - mkdir -p dist
@@ -28,7 +36,7 @@ tasks:
   architecture:
     cmds: [python3 scripts/check_architecture.py]
   verify:
-    deps: [fmt, lint, test, build, architecture]
+    deps: [fmt, lint, test, build, architecture, workbench-web]
   up:
     cmds: [go run ./cmd/forge up]
   down:

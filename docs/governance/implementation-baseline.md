@@ -17,7 +17,8 @@ Forge currently provides a small developer bootstrap:
 
 | Area | Implemented behaviour | Evidence | Maturity |
 |---|---|---|---|
-| CLI entry point | `init`, `doctor`, `up`, `down`, `version`, and `delivery start`; the guided delivery command emits immediate progress and requires exact proposal-promotion, plan-approval, and publication-approval actions | `cmd/forge`, `internal/cli` and tests | Trial |
+| CLI entry point | `init`, `doctor`, `up`, `down`, `version`, `delivery start`, `workbench serve`, and `workbench chat`; both Workbench surfaces use the same local API and retain exact proposal-promotion, plan-approval, and publication-approval actions | `cmd/forge`, `internal/cli` and tests | Trial |
+| Forge Workbench | Loopback-only API-first Developer Trial with an embedded responsive web cockpit, conversational terminal client, live agent and dependency projection, decision inbox, activity stream, candidate/test/evidence inspection, OpenAPI description, and browser accessibility journey; state remains in-process and projects the existing guided M1 capability composition | `internal/experience/workbench`, `internal/cli`, `assurance/journeys/workbench`, and tests | Trial |
 | Configuration | Strict parsing plus fail-closed Developer bootstrap validation for runtime mode, profile, and disabled intelligence | `internal/config` and tests | Trial |
 | Prerequisite diagnostics | Detects Git, Go, Docker, and Task executables; operational mode also tests the Docker daemon and required durable-runtime configuration without displaying values | `internal/doctor` | Trial |
 | Local platform control | Invokes the developer Docker Compose profile | `internal/platform` | Trial |
@@ -97,7 +98,7 @@ All capabilities in `architecture/capabilities.md` remain Research unless a late
 - agent registry, workforce coordination, general model routing, or tool brokerage beyond the separate disabled discovery and change-preparation purposes at the same provider edge;
 - production-grade sandbox assurance, dynamic workers, models, tools, secrets, or network authority;
 - evidence signing, production non-repudiation, retention execution, or supported backup and restore;
-- durable cross-process journey resume, Workbench, Webex Messaging, Software System Twin, or public product API;
+- durable cross-process Workbench resume, multi-user Workbench administration, Webex Messaging, Software System Twin, or a supported remote product API;
 - live GitHub App activation, installation-token brokering, pull-request merge, or review-provider integration beyond the unconfigured bounded publication adapter;
 - release, production deployment, SaaS tenancy, or supported self-hosted operation.
 

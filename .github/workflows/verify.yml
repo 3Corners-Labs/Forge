@@ -34,6 +34,21 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Activate pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.9.0 --activate
+      - name: Verify embedded Workbench
+        working-directory: internal/experience/workbench/ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+          pnpm run build
+          git diff --exit-code -- ../dist
+          pnpm run test:e2e
       - name: Start Developer Trial MinIO
         run: >-
           docker run --detach --rm --name forge-test-minio

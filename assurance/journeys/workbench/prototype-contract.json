@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "forge.workbench-prototype-evidence.v1",
+  "status": "candidate",
+  "acceptedOracleChanged": false,
+  "interfaces": [
+    "forge workbench serve",
+    "forge workbench chat"
+  ],
+  "apiVersion": "forge.workbench-api.v1",
+  "runtimeMode": "contract-double",
+  "requiredHumanActions": [
+    "promote exact Requirements Proposal",
+    "approve exact Delivery Plan",
+    "approve publication of exact verified candidate"
+  ],
+  "visibleProjections": [
+    "agent status and dependency",
+    "decision inbox",
+    "activity timeline",
+    "candidate changed paths",
+    "independent test result",
+    "intent-to-publication evidence chain"
+  ],
+  "requiredChecks": [
+    "Go API and terminal tests",
+    "TypeScript compile",
+    "Vitest presentation tests",
+    "Playwright complete journey",
+    "axe-core accessibility scan"
+  ],
+  "forbidden": [
+    "free text as execution authority",
+    "non-loopback listener",
+    "live GitHub effect",
+    "merge",
+    "release",
+    "deployment",
+    "production"
+  ]
+}
