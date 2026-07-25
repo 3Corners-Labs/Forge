@@ -113,8 +113,9 @@ Automated tests cover:
 - a real immutable worker image execution;
 - the complete public operational journey using real Docker, PostgreSQL, and
   MinIO;
-- fixed-UID worker execution on Linux with explicit writable workspace
-  permissions and bounded, non-sensitive preparation failure codes;
+- fixed-UID worker execution on Linux with explicit launcher-readable and
+  removable artefact modes inside an otherwise private project-local runtime
+  root, plus bounded, non-sensitive preparation failure codes;
 - PostgreSQL Evidence continuity after service reconstruction;
 - MinIO digest-addressed write and verified read;
 - PostgreSQL contract-double reconciliation without duplicate publication;

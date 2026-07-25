@@ -34,6 +34,30 @@ func TestPrepareCreatesDigestBoundCandidateWithoutShell(t *testing.T) {
 	}
 }
 
+func TestPrepareMakesNewContainerOwnedOutputsHostReadableAndRemovable(t *testing.T) {
+	now := time.Date(2026, 7, 23, 14, 0, 0, 0, time.UTC)
+	engine, _ := NewEngine(func() time.Time { return now })
+	root := t.TempDir()
+	request := boundRequest(t, now, "generated/result.txt", []byte("candidate"))
+	if _, _, err := engine.Prepare(context.Background(), request, root); err != nil {
+		t.Fatal(err)
+	}
+	directoryInfo, err := os.Stat(filepath.Join(root, "generated"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileInfo, err := os.Stat(filepath.Join(root, "generated", "result.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := directoryInfo.Mode().Perm(); got != 0o777 {
+		t.Fatalf("generated directory mode = %o, want 777", got)
+	}
+	if got := fileInfo.Mode().Perm(); got != 0o644 {
+		t.Fatalf("generated file mode = %o, want 644", got)
+	}
+}
+
 func TestPrepareRejectsSymlinkEscapeAndChangedSource(t *testing.T) {
 	now := time.Now().UTC()
 	engine, _ := NewEngine(func() time.Time { return now })
@@ -61,13 +85,14 @@ func TestPrepareRejectsSymlinkEscapeAndChangedSource(t *testing.T) {
 
 func boundRequest(t *testing.T, now time.Time, target string, content []byte) workercontract.Request {
 	t.Helper()
+	allowedPath := filepath.ToSlash(filepath.Dir(target))
 	request, err := workercontract.BindRequest(workercontract.Request{
 		SchemaVersion: workercontract.RequestVersion, EnvelopeID: "env-1", DelegationID: "delegation-1",
 		PlanID: "plan-1", PlanDigest: fixedDigest('a'), PlanApprovalRecordID: "approval-1",
 		ContextPackageID: "context-1", ContextManifestDigest: fixedDigest('b'), SourceRevision: "commit-1",
 		Scope:  workercontract.Scope{TenantID: "tenant", WorkspaceID: "workspace", ProjectID: "project", RepositoryID: "repo", DeliveryRunID: "run"},
 		Action: workercontract.PrepareChangeAction, TransformationID: workercontract.TransformationV1,
-		TransformationVersion: "1.0.0", AllowedReadPaths: []string{"internal"}, AllowedWritePaths: []string{"internal"},
+		TransformationVersion: "1.0.0", AllowedReadPaths: []string{allowedPath}, AllowedWritePaths: []string{allowedPath},
 		DependencyDigests: []string{fixedDigest('c')}, Replacements: []workercontract.FileReplacement{{Path: target, Content: content}},
 		Limits:  workercontract.Limits{MaxDurationSeconds: 60, MaxProcesses: 8, MaxOutputBytes: 1024, MaxChangedFiles: 2, MaxAttempts: 2},
 		Attempt: 1, ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "corr",

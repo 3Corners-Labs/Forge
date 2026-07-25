@@ -37,10 +37,10 @@ func main() {
 	}
 	bundleBytes, _ := workercontract.EncodeCanonical(bundle)
 	resultBytes, _ := workercontract.EncodeCanonical(result)
-	if err := os.WriteFile(*bundlePath, bundleBytes, 0o600); err != nil {
+	if err := os.WriteFile(*bundlePath, bundleBytes, 0o644); err != nil {
 		exit("worker bundle could not be written")
 	}
-	if err := os.WriteFile(*resultPath, resultBytes, 0o600); err != nil {
+	if err := os.WriteFile(*resultPath, resultBytes, 0o644); err != nil {
 		exit("worker result could not be written")
 	}
 }
