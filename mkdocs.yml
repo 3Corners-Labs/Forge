@@ -38,6 +38,7 @@ nav:
   - M1 Exit Operational Journey: governance/m1-exit-operational-journey-evidence.md
   - M1 Workbench Prototype: governance/m1-workbench-prototype-evidence.md
   - Day-Proof External Attestation: governance/dayproof-external-attestation-evidence.md
+  - Verifier Independence Attack Results: governance/verifier-independence-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
