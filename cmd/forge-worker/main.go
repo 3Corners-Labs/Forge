@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"time"
 
@@ -31,7 +33,7 @@ func main() {
 	engine, _ := workerruntime.NewEngine(func() time.Time { return time.Now().UTC() })
 	bundle, result, err := engine.Prepare(context.Background(), request, *workspace)
 	if err != nil {
-		exit("worker preparation failed")
+		exit("worker preparation failed: " + preparationFailureCode(err))
 	}
 	bundleBytes, _ := workercontract.EncodeCanonical(bundle)
 	resultBytes, _ := workercontract.EncodeCanonical(result)
@@ -46,4 +48,23 @@ func main() {
 func exit(message string) {
 	_, _ = fmt.Fprintln(os.Stderr, message)
 	os.Exit(1)
+}
+
+// preparationFailureCode keeps diagnostics useful without exposing workspace
+// paths, request content, or provider data from the isolated runtime.
+func preparationFailureCode(err error) string {
+	switch {
+	case errors.Is(err, workerruntime.ErrWorkspaceBoundary):
+		return "workspace-boundary"
+	case errors.Is(err, workerruntime.ErrSourceChanged):
+		return "source-changed"
+	case errors.Is(err, workerruntime.ErrOutputLimit):
+		return "output-limit"
+	case errors.Is(err, fs.ErrPermission):
+		return "permission-denied"
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return "cancelled"
+	default:
+		return "invalid-request-or-io"
+	}
 }

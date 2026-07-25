@@ -136,6 +136,9 @@ func TestDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) {
 	if err := os.Mkdir(workspace, 0o777); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(workspace, 0o777); err != nil {
+		t.Fatal(err)
+	}
 	runner, err := NewDockerRunner(DockerConfig{
 		Image: image, TempRoot: root, Memory: "256m", CPUs: "1",
 	}, nil)
