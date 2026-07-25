@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.3corners.example/schemas/intelligence/v1/change-proposal.schema.json",
+  "title": "Forge non-authoritative change proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "digest", "requestId", "requestDigest",
+    "sourceRevision", "planDigest", "contextDigest", "replacements",
+    "proposedChecks", "assumptions", "uncertainty", "omissions",
+    "refusal", "incomplete", "usage", "receipt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "forge.change-proposal.v1"},
+    "id": {"type": "string", "pattern": "^forge\\.change-proposal\\.[a-f0-9]{64}$"},
+    "digest": {"$ref": "#/$defs/digest"},
+    "requestId": {"type": "string", "minLength": 1},
+    "requestDigest": {"$ref": "#/$defs/digest"},
+    "sourceRevision": {"type": "string", "minLength": 1},
+    "planDigest": {"$ref": "#/$defs/digest"},
+    "contextDigest": {"$ref": "#/$defs/digest"},
+    "replacements": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "expectedSourceDigest", "content", "rationale", "candidateTest"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "expectedSourceDigest": {"type": "string"},
+          "content": {"type": "string", "minLength": 1},
+          "rationale": {"type": "string", "minLength": 1},
+          "candidateTest": {"type": "boolean"}
+        }
+      }
+    },
+    "proposedChecks": {"$ref": "#/$defs/texts"},
+    "assumptions": {"$ref": "#/$defs/texts"},
+    "uncertainty": {"$ref": "#/$defs/texts"},
+    "omissions": {"$ref": "#/$defs/texts"},
+    "refusal": {"type": "boolean"},
+    "incomplete": {"type": "boolean"},
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputTokens", "outputTokens", "latencyMs", "costMicros"],
+      "properties": {
+        "inputTokens": {"type": "integer", "minimum": 0},
+        "outputTokens": {"type": "integer", "minimum": 0},
+        "latencyMs": {"type": "integer", "minimum": 0},
+        "costMicros": {"type": "integer", "minimum": 0}
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activationId", "activationDigest", "provider", "modelId",
+        "adapterVersion", "roleProfileId", "promptVersion",
+        "responseSchema", "providerRequest"
+      ],
+      "properties": {
+        "activationId": {"type": "string", "minLength": 1},
+        "activationDigest": {"$ref": "#/$defs/digest"},
+        "provider": {"type": "string", "minLength": 1},
+        "modelId": {"type": "string", "minLength": 1},
+        "adapterVersion": {"type": "string", "minLength": 1},
+        "roleProfileId": {"const": "forge.role.software-engineer.change-preparation.v1"},
+        "promptVersion": {"type": "string", "minLength": 1},
+        "responseSchema": {"const": "forge.change-proposal.v1"},
+        "providerRequest": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "texts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

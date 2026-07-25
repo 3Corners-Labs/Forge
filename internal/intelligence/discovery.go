@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/discovery"
 	"github.com/3corners/forge/internal/contracts/failure"
 )
@@ -321,7 +322,7 @@ func (value ProviderActivation) validate(now time.Time) error {
 		return errors.New("provider activation allow-lists contain duplicates")
 	}
 	for _, purpose := range value.AllowedPurposes {
-		if purpose != discovery.PurposeV1 {
+		if purpose != discovery.PurposeV1 && purpose != changecontract.PurposeV1 {
 			return errors.New("provider activation contains an unsupported purpose")
 		}
 	}
@@ -346,8 +347,7 @@ func (value ProviderActivation) validate(now time.Time) error {
 		return errors.New("live provider activation pricing is required")
 	}
 	if value.Provider == "openai" &&
-		(value.AdapterVersion != openAIAdapterVersion ||
-			value.PromptVersion != discoveryPromptVersion ||
+		(!validOpenAIAdapterPurpose(value) ||
 			len(value.AllowedModelIDs) != 1 ||
 			!validEnvironmentCredentialReference(value.CredentialRef) ||
 			!allowedOpenAIEndpoint(value.Endpoint, value.Region)) {
@@ -368,6 +368,16 @@ func (value ProviderActivation) validate(now time.Time) error {
 		return errors.New("provider activation lifetime is invalid")
 	}
 	return nil
+}
+
+func validOpenAIAdapterPurpose(value ProviderActivation) bool {
+	if slices.Equal(value.AllowedPurposes, []string{discovery.PurposeV1}) {
+		return value.AdapterVersion == openAIAdapterVersion && value.PromptVersion == discoveryPromptVersion
+	}
+	if slices.Equal(value.AllowedPurposes, []string{changecontract.PurposeV1}) {
+		return value.AdapterVersion == openAIChangeAdapterVersion && value.PromptVersion == changePromptVersion
+	}
+	return false
 }
 
 func validSHA256(value string) bool {

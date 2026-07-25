@@ -41,6 +41,7 @@ type WorkerDelegationRequest struct {
 	DeliveryRunID         string
 	PlanID                string
 	PlanDigest            string
+	ChangeProposalDigest  string
 	ContextPackageID      string
 	ContextManifestDigest string
 	ApprovalRequestID     string
@@ -73,7 +74,7 @@ func BindWorkerDelegationRequest(value WorkerDelegationRequest) (WorkerDelegatio
 		value.HumanSubjectID == value.WorkerSubjectID || value.TaskAgentSubjectID == value.WorkerSubjectID ||
 		value.TenantID == "" || value.WorkspaceID == "" || value.ProjectID == "" ||
 		value.RepositoryID == "" || value.DeliveryRunID == "" || value.PlanID == "" ||
-		!workerDigest(value.PlanDigest) || value.ContextPackageID == "" ||
+		!workerDigest(value.PlanDigest) || !workerDigest(value.ChangeProposalDigest) || value.ContextPackageID == "" ||
 		!workerDigest(value.ContextManifestDigest) || value.ApprovalRequestID == "" ||
 		!workerDigest(value.ApprovalRequestDigest) || value.ApprovalRecordID == "" ||
 		!workerDigest(value.ApprovalRecordDigest) || value.SourceRevision == "" ||
@@ -115,6 +116,7 @@ type WorkerDelegation struct {
 	RepositoryID           string
 	DeliveryRunID          string
 	PlanDigest             string
+	ChangeProposalDigest   string
 	ContextManifestDigest  string
 	ApprovalRecordID       string
 	ApprovalRecordDigest   string
@@ -149,7 +151,7 @@ func (value WorkerDelegation) ValidateFor(human, taskAgent, worker Principal, at
 		value.HumanSubjectID != human.SubjectID() || value.TaskAgentSubjectID != taskAgent.SubjectID() ||
 		value.WorkerSubjectID != worker.SubjectID() || value.TenantID == "" || value.WorkspaceID == "" ||
 		value.ProjectID == "" || value.RepositoryID == "" || value.DeliveryRunID == "" ||
-		!workerDigest(value.PlanDigest) || !workerDigest(value.ContextManifestDigest) ||
+		!workerDigest(value.PlanDigest) || !workerDigest(value.ChangeProposalDigest) || !workerDigest(value.ContextManifestDigest) ||
 		value.ApprovalRecordID == "" || !workerDigest(value.ApprovalRecordDigest) ||
 		value.SourceRevision == "" || len(value.ChangePaths) == 0 ||
 		value.Environment != DeveloperTrialEnvironment || value.Action != WorkerPrepareChangeAction ||
@@ -322,8 +324,9 @@ func mintWorkerDelegation(request WorkerDelegationRequest, parent string, issued
 		TaskAgentSubjectID: request.TaskAgentSubjectID, WorkerSubjectID: request.WorkerSubjectID,
 		TenantID: request.TenantID, WorkspaceID: request.WorkspaceID, ProjectID: request.ProjectID,
 		RepositoryID: request.RepositoryID, DeliveryRunID: request.DeliveryRunID,
-		PlanDigest: request.PlanDigest, ContextManifestDigest: request.ContextManifestDigest,
-		ApprovalRecordID: request.ApprovalRecordID, ApprovalRecordDigest: request.ApprovalRecordDigest,
+		PlanDigest: request.PlanDigest, ChangeProposalDigest: request.ChangeProposalDigest,
+		ContextManifestDigest: request.ContextManifestDigest,
+		ApprovalRecordID:      request.ApprovalRecordID, ApprovalRecordDigest: request.ApprovalRecordDigest,
 		SourceRevision: request.SourceRevision, ChangePaths: slices.Clone(request.ChangePaths),
 		Classification: request.Classification, RiskClass: request.RiskClass,
 		Environment: request.Environment, Action: request.Action, Purpose: request.Purpose,

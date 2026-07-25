@@ -3,7 +3,7 @@
 Status: Accepted
 Owner: Forge Engineering and Architecture
 Version: 1.0
-Verified: 2026-07-24
+Verified: 2026-07-25
 
 ## Purpose
 
@@ -29,18 +29,19 @@ Forge currently provides a small developer bootstrap:
 | Developer Trial intent capture | Versioned direct-human intent capture, immutable `Captured` delivery run, Tenant-derived repository/classification binding, scope-bound atomic idempotency, and a concurrency-safe in-memory store behind a replaceable port | `internal/delivery` and tests | Trial |
 | Developer Trial policy decision | Deterministic fail-closed evaluation of trusted versioned rules against exact Identity, Tenant, Delivery, action, purpose, classification, risk, and environment facts; deny precedence, mandatory obligations, bounded expiry, reason codes, and digest-bound Policy Decisions | `internal/policy`, `internal/contracts/trust`, and tests | Trial |
 | Developer Trial plan-review eligibility | Policy-owned `forge.approval.decide` evaluation bound to the exact Approval Request digest, active human, Delivery plan, Tenant scope, purpose, classification, risk, Developer Trial environment, obligations, policy versions, and expiry | `internal/policy` and tests | Trial |
-| Developer Trial root task delegation | Immutable canonical root-delegation request, digest-bound `forge.delegation.create` Policy evaluation, Identity-owned bounded issuance, atomic tenant-scoped idempotency, expiry narrowing, revocation, and disclosure-safe one-record chain resolution for one synthetic task agent | `internal/identity`, `internal/policy`, and tests | Trial |
+| Developer Trial root task delegation | Immutable canonical phase-specific context and model-proposal delegation requests, digest-bound `forge.delegation.create` Policy evaluation, Identity-owned bounded issuance, atomic tenant-scoped idempotency, expiry narrowing, revocation, and disclosure-safe one-record chain resolution for one synthetic task agent | `internal/identity`, `internal/policy`, and tests | Trial |
 | Developer Trial root Execution Envelope | Policy-owned re-evaluation and decision ledger, live Identity delegation resolution, server-derived limits and expiry, canonical integrity binding, atomic idempotency, and one root envelope limited to context assembly | `internal/policy`, `internal/contracts/trust`, and tests | Trial |
 | Developer Trial context manifest assembly and reproduction | Authority and obligation enforcement before source-metadata discovery; exact tenant/project/repository validation; bounded deterministic Context Package manifests; explicit omissions; integrity and atomic replay; plus capability-owned manifest reproduction that reports changed, missing, or stale source metadata without returning content | `internal/context`, `internal/contracts/trust`, and tests | Trial |
 | Developer Trial context-informed planning | Explicit in-process transitions from `Captured` through `ContextAuthorizing`, `ContextReady`, `Planned`, `AwaitingPlanApproval`, and `PlanApproved`; optimistic concurrency, scope-bound idempotency, atomic minimized outbox entries, bounded deterministic acyclic plans, canonical plan digests, and exact invalidation checks | `internal/delivery` and tests | Trial |
 | Developer Trial plan approval | Approval-owned immutable request and scope-bound Approval Record v2 lifecycle with canonical digests, exact human and Policy eligibility, evidence and condition binding, atomic idempotency, immutable revocation chains, fork prevention, and current-record resolution | `internal/approval`, `internal/contracts/trust`, and tests | Trial |
-| Developer Trial worker authority | Separate worker-phase delegation, workload principal binding, current Approval/Context/plan revalidation, Policy-owned bounded worker envelope issuance, expiry, idempotency, revocation, and PostgreSQL adapters | `internal/identity`, `internal/policy`, and tests | Trial |
-| Developer Trial candidate preparation | Closed digest-bound worker contracts, deterministic file replacement, path/source/symlink/output controls, isolated Docker invocation, candidate bundle and tree digests, and Delivery transitions through `Executing` and `Verifying` | `internal/contracts/worker`, `internal/execution`, `internal/worker`, `cmd/forge-worker`, `internal/delivery`, and tests | Trial |
+| Developer Trial worker authority | Separate worker-phase delegation, workload principal binding, current Approval/Context/plan and admitted Change Proposal digest revalidation, Policy-owned bounded worker envelope issuance, mandatory `proposal-admitted` obligation, expiry, idempotency, revocation, and PostgreSQL adapters | `internal/identity`, `internal/policy`, and tests | Trial |
+| Developer Trial candidate preparation | Closed digest-bound Change Proposal and worker contracts; deterministic conversion of admitted proposal bytes; path/source/symlink/output controls; isolated Docker invocation; candidate bundle and tree digests; and Delivery transitions through `Executing` and `Verifying` | `internal/contracts/change`, `internal/contracts/worker`, `internal/intelligence`, `internal/execution`, `internal/worker`, `cmd/forge-worker`, `internal/delivery`, and tests | Trial |
 | Developer Trial independent verification | Closed Assurance Plan and result contracts, mandatory independent consequential oracle, separate verifier deployment unit, fresh-checkout integrity/path/Go-format controls, durable result adapter, and Delivery transition to `AwaitingPublicationApproval` | `internal/contracts/verification`, `internal/verification`, `internal/verifier`, `cmd/forge-verifier`, and tests | Trial |
 | Developer Trial Requirements Proposal | Digest-bound structured proposal that separates direct human statements from assumptions, hypotheses, open questions, and experiments; conversational review can produce immutable human-sourced field-correction revisions or reject without authority; superseded digests fail closed and exact authenticated-human promotion of the current revision is required before Delivery captures intent | `internal/experience`, `internal/intent`, `internal/cli`, and tests | Trial |
 | Developer Trial model-assisted discovery | Closed provider-neutral discovery request and proposal contracts; Experience-owned conversational turns using exact validated activation limits; in-process checkpoint preservation and an explicit accessible retry decision after normalized bounded-retry failure; strict regular-file activation loading bound to a separately approved exact digest; Intelligence-owned eligibility, pricing, budgets, adapter invocation, activation-bound receipt and disclosure-safe failures; strict OpenAI Responses adapter with storage, redirects, and environment-proxy routing disabled; measured token, latency, and estimated-cost receipts; synthetic model-selection plan; and preserved contract-double journey. No provider is active by default | `internal/contracts/discovery`, `internal/intelligence`, `internal/experience`, `internal/cli`, `schemas/forge/intelligence/v1`, `assurance/evaluations/discovery`, and tests | Trial |
+| Developer Trial model-assisted change preparation | Optional ADR-0023 path with a distinct exact provider activation; phase-specific task-agent delegation; Policy-issued `forge.intelligence.propose-change` authority; closed request and proposal schemas; purpose-minimized source and acceptance bindings; strict OpenAI structured output without tools; activation-bound usage receipt; deterministic contract-double fallback; proposal-digest-bound worker authority; and explicit assumptions, uncertainty, omissions, cost, candidate, and verification projection. No change provider is active by default | `internal/contracts/change`, `internal/intelligence`, `internal/identity`, `internal/policy`, `internal/execution`, `internal/cli`, `schemas/forge/intelligence/v1`, `assurance/evaluations/change-preparation`, and tests | Trial |
 | Developer Trial publication approval | Separate Approval Record v2 action for the exact verified candidate, current evidence references, Tenant-derived scope, environment, purpose, classification, risk, Policy eligibility, lifecycle, and expiry | `internal/approval`, `internal/policy`, `internal/contracts/trust`, and tests | Trial |
-| Developer Trial source-control publication | Provider-neutral exact-subject, tree, path, repository, base, metadata-profile, current Approval, Policy, and required Evidence validation; deterministic operation and branch identity; bounded ambiguity reconciliation; and a credential-free idempotent contract double that cannot merge | `internal/sourcecontrol` and tests | Trial |
+| Developer Trial source-control publication | Provider-neutral exact-subject, tree, path, repository, base, metadata-profile, current Approval, Policy, and required Evidence validation; deterministic operation and branch identity; bounded ambiguity reconciliation; a credential-free idempotent contract double; and an ADR-0019 GitHub App adapter limited to Git data and draft pull-request endpoints with exact repository, credential reference, candidate files, marker reconciliation, and no merge/release/deploy/admin surface. The GitHub adapter is not live-configured | `internal/sourcecontrol` and tests | Trial |
 | Guided M1 public journey | In-process Developer Trial composition from untrusted requirements input through proposal promotion, plan approval, bounded candidate preparation, independent verification, publication approval, and one reviewable contract-double pull request; denied cross-scope identity fails before repository discovery | `internal/cli`, `assurance/journeys/m1`, and tests | Trial |
 | Developer Trial durable control state | Capability-owned PostgreSQL adapters for Tenant, Identity worker delegation, Delivery lifecycle and outbox, Policy worker envelopes, Context manifests, Approval records, Verification records, and Evidence; adapters remain unwired from the public CLI | capability `postgres_store.go` files and integration tests | Trial |
 | Developer Trial evidence and artefacts | Append-only digest-linked Evidence streams with fork detection; bounded MinIO temporary upload, byte verification, immutable digest promotion, and PostgreSQL metadata | `internal/evidence`, dedicated durable-verification workflow, and tests | Trial |
@@ -56,12 +57,13 @@ Forge currently provides a small developer bootstrap:
 The default configuration sets `intelligence.enabled` to `false`. The public
 `forge delivery start` command now accepts either the deterministic requirements
 file or a natural-language message through the same bounded M1 capabilities.
-The conversational path remains unavailable until an accountable human
-approves one exact provider activation and digest. When both are supplied to
-the public command, Forge can configure the bounded OpenAI adapter without
-resolving its environment credential until an eligible invocation. No
-activation or credential is committed. Contract tests compose the same path
-with credential-free model and HTTP transport doubles. The delivery journey uses
+The discovery and change-preparation paths remain unavailable until an
+accountable human approves the applicable purpose-specific provider activation
+and digest. When supplied to the public command, Forge can configure the
+bounded OpenAI adapter without resolving its environment credential until an
+eligible invocation. No activation or credential is committed. Contract tests
+compose the same paths with credential-free model and HTTP transport doubles.
+The delivery journey uses
 synthetic Developer Trial identity, deterministic in-process adapters, separate
 human gates, contract worker and verifier runners, append-oriented evidence,
 and a credential-free source-control contract double. It is a usable
@@ -74,9 +76,10 @@ branch or pull request, merge, release, deploy, or operate production. The
 separate Docker worker and verifier implementations and durable adapters remain
 internal M1-B evidence; the current guided CLI uses in-process contract runners
 and memory stores and therefore does not prove runtime isolation or durable
-resume. The optional live discovery seam proves no provider quality, latency,
-availability, billing, retention, residency, or production fitness until a
-separately approved synthetic trial records that evidence.
+resume. The optional live discovery and change-preparation seams prove no
+provider quality, latency, availability, billing, retention, residency, or
+production fitness until separately approved synthetic trials record that
+evidence.
 
 Contributor delivery delegation is repository governance, not Forge product
 runtime functionality. It becomes active only after a separate authenticated
@@ -91,11 +94,11 @@ All capabilities in `architecture/capabilities.md` remain Research unless a late
 - durable policy sourcing, policy administration, durable decision or envelope persistence, revocation distribution, or distributed authorization enforcement beyond the bounded in-process Developer Trial evaluator and root issuer;
 - scheduling, cancellation orchestration, automatic outbox dispatch, or automated recovery beyond durable checkpoint and pending-outbox resolution;
 - repository-content retrieval, ranking, indexing, embedding, or memory lifecycle beyond bounded source-metadata manifest assembly and reproduction;
-- agent registry, workforce coordination, general model routing, or tool brokerage beyond the single disabled discovery adapter;
+- agent registry, workforce coordination, general model routing, or tool brokerage beyond the separate disabled discovery and change-preparation purposes at the same provider edge;
 - production-grade sandbox assurance, dynamic workers, models, tools, secrets, or network authority;
 - evidence signing, production non-repudiation, retention execution, or supported backup and restore;
 - durable cross-process journey resume, Workbench, Webex Messaging, Software System Twin, or public product API;
-- live GitHub publication, repository credential brokering, pull-request merge, or review-provider integration;
+- live GitHub App activation, installation-token brokering, pull-request merge, or review-provider integration beyond the unconfigured bounded publication adapter;
 - release, production deployment, SaaS tenancy, or supported self-hosted operation.
 
 ## Deployment posture

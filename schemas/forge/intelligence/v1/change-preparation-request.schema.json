@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.3corners.example/schemas/intelligence/v1/change-preparation-request.schema.json",
+  "title": "Forge bounded change-preparation request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "id", "digest", "correlationId", "tenantId", "workspaceId",
+    "projectId", "repositoryId", "deliveryRunId", "taskAgentId", "planId",
+    "planDigest", "contextPackageId", "contextManifestDigest",
+    "requirementsRecordId", "sourceRevision", "roleProfileId", "purpose",
+    "classification", "allowedReadPaths", "allowedWritePaths", "sources",
+    "acceptanceCriteria", "testIntent", "exclusions", "controlReferences",
+    "limits", "expiresAt"
+  ],
+  "properties": {
+    "schemaVersion": {"const": "forge.change-preparation-request.v1"},
+    "id": {"type": "string", "pattern": "^forge\\.change-request\\.[a-f0-9]{64}$"},
+    "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "correlationId": {"type": "string", "minLength": 1},
+    "tenantId": {"type": "string", "minLength": 1},
+    "workspaceId": {"type": "string", "minLength": 1},
+    "projectId": {"type": "string", "minLength": 1},
+    "repositoryId": {"type": "string", "minLength": 1},
+    "deliveryRunId": {"type": "string", "minLength": 1},
+    "taskAgentId": {"type": "string", "minLength": 1},
+    "planId": {"type": "string", "minLength": 1},
+    "planDigest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "contextPackageId": {"type": "string", "minLength": 1},
+    "contextManifestDigest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "requirementsRecordId": {"type": "string", "minLength": 1},
+    "sourceRevision": {"type": "string", "minLength": 1},
+    "roleProfileId": {"const": "forge.role.software-engineer.change-preparation.v1"},
+    "purpose": {"const": "forge.m1.prepare-change"},
+    "classification": {"enum": ["Public", "Internal"]},
+    "allowedReadPaths": {"$ref": "#/$defs/paths"},
+    "allowedWritePaths": {"$ref": "#/$defs/paths"},
+    "sources": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "digest", "content"],
+        "properties": {
+          "path": {"$ref": "#/$defs/path"},
+          "digest": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+          "content": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "acceptanceCriteria": {"$ref": "#/$defs/texts"},
+    "testIntent": {"$ref": "#/$defs/texts"},
+    "exclusions": {"$ref": "#/$defs/texts"},
+    "controlReferences": {"$ref": "#/$defs/texts"},
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxInputBytes", "maxOutputBytes", "maxTokens", "maxLatency", "maxCostMicros", "maxChangedFiles"],
+      "properties": {
+        "maxInputBytes": {"type": "integer", "minimum": 1},
+        "maxOutputBytes": {"type": "integer", "minimum": 1},
+        "maxTokens": {"type": "integer", "minimum": 1},
+        "maxLatency": {"type": "integer", "minimum": 1},
+        "maxCostMicros": {"type": "integer", "minimum": 0},
+        "maxChangedFiles": {"type": "integer", "minimum": 1, "maximum": 100}
+      }
+    },
+    "expiresAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+$"},
+    "paths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+    "texts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

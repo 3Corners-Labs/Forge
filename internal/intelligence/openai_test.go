@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/discovery"
 	"github.com/3corners/forge/internal/intelligence"
 )
@@ -229,6 +230,76 @@ func TestOpenAIAdapterDoesNotFollowRedirects(t *testing.T) {
 	_, err = adapter.Propose(context.Background(), activation, requestFixture())
 	if err == nil || requests != 1 || tokens.calls != 1 {
 		t.Fatalf("redirect was not stopped: requests=%d tokenCalls=%d err=%v", requests, tokens.calls, err)
+	}
+}
+
+func TestOpenAIChangeAdapterReturnsOnlyDigestBoundReplacementData(t *testing.T) {
+	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+	request, err := changecontract.BindRequest(changecontract.Request{
+		SchemaVersion: changecontract.RequestVersion, CorrelationID: "correlation-change-1",
+		TenantID: "tenant-1", WorkspaceID: "workspace-1", ProjectID: "project-1",
+		RepositoryID: "repository-1", DeliveryRunID: "run-1", TaskAgentID: "agent-1",
+		PlanID: "plan-1", PlanDigest: "sha256:" + strings.Repeat("a", 64),
+		ContextPackageID: "context-1", ContextManifestDigest: "sha256:" + strings.Repeat("b", 64),
+		RequirementsRecordID: "requirements-1", SourceRevision: strings.Repeat("c", 40),
+		RoleProfileID: changecontract.RoleProfileV1, Purpose: changecontract.PurposeV1,
+		Classification: "Internal", AllowedReadPaths: []string{"internal/example"},
+		AllowedWritePaths:  []string{"internal/example/example.go"},
+		AcceptanceCriteria: []string{"Return the expected value."},
+		TestIntent:         []string{"Unit test the behavior."}, ControlReferences: []string{"ADR-0023"},
+		Limits: changecontract.Limits{
+			MaxInputBytes: 1 << 20, MaxOutputBytes: 1 << 20, MaxTokens: 1024,
+			MaxLatency: time.Second, MaxCostMicros: 100_000, MaxChangedFiles: 1,
+		},
+		ExpiresAt: now.Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelOutput, _ := json.Marshal(map[string]any{
+		"replacements": []map[string]any{{
+			"path": "internal/example/example.go", "expectedSourceDigest": "",
+			"content": "package example\n", "rationale": "Satisfies the requirement.",
+			"candidateTest": false,
+		}},
+		"proposedChecks": []string{"go test ./internal/example"},
+		"assumptions":    []string{}, "uncertainty": []string{}, "omissions": []string{},
+		"refusal": false, "incomplete": false,
+	})
+	tokens := &tokenSourceStub{token: "CHANGE_TEST_SECRET"}
+	client := &http.Client{Transport: roundTripFunc(func(httpRequest *http.Request) (*http.Response, error) {
+		body, _ := io.ReadAll(httpRequest.Body)
+		if bytes.Contains(body, []byte("CHANGE_TEST_SECRET")) ||
+			bytes.Contains(body, []byte(`"tools"`)) {
+			t.Fatal("credential or tool authority leaked into change request")
+		}
+		response, _ := json.Marshal(map[string]any{
+			"id": "resp-change-1", "model": "model-approved",
+			"output": []map[string]any{{"content": []map[string]any{{
+				"type": "output_text", "text": string(modelOutput),
+			}}}},
+			"usage": map[string]any{"input_tokens": 100, "output_tokens": 50},
+		})
+		return &http.Response{
+			StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(response)),
+			Header: make(http.Header),
+		}, nil
+	})}
+	adapter, err := intelligence.NewOpenAIAdapter(client, tokens)
+	if err != nil {
+		t.Fatal(err)
+	}
+	activation := openAIActivationFixture()
+	activation.AdapterVersion = "forge.openai-change-preparation-adapter.v1"
+	activation.PromptVersion = "forge.change-preparation.prompt.v1"
+	activation.AllowedPurposes = []string{changecontract.PurposeV1}
+	proposal, err := adapter.Prepare(context.Background(), activation, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if proposal.RequestDigest != request.Digest || proposal.Replacements[0].Path != request.AllowedWritePaths[0] ||
+		proposal.Receipt.ResponseSchema != changecontract.ProposalVersion || tokens.calls != 1 {
+		t.Fatalf("change proposal is not request-bound: %#v", proposal)
 	}
 }
 

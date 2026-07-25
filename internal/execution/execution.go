@@ -10,6 +10,7 @@ import (
 	"sort"
 	"time"
 
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/contracts/trust"
 	workercontract "github.com/3corners/forge/internal/contracts/worker"
@@ -42,13 +43,14 @@ func NewService(runner Runner, now func() time.Time) (*Service, error) {
 }
 
 type PrepareRequest struct {
-	CorrelationID  string
-	IdempotencyKey string
-	Run            delivery.DeliveryRun
-	Envelope       trust.ExecutionEnvelope
-	Profile        TransformationProfile
-	Workspace      string
-	Attempt        int64
+	CorrelationID     string
+	IdempotencyKey    string
+	Run               delivery.DeliveryRun
+	Envelope          trust.ExecutionEnvelope
+	Profile           TransformationProfile
+	Workspace         string
+	Attempt           int64
+	DependencyDigests []string
 }
 
 type PrepareResult struct {
@@ -101,8 +103,9 @@ func (service *Service) Prepare(ctx context.Context, command PrepareRequest) (Pr
 		},
 		Action: workercontract.PrepareChangeAction, TransformationID: command.Profile.ID,
 		TransformationVersion: command.Profile.Version, AllowedReadPaths: slices.Clone(plan.ChangePaths),
-		AllowedWritePaths: slices.Clone(plan.ChangePaths), DependencyDigests: []string{plan.Digest, contextRecord.ManifestDigest},
-		Replacements: replacements,
+		AllowedWritePaths: slices.Clone(plan.ChangePaths),
+		DependencyDigests: append([]string{plan.Digest, contextRecord.ManifestDigest}, command.DependencyDigests...),
+		Replacements:      replacements,
 		Limits: workercontract.Limits{
 			MaxDurationSeconds: min(command.Envelope.Limits.MaxDurationSeconds, plan.Budgets.MaxDurationSeconds),
 			MaxProcesses:       command.Profile.MaxProcesses, MaxOutputBytes: command.Profile.MaxOutputBytes,
@@ -125,6 +128,69 @@ func (service *Service) Prepare(ctx context.Context, command PrepareRequest) (Pr
 		return PrepareResult{}, failure.New(failure.VerificationFailed, "isolated worker result could not be verified", command.CorrelationID, failure.RetryNone)
 	}
 	return PrepareResult{Request: request, Bundle: bundle, Result: result}, nil
+}
+
+type PrepareProposalRequest struct {
+	CorrelationID       string
+	IdempotencyKey      string
+	Run                 delivery.DeliveryRun
+	Envelope            trust.ExecutionEnvelope
+	MaterializeDecision trust.PolicyDecision
+	ChangeRequest       changecontract.Request
+	Proposal            changecontract.Proposal
+	Workspace           string
+	Attempt             int64
+	MaxProcesses        int64
+	MaxOutputBytes      int64
+}
+
+// PrepareProposal turns admitted information into the existing deterministic
+// worker contract. No model-controlled command, tool, path, or limit crosses
+// this boundary.
+func (service *Service) PrepareProposal(ctx context.Context, command PrepareProposalRequest) (PrepareResult, error) {
+	at := service.now()
+	if err := command.ChangeRequest.Validate(at); err != nil ||
+		command.Proposal.Validate(command.ChangeRequest) != nil ||
+		command.Proposal.Refusal || command.Proposal.Incomplete {
+		return PrepareResult{}, failure.New(
+			failure.InvalidRequest, "admitted change proposal is invalid or incomplete",
+			command.CorrelationID, failure.RetryNone,
+		)
+	}
+	if !validProposalMaterializationAuthority(
+		command.MaterializeDecision, command.Envelope, command.Proposal.Digest,
+		at, command.CorrelationID,
+	) {
+		return PrepareResult{}, failure.New(
+			failure.Forbidden, "materialization authority is not bound to the admitted proposal",
+			command.CorrelationID, failure.RetryNewAuthority,
+		)
+	}
+	replacements := make([]workercontract.FileReplacement, len(command.Proposal.Replacements))
+	for index, replacement := range command.Proposal.Replacements {
+		replacements[index] = workercontract.FileReplacement{
+			Path: replacement.Path, ExpectedSourceDigest: replacement.ExpectedSourceDigest,
+			Content: []byte(replacement.Content),
+		}
+	}
+	return service.Prepare(ctx, PrepareRequest{
+		CorrelationID: command.CorrelationID, IdempotencyKey: command.IdempotencyKey,
+		Run: command.Run, Envelope: command.Envelope,
+		Profile: TransformationProfile{
+			ID: workercontract.TransformationV1, Version: "change-proposal.v1",
+			Replacements: replacements, MaxProcesses: command.MaxProcesses,
+			MaxOutputBytes: command.MaxOutputBytes, MaxChangedFiles: int64(len(replacements)),
+		},
+		Workspace: command.Workspace, Attempt: command.Attempt,
+		DependencyDigests: []string{command.ChangeRequest.Digest, command.Proposal.Digest},
+	})
+}
+
+func validProposalMaterializationAuthority(decision trust.PolicyDecision, envelope trust.ExecutionEnvelope, proposalDigest string, at time.Time, correlationID string) bool {
+	return decision.Authorize(
+		"execution", envelope.Principal.AgentID, workercontract.PrepareChangeAction,
+		proposalDigest, at, []string{"proposal-admitted"}, correlationID,
+	) == nil && slices.Contains(envelope.PolicyDecisionIDs, decision.ID)
 }
 
 func validWorkerResult(result workercontract.Result, request workercontract.Request, bundle workercontract.CandidateBundle, started time.Time) bool {

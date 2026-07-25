@@ -1,0 +1,9 @@
+{
+  "name": "Shared Change contract imports control-plane Intelligence",
+  "importerModule": "change-contracts",
+  "imports": ["github.com/3corners/forge/internal/intelligence"],
+  "expectedViolations": [
+    "shared-contract-cannot-import-runtime",
+    "undeclared-internal-dependency"
+  ]
+}

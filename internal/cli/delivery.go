@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/discovery"
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/intent"
@@ -21,6 +22,8 @@ import (
 type journeyOptions struct {
 	ProviderActivationPath   string
 	ProviderActivationDigest string
+	ChangeActivationPath     string
+	ChangeActivationDigest   string
 }
 
 type journeyFactory func(journeyOptions) (guidedJourney, error)
@@ -129,12 +132,19 @@ type planStage struct {
 }
 
 type candidateStage struct {
-	SessionID          string   `json:"sessionId"`
-	RunID              string   `json:"runId"`
-	CandidateDigest    string   `json:"candidateDigest"`
-	VerificationDigest string   `json:"verificationDigest"`
-	ChangedPaths       []string `json:"changedPaths"`
-	EvidenceReady      bool     `json:"evidenceReady"`
+	SessionID            string               `json:"sessionId"`
+	RunID                string               `json:"runId"`
+	ChangeProposalDigest string               `json:"changeProposalDigest"`
+	ChangeProvider       string               `json:"changeProvider"`
+	ChangeModelID        string               `json:"changeModelId"`
+	ChangeUsage          changecontract.Usage `json:"changeUsage"`
+	Assumptions          []string             `json:"assumptions"`
+	Uncertainty          []string             `json:"uncertainty"`
+	Omissions            []string             `json:"omissions"`
+	CandidateDigest      string               `json:"candidateDigest"`
+	VerificationDigest   string               `json:"verificationDigest"`
+	ChangedPaths         []string             `json:"changedPaths"`
+	EvidenceReady        bool                 `json:"evidenceReady"`
 }
 
 type publicationStage struct {
@@ -179,6 +189,8 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	message := fs.String("message", "", "natural-language product request")
 	providerActivation := fs.String("provider-activation", "", "exact approved model-provider activation JSON")
 	providerActivationDigest := fs.String("provider-activation-digest", "", "separately approved exact activation digest")
+	changeActivation := fs.String("change-activation", "", "exact approved change-preparation activation JSON")
+	changeActivationDigest := fs.String("change-activation-digest", "", "separately approved exact change-preparation activation digest")
 	outputFormat := fs.String("output", "json", "output format")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -193,9 +205,14 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 	if (*providerActivation == "") != (*providerActivationDigest == "") {
 		return errors.New("provider activation file and approved digest must be supplied together")
 	}
+	if (*changeActivation == "") != (*changeActivationDigest == "") {
+		return errors.New("change activation file and approved digest must be supplied together")
+	}
 	journey, err := journeys(journeyOptions{
 		ProviderActivationPath:   *providerActivation,
 		ProviderActivationDigest: *providerActivationDigest,
+		ChangeActivationPath:     *changeActivation,
+		ChangeActivationDigest:   *changeActivationDigest,
 	})
 	if err != nil {
 		return err
@@ -259,7 +276,7 @@ func runDelivery(args []string, input *bufio.Reader, output, errorOutput io.Writ
 			return err
 		}
 	}
-	writeEvent(output, "progress", "executing", "Plan approved. Preparing the bounded candidate and running independent verification.", nil)
+	writeEvent(output, "progress", "change-preparing", "Plan approved. Preparing a non-authoritative bounded change proposal.", nil)
 	candidate, err := journey.ApprovePlanAndVerify(ctx, plan.SessionID, plan.PlanDigest)
 	if err != nil {
 		return err

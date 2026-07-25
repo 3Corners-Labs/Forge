@@ -12,6 +12,7 @@ import (
 
 	"github.com/3corners/forge/internal/approval"
 	forgecontext "github.com/3corners/forge/internal/context"
+	changecontract "github.com/3corners/forge/internal/contracts/change"
 	"github.com/3corners/forge/internal/contracts/discovery"
 	"github.com/3corners/forge/internal/contracts/failure"
 	"github.com/3corners/forge/internal/contracts/trust"
@@ -199,26 +200,28 @@ type trialSession struct {
 }
 
 type developerTrialJourney struct {
-	now             func() time.Time
-	human           identity.Principal
-	taskAgent       identity.Principal
-	worker          identity.Principal
-	directory       *tenant.Directory
-	bindingSource   *trialBindingSource
-	scope           tenant.Scope
-	binding         tenant.RepositoryBinding
-	experience      *experience.Service
-	discovery       *experience.DiscoveryService
-	intent          *intent.Service
-	delivery        *delivery.Service
-	policies        *policyResolvers
-	approvals       *approval.Service
-	evidence        *evidence.Service
-	sourceControl   *sourcecontrol.Service
-	provider        *sourcecontrol.ContractDouble
-	sessions        map[string]*trialSession
-	discoveryLimits discovery.Limits
-	nextID          int
+	now               func() time.Time
+	human             identity.Principal
+	taskAgent         identity.Principal
+	worker            identity.Principal
+	directory         *tenant.Directory
+	bindingSource     *trialBindingSource
+	scope             tenant.Scope
+	binding           tenant.RepositoryBinding
+	experience        *experience.Service
+	discovery         *experience.DiscoveryService
+	changePreparation *intelligence.ChangeService
+	changeActivation  intelligence.ProviderActivation
+	intent            *intent.Service
+	delivery          *delivery.Service
+	policies          *policyResolvers
+	approvals         *approval.Service
+	evidence          *evidence.Service
+	sourceControl     *sourcecontrol.Service
+	provider          *sourcecontrol.ContractDouble
+	sessions          map[string]*trialSession
+	discoveryLimits   discovery.Limits
+	nextID            int
 }
 
 func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
@@ -327,6 +330,26 @@ func newDeveloperTrialJourney(options journeyOptions) (guidedJourney, error) {
 		); configureErr != nil {
 			return nil, configureErr
 		}
+	}
+	if options.ChangeActivationPath != "" {
+		activation, loadErr := intelligence.LoadProviderActivation(options.ChangeActivationPath, anchor)
+		if loadErr != nil {
+			return nil, loadErr
+		}
+		if activation.Digest != options.ChangeActivationDigest {
+			return nil, errors.New("change activation does not match its separately approved digest")
+		}
+		if activation.Provider != "openai" ||
+			!slices.Equal(activation.AllowedPurposes, []string{changecontract.PurposeV1}) {
+			return nil, errors.New("only the approved OpenAI M1 change-preparation adapter is runnable")
+		}
+		liveClock := func() time.Time { return time.Now().UTC() }
+		preparer, serviceErr := intelligence.NewOpenAIChangeService(activation, liveClock)
+		if serviceErr != nil {
+			return nil, serviceErr
+		}
+		value.changePreparation = preparer
+		value.changeActivation = activation
 	}
 	return value, nil
 }
@@ -687,13 +710,147 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		return candidateStage{}, err
 	}
 	plan, contextRecord := approved.Plan(), approved.Context()
+	changeLimits := changecontract.Limits{
+		MaxInputBytes: 64 << 10, MaxOutputBytes: 1 << 20, MaxTokens: 8192,
+		MaxLatency: 60 * time.Second, MaxCostMicros: 500_000,
+		MaxChangedFiles: int64(len(plan.ChangePaths)),
+	}
+	if journey.changePreparation != nil {
+		changeLimits = changecontract.Limits{
+			MaxInputBytes:   journey.changeActivation.Budgets.MaxInputBytes,
+			MaxOutputBytes:  journey.changeActivation.Budgets.MaxOutputBytes,
+			MaxTokens:       journey.changeActivation.Budgets.MaxTokens,
+			MaxLatency:      journey.changeActivation.Budgets.MaxLatency,
+			MaxCostMicros:   journey.changeActivation.Budgets.MaxCostMicros,
+			MaxChangedFiles: int64(len(plan.ChangePaths)),
+		}
+	}
+	changeRequest, err := changecontract.BindRequest(changecontract.Request{
+		SchemaVersion: changecontract.RequestVersion, CorrelationID: trialCorrelation,
+		TenantID: approved.TenantID(), WorkspaceID: approved.WorkspaceID(),
+		ProjectID: approved.ProjectID(), RepositoryID: approved.RepositoryID(),
+		DeliveryRunID: approved.ID(), TaskAgentID: journey.taskAgent.SubjectID(),
+		PlanID: plan.ID, PlanDigest: plan.Digest, ContextPackageID: contextRecord.PackageID,
+		ContextManifestDigest: contextRecord.ManifestDigest,
+		RequirementsRecordID:  session.proposal.ID, SourceRevision: contextRecord.SourceRevisions[0],
+		RoleProfileID: changecontract.RoleProfileV1, Purpose: changecontract.PurposeV1,
+		Classification: approved.Classification(), AllowedReadPaths: plan.ChangePaths,
+		AllowedWritePaths: plan.ChangePaths, Sources: []changecontract.SourceFile{},
+		AcceptanceCriteria: session.proposal.AcceptanceCriteria,
+		TestIntent:         plan.VerificationIntent, Exclusions: session.proposal.Exclusions,
+		ControlReferences: plan.GuardrailReferences,
+		Limits:            changeLimits,
+		ExpiresAt:         journey.now().Add(15 * time.Minute),
+	})
+	if err != nil {
+		return candidateStage{}, err
+	}
+	var changeProposal changecontract.Proposal
+	if journey.changePreparation != nil {
+		changeDelegationRequest, delegationErr := identity.NewDelegationRequest(identity.DelegationRequestInput{
+			ContractVersion: identity.DelegationRequestContractVersion,
+			IdempotencyKey:  "change-delegation:" + approved.ID(), CorrelationID: trialCorrelation,
+			HumanSubjectID: journey.human.SubjectID(), AgentSubjectID: journey.taskAgent.SubjectID(),
+			TenantID: approved.TenantID(), WorkspaceID: approved.WorkspaceID(),
+			ProjectID: approved.ProjectID(), RepositoryID: approved.RepositoryID(),
+			DeliveryRunID: approved.ID(), Purpose: identity.M1ChangePurpose,
+			Actions:            []string{identity.DelegatedActionProposeChange},
+			Resources:          []string{changeRequest.Digest},
+			Classifications:    []string{approved.Classification()},
+			Destinations:       []string{"model:" + journey.changeActivation.Provider},
+			Environment:        identity.DeveloperTrialEnvironment,
+			MaximumAutonomy:    identity.ChangeProposalOnly,
+			RequestedExpiresAt: journey.now().Add(15 * time.Minute),
+		})
+		if delegationErr != nil {
+			return candidateStage{}, delegationErr
+		}
+		changeEvaluator, evaluatorErr := policy.NewEvaluator(policy.PolicySet{
+			Version: "policy.m1-exit.change-proposal.v1",
+			Rules: []policy.Rule{
+				trialRule(
+					"permit-change-delegation", policy.ActionCreateDelegation, journey.human.SubjectID(),
+					changeDelegationRequest.Digest(), approved, journey.scope, nil,
+				),
+				trialRule(
+					"permit-change-proposal", policy.ActionProposeChange, journey.taskAgent.SubjectID(),
+					changeRequest.Digest, approved, journey.scope,
+					[]policy.Obligation{
+						{Type: "model-output-non-authoritative", Parameters: map[string]any{"required": true}},
+						{Type: "purpose-minimized-context", Parameters: map[string]any{"required": true}},
+					},
+				),
+			},
+		}, []string{"model-output-non-authoritative", "purpose-minimized-context"}, 10*time.Minute, journey.now)
+		if evaluatorErr != nil {
+			return candidateStage{}, evaluatorErr
+		}
+		journey.policies.add(changeEvaluator)
+		changeDelegationDecision, delegationErr := changeEvaluator.EvaluateDelegation(ctx, policy.EvaluateDelegationRequest{
+			ContractVersion: policy.EvaluateDelegationRequestContractVersion,
+			CorrelationID:   trialCorrelation, Human: journey.human, Agent: journey.taskAgent,
+			Scope: journey.scope, Run: approved, Delegation: changeDelegationRequest,
+			Environment: policy.DeveloperTrialEnvironment, Risk: policy.RiskLow,
+		})
+		if delegationErr != nil {
+			return candidateStage{}, delegationErr
+		}
+		changeDelegations, delegationErr := identity.NewDelegationService(
+			identity.NewMemoryDelegationStore(), 15*time.Minute, journey.now,
+		)
+		if delegationErr != nil {
+			return candidateStage{}, delegationErr
+		}
+		changeDelegation, delegationErr := changeDelegations.CreateDelegation(ctx, identity.CreateDelegationRequest{
+			ContractVersion: identity.CreateDelegationContractVersion, Request: changeDelegationRequest,
+			Human: journey.human, Agent: journey.taskAgent, ParentDecision: changeDelegationDecision,
+		})
+		if delegationErr != nil {
+			return candidateStage{}, delegationErr
+		}
+		issuer, issuerErr := policy.NewChangeAuthorityIssuer(
+			changeEvaluator, changeDelegations, policy.NewMemoryEnvelopeStore(),
+			policy.ChangeAuthorityProfile{
+				Issuer: "forge.policy.developer-trial", Provider: journey.changeActivation.Provider,
+				ModelID:                 journey.changeActivation.AllowedModelIDs[0],
+				CredentialRef:           journey.changeActivation.CredentialRef,
+				MaximumLifetime:         10 * time.Minute,
+				EnforcedObligationTypes: []string{"model-output-non-authoritative", "purpose-minimized-context"},
+			}, journey.now,
+		)
+		if issuerErr != nil {
+			return candidateStage{}, issuerErr
+		}
+		authority, authorityErr := issuer.Issue(ctx, policy.IssueChangeAuthorityRequest{
+			SchemaVersion: policy.IssueChangeAuthorityVersion, CorrelationID: trialCorrelation,
+			IdempotencyKey: "change-proposal:" + approved.ID(), Human: journey.human,
+			TaskAgent: journey.taskAgent, Scope: journey.scope, Run: approved,
+			Request: changeRequest, DelegationID: changeDelegation.Delegation.ID(),
+			Environment: policy.DeveloperTrialEnvironment, Risk: policy.RiskLow,
+		})
+		if authorityErr != nil {
+			return candidateStage{}, authorityErr
+		}
+		changeProposal, err = journey.changePreparation.Prepare(ctx, intelligence.ChangePreparationCommand{
+			Request: changeRequest, Decision: authority.Decision, Envelope: authority.Envelope,
+		})
+		if err != nil {
+			return candidateStage{}, err
+		}
+	} else {
+		changeProposal, err = deterministicTrialChangeProposal(changeRequest, session.proposal)
+		if err != nil {
+			return candidateStage{}, err
+		}
+	}
 	workerRequest, err := identity.BindWorkerDelegationRequest(identity.WorkerDelegationRequest{
 		SchemaVersion: identity.WorkerDelegationRequestVersion, IdempotencyKey: "worker-delegation:" + approved.ID(),
 		CorrelationID: trialCorrelation, HumanSubjectID: journey.human.SubjectID(),
 		TaskAgentSubjectID: journey.taskAgent.SubjectID(), WorkerSubjectID: journey.worker.SubjectID(),
 		TenantID: approved.TenantID(), WorkspaceID: approved.WorkspaceID(), ProjectID: approved.ProjectID(),
 		RepositoryID: approved.RepositoryID(), DeliveryRunID: approved.ID(), PlanID: plan.ID,
-		PlanDigest: plan.Digest, ContextPackageID: contextRecord.PackageID,
+		PlanDigest: plan.Digest, ChangeProposalDigest: changeProposal.Digest,
+		ContextPackageID:      contextRecord.PackageID,
 		ContextManifestDigest: contextRecord.ManifestDigest, ApprovalRequestID: session.planRequest.ID,
 		ApprovalRequestDigest: session.planRequest.RequestDigest, ApprovalRecordID: record.ID,
 		ApprovalRecordDigest: record.Integrity.Digest, SourceRevision: contextRecord.SourceRevisions[0],
@@ -711,9 +868,13 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		Version: "policy.m1-c.worker.v1",
 		Rules: []policy.Rule{
 			trialRule("permit-worker-delegation", policy.ActionCreateDelegation, journey.human.SubjectID(), workerRequest.Digest, approved, journey.scope, nil),
-			trialRule("permit-worker-execution", policy.ActionPrepareChange, journey.worker.SubjectID(), plan.Digest, approved, journey.scope, nil),
+			trialRule(
+				"permit-worker-execution", policy.ActionPrepareChange, journey.worker.SubjectID(),
+				changeProposal.Digest, approved, journey.scope,
+				[]policy.Obligation{{Type: "proposal-admitted", Parameters: map[string]any{"required": true}}},
+			),
 		},
-	}, []string{}, 10*time.Minute, journey.now)
+	}, []string{"proposal-admitted"}, 10*time.Minute, journey.now)
 	if err != nil {
 		return candidateStage{}, err
 	}
@@ -741,7 +902,10 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	}
 	workerIssuer, err := policy.NewWorkerEnvelopeIssuer(
 		workerEvaluator, journey.approvals, workerDelegations, policy.NewMemoryEnvelopeStore(),
-		policy.WorkerEnvelopeProfile{Issuer: "forge.policy.developer-trial", MaximumLifetime: 10 * time.Minute},
+		policy.WorkerEnvelopeProfile{
+			Issuer: "forge.policy.developer-trial", MaximumLifetime: 10 * time.Minute,
+			EnforcedObligationTypes: []string{"proposal-admitted"},
+		},
 		journey.now,
 	)
 	if err != nil {
@@ -756,6 +920,22 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	})
 	if err != nil {
 		return candidateStage{}, err
+	}
+	var materializeDecision trust.PolicyDecision
+	found := false
+	for _, decisionID := range workerEnvelope.PolicyDecisionIDs {
+		candidate, resolved, resolveErr := workerEvaluator.ResolvePolicyDecision(ctx, decisionID)
+		if resolveErr != nil {
+			return candidateStage{}, resolveErr
+		}
+		if resolved && candidate.Action == workercontract.PrepareChangeAction &&
+			candidate.Resource == changeProposal.Digest {
+			materializeDecision, found = candidate, true
+			break
+		}
+	}
+	if !found {
+		return candidateStage{}, errors.New("materialization policy decision was not found")
 	}
 	authorizing, _, err := journey.delivery.BeginExecutionAuthorization(ctx, trialTransition(approved, "execution-authorizing"))
 	if err != nil {
@@ -777,18 +957,11 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		return candidateStage{}, err
 	}
 	defer os.RemoveAll(workspace)
-	replacements := make([]workercontract.FileReplacement, len(plan.ChangePaths))
-	for index, path := range plan.ChangePaths {
-		replacements[index] = workercontract.FileReplacement{Path: path, Content: []byte("# Forge M1 Developer Trial\n\nGenerated as a bounded synthetic candidate.\n")}
-	}
-	prepared, err := executionService.Prepare(ctx, execution.PrepareRequest{
+	prepared, err := executionService.PrepareProposal(ctx, execution.PrepareProposalRequest{
 		CorrelationID: trialCorrelation, IdempotencyKey: "prepare:" + approved.ID(),
-		Run: executing, Envelope: workerEnvelope,
-		Profile: execution.TransformationProfile{
-			ID: workercontract.TransformationV1, Version: "1.0.0", Replacements: replacements,
-			MaxProcesses: 2, MaxOutputBytes: 1 << 20, MaxChangedFiles: int64(len(replacements)),
-		},
-		Workspace: workspace, Attempt: 1,
+		Run: executing, Envelope: workerEnvelope, MaterializeDecision: materializeDecision,
+		ChangeRequest: changeRequest, Proposal: changeProposal,
+		Workspace: workspace, Attempt: 1, MaxProcesses: 2, MaxOutputBytes: 1 << 20,
 	})
 	if err != nil {
 		return candidateStage{}, err
@@ -853,6 +1026,10 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 	session.run, session.planRecord, session.bundle = awaitingPublication, record, prepared.Bundle
 	return candidateStage{
 		SessionID: sessionID, RunID: awaitingPublication.ID(), CandidateDigest: prepared.Bundle.Digest,
+		ChangeProposalDigest: changeProposal.Digest, ChangeProvider: changeProposal.Receipt.Provider,
+		ChangeModelID: changeProposal.Receipt.ModelID, ChangeUsage: changeProposal.Usage,
+		Assumptions: changeProposal.Assumptions, Uncertainty: changeProposal.Uncertainty,
+		Omissions:          changeProposal.Omissions,
 		VerificationDigest: verified.Result.Digest, ChangedPaths: awaitingPublication.Candidate().ChangedPaths,
 		EvidenceReady: true,
 	}, nil
@@ -1020,6 +1197,51 @@ func trialPlanProfile() delivery.PlanProfile {
 		ManualRecovery:      "Resume from the last capability-owned record with fresh authority.",
 		RiskClass:           "low", MaximumLifetime: 30 * time.Minute,
 	}
+}
+
+func deterministicTrialChangeProposal(request changecontract.Request, proposal experience.RequirementsProposal) (changecontract.Proposal, error) {
+	var content strings.Builder
+	content.WriteString("# Forge M1 Developer Trial candidate\n\n")
+	content.WriteString("This candidate was prepared from the promoted Requirements Proposal.\n\n")
+	content.WriteString("## Outcome\n\n")
+	content.WriteString(proposal.Outcome)
+	content.WriteString("\n\n## Problem\n\n")
+	content.WriteString(proposal.Problem)
+	content.WriteString("\n\n## Acceptance criteria\n")
+	for _, criterion := range proposal.AcceptanceCriteria {
+		content.WriteString("\n- ")
+		content.WriteString(criterion)
+	}
+	content.WriteString("\n\n## Verification intent\n")
+	for _, check := range request.TestIntent {
+		content.WriteString("\n- ")
+		content.WriteString(check)
+	}
+	content.WriteString("\n")
+	replacements := make([]changecontract.FileReplacement, len(request.AllowedWritePaths))
+	for index, target := range request.AllowedWritePaths {
+		replacements[index] = changecontract.FileReplacement{
+			Path: target, Content: content.String(),
+			Rationale: "Materializes the promoted requirements and approved verification intent for M1 review.",
+		}
+	}
+	return changecontract.BindProposal(changecontract.Proposal{
+		SchemaVersion: changecontract.ProposalVersion,
+		RequestID:     request.ID, RequestDigest: request.Digest, SourceRevision: request.SourceRevision,
+		PlanDigest: request.PlanDigest, ContextDigest: request.ContextManifestDigest,
+		Replacements: replacements, ProposedChecks: request.TestIntent,
+		Assumptions: []string{"Contract-double preparation proves the closed change contract without external effects."},
+		Uncertainty: []string{}, Omissions: []string{"No live provider or GitHub publication is exercised."},
+		Usage: changecontract.Usage{},
+		Receipt: changecontract.Receipt{
+			ActivationID:     "forge.contract-double.change-preparation.v1",
+			ActivationDigest: "sha256:" + strings.Repeat("d", 64),
+			Provider:         "contract-double", ModelID: "deterministic-template-v1",
+			AdapterVersion: "forge.contract-double-change-adapter.v1",
+			RoleProfileID:  request.RoleProfileID, PromptVersion: "forge.change-preparation.contract-double.v1",
+			ResponseSchema: changecontract.ProposalVersion, ProviderRequest: "local:" + request.ID,
+		},
+	}, request)
 }
 
 var _ execution.Runner = trialWorkerRunner{}

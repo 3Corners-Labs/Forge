@@ -24,7 +24,7 @@ func (value PolicyDecision) Validate(correlationID string) error {
 	if value.ExpiresAt != nil && !value.ExpiresAt.After(value.EvaluatedAt) {
 		return invalid("policy decision expiry must follow evaluation", correlationID)
 	}
-	if !oneOf(value.DecisionPoint, "retrieval", "secret-resolution", "selection", "execution", "approval", "evidence-disclosure", "publication", "release") {
+	if !oneOf(value.DecisionPoint, "retrieval", "secret-resolution", "selection", "intelligence", "execution", "approval", "evidence-disclosure", "publication", "release") {
 		return invalid("policy decision point is invalid", correlationID)
 	}
 	if !oneOf(value.Outcome, "permit", "deny", "indeterminate") {

@@ -1,0 +1,9 @@
+{
+  "name": "Intelligence imports isolated Worker implementation",
+  "importerModule": "intelligence",
+  "imports": ["github.com/3corners/forge/internal/worker"],
+  "expectedViolations": [
+    "control-plane-cannot-import-worker",
+    "undeclared-internal-dependency"
+  ]
+}

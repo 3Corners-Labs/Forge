@@ -444,8 +444,11 @@ def check_intelligence_schemas() -> None:
         fail("Developer Trial model-provider activation must disable provider state storage")
     if properties.get("trainingUse", {}).get("const") != "disabled":
         fail("Developer Trial model-provider activation must disable provider training use")
-    if properties.get("allowedPurposes", {}).get("items", {}).get("const") != "forge.product.discovery":
-        fail("M1 model-provider activation must be limited to product discovery")
+    if set(properties.get("allowedPurposes", {}).get("items", {}).get("enum", [])) != {
+        "forge.product.discovery",
+        "forge.m1.prepare-change",
+    }:
+        fail("M1 model-provider activation must be limited to discovery and change preparation")
     if set(properties.get("allowedClassifications", {}).get("items", {}).get("enum", [])) != {
         "Public",
         "Internal",
@@ -491,6 +494,21 @@ def check_intelligence_schemas() -> None:
         or set(budget_properties) != required_budgets
     ):
         fail("model-provider activation must close request, session, project, and concurrency budgets")
+
+    for name, version in (
+        ("change-preparation-request.schema.json", "forge.change-preparation-request.v1"),
+        ("change-proposal.schema.json", "forge.change-proposal.v1"),
+    ):
+        contract_path = path.parent / name
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+        contract_properties = contract.get("properties", {})
+        if (
+            contract.get("type") != "object"
+            or contract.get("additionalProperties") is not False
+            or contract_properties.get("schemaVersion", {}).get("const") != version
+            or set(contract.get("required", [])) != set(contract_properties)
+        ):
+            fail(f"{contract_path.relative_to(ROOT)} must be a closed complete M1 contract")
 
     evaluation_path = (
         ROOT / "assurance/evaluations/discovery/v1/plan.json"
@@ -927,6 +945,7 @@ def check_module_boundaries() -> None:
         "deploymentUnit": "forge-control-plane",
         "maturity": "Trial",
         "allowedInternalDependencies": [
+            "change-contracts",
             "delivery",
             "failure-contract",
             "identity",
@@ -981,7 +1000,7 @@ def check_module_boundaries() -> None:
     if by_id.get("approval") != expected_approval_module:
         fail("M1 Approval must own approval state without importing Delivery or Policy runtime state")
     expected_m1_b_modules = {
-        "execution": ("forge-control-plane", {"delivery", "failure-contract", "trust-contract", "worker-contracts"}),
+        "execution": ("forge-control-plane", {"change-contracts", "delivery", "failure-contract", "trust-contract", "worker-contracts"}),
         "verification": ("forge-control-plane", {"delivery", "failure-contract", "verification-contracts", "worker-contracts"}),
         "evidence": ("forge-control-plane", {"failure-contract", "trust-contract"}),
         "worker": ("forge-worker", {"worker-contracts"}),
@@ -1082,6 +1101,8 @@ def check_module_boundaries() -> None:
         "m1-b-boundaries/forbidden-verifier-to-control.json",
         "m1-c-boundaries/forbidden-experience-to-delivery.json",
         "m1-c-boundaries/forbidden-source-control-to-approval.json",
+        "m1-exit-boundaries/forbidden-intelligence-to-worker.json",
+        "m1-exit-boundaries/forbidden-change-contract-to-runtime.json",
     }
     fixture_paths = sorted(fixture_directory.rglob("*.json"))
     if {str(path.relative_to(fixture_directory)) for path in fixture_paths} != expected_fixture_names:

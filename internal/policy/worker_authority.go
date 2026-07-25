@@ -115,13 +115,13 @@ func (evaluator *Evaluator) EvaluateWorkerExecution(ctx context.Context, approva
 		delegation.SourceRevision != request.Run.Context().SourceRevisions[0] {
 		return trust.PolicyDecision{}, identity.WorkerDelegation{}, workerForbidden(request.CorrelationID)
 	}
-	matching := evaluator.workerRules(request.Worker.SubjectID(), ActionPrepareChange, delegation.PlanDigest, request.Run, request.Scope, request.Environment, request.Risk)
+	matching := evaluator.workerRules(request.Worker.SubjectID(), ActionPrepareChange, delegation.ChangeProposalDigest, request.Run, request.Scope, request.Environment, request.Risk)
 	outcome, obligations, reasons := evaluator.resolve(matching)
 	expiresAt := earliestPolicyExpiry(at.Add(evaluator.decisionTTL), request.Human.ExpiresAt(), request.TaskAgent.ExpiresAt(), request.Worker.ExpiresAt(), delegation.ExpiresAt, record.ExpiresAt)
 	decision := trust.PolicyDecision{
 		SchemaVersion: trust.PolicyDecisionSchemaVersion, DecisionPoint: "execution",
 		SubjectID: request.Worker.SubjectID(), Action: string(ActionPrepareChange),
-		Resource: delegation.PlanDigest, EvaluatedAt: at, ExpiresAt: &expiresAt,
+		Resource: delegation.ChangeProposalDigest, EvaluatedAt: at, ExpiresAt: &expiresAt,
 		PolicyVersions: []string{evaluator.set.Version}, Outcome: outcome, Obligations: obligations,
 		ReasonCodes: reasons, EvidenceCorrelationID: request.CorrelationID,
 	}
@@ -186,6 +186,13 @@ func (issuer *WorkerEnvelopeIssuer) Issue(ctx context.Context, request IssueWork
 	at := issuer.now()
 	if decision.ExpiresAt == nil {
 		return trust.ExecutionEnvelope{}, false, workerForbidden(request.CorrelationID)
+	}
+	if err := decision.Authorize(
+		"execution", request.Worker.SubjectID(), string(ActionPrepareChange),
+		delegation.ChangeProposalDigest, at, issuer.profile.EnforcedObligationTypes,
+		request.CorrelationID,
+	); err != nil {
+		return trust.ExecutionEnvelope{}, false, err
 	}
 	expiresAt := earliestPolicyExpiry(*decision.ExpiresAt, delegation.ExpiresAt, at.Add(issuer.profile.MaximumLifetime))
 	envelope := trust.ExecutionEnvelope{

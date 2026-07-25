@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -92,6 +93,41 @@ func TestDelegationRequestRejectsBroaderM1Authority(t *testing.T) {
 				t.Fatal("broadened delegation request was accepted")
 			}
 		})
+	}
+}
+
+func TestChangeProposalDelegationIsSeparateAndDestinationBound(t *testing.T) {
+	input := validDelegationInput()
+	input.IdempotencyKey = "change-proposal-delegation"
+	input.Actions = []string{identity.DelegatedActionProposeChange}
+	input.Resources = []string{"sha256:" + strings.Repeat("a", 64)}
+	input.Destinations = []string{"model:openai"}
+	input.MaximumAutonomy = identity.ChangeProposalOnly
+	request, err := identity.NewDelegationRequest(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request.Actions()[0] != identity.DelegatedActionProposeChange ||
+		request.Resources()[0] != input.Resources[0] ||
+		request.Destinations()[0] != "model:openai" {
+		t.Fatalf("change delegation lost its exact boundary: %#v", request)
+	}
+	for _, mutate := range []func(*identity.DelegationRequestInput){
+		func(value *identity.DelegationRequestInput) {
+			value.Actions = []string{identity.DelegatedActionAssembleContext}
+		},
+		func(value *identity.DelegationRequestInput) { value.Resources = []string{"repository-1"} },
+		func(value *identity.DelegationRequestInput) {
+			value.Destinations = []string{"model:other"}
+			value.Destinations = append(value.Destinations, "model:openai")
+		},
+		func(value *identity.DelegationRequestInput) { value.MaximumAutonomy = identity.ContextPreparationOnly },
+	} {
+		changed := input
+		mutate(&changed)
+		if _, err := identity.NewDelegationRequest(changed); err == nil {
+			t.Fatal("broadened or mixed change delegation was accepted")
+		}
 	}
 }
 

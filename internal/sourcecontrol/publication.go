@@ -54,11 +54,18 @@ type EvidenceVerifier interface {
 }
 
 type PublicationProfile struct {
-	Provider     string
-	BaseBranch   string
-	BaseRevision string
-	Title        string
-	Body         string
+	Provider      string
+	BaseBranch    string
+	BaseRevision  string
+	Title         string
+	Body          string
+	CredentialRef string
+}
+
+type PublicationFile struct {
+	Path          string
+	Content       []byte
+	ContentDigest string
 }
 
 type PublishRequest struct {
@@ -78,6 +85,8 @@ type PublishRequest struct {
 	ChangedPaths      []string
 	Title             string
 	Body              string
+	Files             []PublicationFile
+	CredentialRef     string
 }
 
 type Operation struct {
@@ -99,6 +108,8 @@ type Operation struct {
 	EnvelopeID       string
 	PolicyDecisionID string
 	Marker           string
+	Files            []PublicationFile
+	CredentialRef    string
 }
 
 type RemoteState struct {
@@ -111,6 +122,7 @@ type RemoteState struct {
 	PullRequestURL  string
 	PullRequestOpen bool
 	BaseBranch      string
+	BaseRevision    string
 	Marker          string
 	RepositoryID    string
 }
@@ -156,9 +168,12 @@ type Service struct {
 
 func NewService(subjects SubjectResolver, approvals ApprovalResolver, policies PolicyResolver, evidence EvidenceVerifier, provider Provider, store Store, profile PublicationProfile, now func() time.Time) (*Service, error) {
 	if subjects == nil || approvals == nil || policies == nil || evidence == nil || provider == nil || store == nil || now == nil ||
-		profile.Provider != "contract-double" || profile.BaseBranch == "" || profile.BaseRevision == "" ||
+		!supportedProvider(profile.Provider) || profile.BaseBranch == "" || profile.BaseRevision == "" ||
 		profile.Title == "" || profile.Body == "" || !safeMetadata(profile.Title) || !safeMetadata(profile.Body) {
 		return nil, errors.New("source-control dependencies are required")
+	}
+	if (profile.Provider == "github-app") != (profile.CredentialRef != "") {
+		return nil, errors.New("source-control credential profile is invalid")
 	}
 	return &Service{
 		subjects: subjects, approvals: approvals, policies: policies, evidence: evidence,
@@ -172,7 +187,7 @@ func (service *Service) PublishPullRequest(ctx context.Context, request PublishR
 	}
 	if request.Provider != service.profile.Provider || request.BaseBranch != service.profile.BaseBranch ||
 		request.BaseRevision != service.profile.BaseRevision || request.Title != service.profile.Title ||
-		request.Body != service.profile.Body {
+		request.Body != service.profile.Body || request.CredentialRef != service.profile.CredentialRef {
 		return Receipt{}, false, forbidden(request.CorrelationID)
 	}
 	at := service.now()
@@ -286,9 +301,10 @@ func validRequest(ctx context.Context, request PublishRequest) bool {
 	return ctx != nil && request.ContractVersion == PublishRequestContractVersion &&
 		request.CorrelationID != "" && request.IdempotencyKey != "" && request.TenantID != "" &&
 		request.RunID != "" && request.PolicyDecisionID != "" && request.ApprovalRecordID != "" &&
-		request.Provider == "contract-double" && request.BaseBranch != "" && request.BaseRevision != "" &&
+		supportedProvider(request.Provider) && request.BaseBranch != "" && request.BaseRevision != "" &&
 		request.TreeDigest != "" && validDigest(request.TreeDigest) && len(request.ChangedPaths) > 0 &&
-		request.Title != "" && request.Body != "" && safeMetadata(request.Title) && safeMetadata(request.Body)
+		request.Title != "" && request.Body != "" && safeMetadata(request.Title) && safeMetadata(request.Body) &&
+		validPublicationFiles(request)
 }
 
 func requestMatchesSubject(request PublishRequest, subject trust.PublicationApprovalSubject) bool {
@@ -329,12 +345,13 @@ func validateEnvelope(envelope trust.ExecutionEnvelope, request PublishRequest, 
 		!slices.Equal(envelope.Actions, []string{PublishAction}) ||
 		!slices.Equal(envelope.ApprovalRecordIDs, []string{approval.ID}) ||
 		!slices.Contains(envelope.PolicyDecisionIDs, decision.ID) ||
-		!slices.Equal(envelope.Destinations, []string{"contract-double:" + request.RepositoryBinding.RepositoryID()}) ||
+		!slices.Equal(envelope.Destinations, []string{request.Provider + ":" + request.RepositoryBinding.RepositoryID()}) ||
 		envelope.IdempotencyKey != request.IdempotencyKey ||
 		envelope.EvidenceCorrelationID != request.CorrelationID ||
 		envelope.Limits.MaxDurationSeconds < 1 || envelope.Limits.MaxDurationSeconds > 300 ||
 		envelope.Limits.MaxConcurrency != 1 || envelope.Limits.MaxCostMinorUnits != 0 ||
-		len(envelope.ToolIDs) != 0 || len(envelope.ModelIDs) != 0 || len(envelope.SecretReferenceIDs) != 0 {
+		len(envelope.ToolIDs) != 0 || len(envelope.ModelIDs) != 0 ||
+		!validPublicationSecrets(envelope.SecretReferenceIDs, request.Provider, request.CredentialRef) {
 		return forbidden(request.CorrelationID)
 	}
 	return nil
@@ -362,7 +379,41 @@ func buildOperation(request PublishRequest, subject trust.PublicationApprovalSub
 		MetadataDigest:   "sha256:" + hex.EncodeToString(metadataSum[:]),
 		ApprovalRecordID: request.ApprovalRecordID, EnvelopeID: request.Envelope.ID,
 		PolicyDecisionID: request.PolicyDecisionID, Marker: "<!-- forge-publication:" + id + " -->",
+		Files:         clonePublicationFiles(request.Files),
+		CredentialRef: request.CredentialRef,
 	}
+}
+
+func supportedProvider(value string) bool {
+	return value == "contract-double" || value == "github-app"
+}
+
+func validPublicationFiles(request PublishRequest) bool {
+	if request.Provider == "contract-double" && len(request.Files) == 0 {
+		return true
+	}
+	if request.Provider == "github-app" && len(request.Files) == 0 {
+		return false
+	}
+	if len(request.Files) != len(request.ChangedPaths) {
+		return false
+	}
+	paths := make([]string, len(request.Files))
+	for index, file := range request.Files {
+		if file.Path == "" || len(file.Content) == 0 || !validDigest(file.ContentDigest) ||
+			file.ContentDigest != bytesDigest(file.Content) {
+			return false
+		}
+		paths[index] = file.Path
+	}
+	return slices.Equal(canonical(paths), canonical(request.ChangedPaths))
+}
+
+func validPublicationSecrets(values []string, provider, credentialRef string) bool {
+	if provider == "contract-double" {
+		return len(values) == 0 && credentialRef == ""
+	}
+	return len(values) == 1 && values[0] == credentialRef && credentialRef != ""
 }
 
 func reconcileExact(ctx context.Context, provider Provider, operation Operation) (RemoteState, bool, error) {
@@ -374,7 +425,8 @@ func reconcileExact(ctx context.Context, provider Provider, operation Operation)
 		return state, false, nil
 	}
 	if state.RepositoryID != operation.RepositoryID || state.Branch != operation.Branch ||
-		state.BaseBranch != operation.BaseBranch || state.CandidateDigest != operation.CandidateDigest ||
+		state.BaseBranch != operation.BaseBranch || state.BaseRevision != operation.BaseRevision ||
+		state.CandidateDigest != operation.CandidateDigest ||
 		state.TreeDigest != operation.TreeDigest || state.Marker != operation.Marker ||
 		(state.PullRequestID != "" && (!state.BranchExists || !state.PullRequestOpen)) {
 		return RemoteState{}, false, ErrProviderConflict
@@ -413,6 +465,11 @@ func validDigest(value string) bool {
 		}
 	}
 	return true
+}
+
+func bytesDigest(value []byte) string {
+	sum := sha256.Sum256(value)
+	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
 func canonical(values []string) []string {
@@ -498,5 +555,15 @@ func operationFingerprint(value Operation) string {
 
 func cloneOperation(value Operation) Operation {
 	value.ChangedPaths = slices.Clone(value.ChangedPaths)
+	value.Files = clonePublicationFiles(value.Files)
 	return value
+}
+
+func clonePublicationFiles(values []PublicationFile) []PublicationFile {
+	result := make([]PublicationFile, len(values))
+	for index, value := range values {
+		result[index] = value
+		result[index].Content = slices.Clone(value.Content)
+	}
+	return result
 }
