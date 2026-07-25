@@ -37,6 +37,9 @@ var (
 	// in the plan is incapable of failing for the paths this candidate changes.
 	// Certifying such a candidate would be an empty assurance.
 	ErrNoApplicableOracle = errors.New("no independent consequential control can fail for the changed paths")
+	// ErrProducerIsVerifier reports that the principal that produced the
+	// candidate is the principal asked to verify it.
+	ErrProducerIsVerifier = errors.New("the candidate producer cannot verify its own candidate")
 )
 
 // metadataDirectories mirrors the canonical documentation directories whose
@@ -93,15 +96,24 @@ func canonicalDocument(value string) bool {
 	return false
 }
 
+// DefaultIdentity names the deterministic Forge verifier. It is deliberately
+// distinct from any candidate-producing principal so that the AC.8.1 invariant
+// in the verification contract can be evaluated.
+const DefaultIdentity = "forge.verifier.deterministic.v1"
+
 type Engine struct {
-	now func() time.Time
+	now      func() time.Time
+	identity string
 }
 
-func NewEngine(now func() time.Time) (*Engine, error) {
+func NewEngine(now func() time.Time, identity string) (*Engine, error) {
 	if now == nil {
 		return nil, errors.New("verifier clock is required")
 	}
-	return &Engine{now: now}, nil
+	if identity == "" {
+		return nil, errors.New("verifier identity is required")
+	}
+	return &Engine{now: now, identity: identity}, nil
 }
 
 func (engine *Engine) Verify(ctx context.Context, plan verificationcontract.AssurancePlan, bundle workercontract.CandidateBundle, workspace string) (verificationcontract.Result, error) {
@@ -120,6 +132,9 @@ func (engine *Engine) Verify(ctx context.Context, plan verificationcontract.Assu
 	}
 	if err := verifyFreshSource(workspace, bundle); err != nil {
 		return verificationcontract.Result{}, verificationcontract.ErrInvalidContract
+	}
+	if plan.ProducedBy == engine.identity {
+		return verificationcontract.Result{}, ErrProducerIsVerifier
 	}
 	if !hasApplicableOracle(plan) {
 		return verificationcontract.Result{}, ErrNoApplicableOracle
@@ -143,7 +158,8 @@ func (engine *Engine) Verify(ctx context.Context, plan verificationcontract.Assu
 		SchemaVersion: verificationcontract.ResultVersion, AssurancePlanID: plan.ID,
 		AssurancePlanDigest: plan.Digest, CandidateDigest: bundle.Digest,
 		Environment: plan.Environment, Findings: findings, Outcome: outcome,
-		Independent: true, CompletedAt: at, EvidenceCorrelationID: plan.EvidenceCorrelationID,
+		Independent: true, VerifiedBy: engine.identity, CompletedAt: at,
+		EvidenceCorrelationID: plan.EvidenceCorrelationID,
 	})
 }
 

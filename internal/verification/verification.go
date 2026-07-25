@@ -61,8 +61,14 @@ type VerifyResult struct {
 func (service *Service) Verify(ctx context.Context, request VerifyRequest) (VerifyResult, error) {
 	at := service.now()
 	plan, candidate := request.Run.Plan(), request.Run.Candidate()
+	// The producing principal is the workload identity Policy issued for the
+	// worker phase. It is recorded so that verification and, later, publication
+	// can be held to AC.8.1: an agent may not certify what it produced. The
+	// candidate cannot assert this value.
+	execution := request.Run.Execution()
 	if ctx == nil || at.IsZero() || request.CorrelationID == "" || request.FreshCheckout == "" ||
 		request.Run.State() != delivery.VerifyingState || plan == nil || candidate == nil ||
+		execution == nil || execution.WorkerSubjectID == "" ||
 		request.Bundle.Digest != candidate.Digest || request.Bundle.PlanDigest != plan.Digest {
 		return VerifyResult{}, failure.New(failure.InvalidRequest, "verification input is invalid", request.CorrelationID, failure.RetryNone)
 	}
@@ -74,8 +80,9 @@ func (service *Service) Verify(ctx context.Context, request VerifyRequest) (Veri
 		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: candidate.Digest,
 		PlanDigest: plan.Digest, RiskClass: plan.RiskClass, Classification: plan.Classification,
 		AffectedCapabilities: slices.Clone(plan.AffectedCapabilities), ChangedPaths: slices.Clone(candidate.ChangedPaths),
-		Controls: slices.Clone(service.profile.Controls), Environment: "developer-trial",
-		ExpiresAt: expiresAt, EvidenceCorrelationID: request.CorrelationID,
+		Controls: slices.Clone(service.profile.Controls), ProducedBy: execution.WorkerSubjectID,
+		Environment: "developer-trial",
+		ExpiresAt:   expiresAt, EvidenceCorrelationID: request.CorrelationID,
 	})
 	if err != nil {
 		return VerifyResult{}, failure.New(failure.Indeterminate, "assurance plan could not be constructed", request.CorrelationID, failure.RetryNone)

@@ -32,8 +32,8 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
 		PlanDigest: bundle.PlanDigest, RiskClass: "low", Classification: "Internal",
 		AffectedCapabilities: []string{"forge.capability.delivery"}, ChangedPaths: []string{"internal/example.go"},
-		Controls:    []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
-		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "correlation-1",
+		Controls:   []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
+		ProducedBy: "forge.worker.subject.test", Environment: "developer-trial", ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "correlation-1",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 			ControlID: "forge.candidate-integrity", Outcome: "passed", Code: "passed",
 			EvidenceDigest: verifierDigest('b'), Consequential: true,
 		}},
-		Outcome: "passed", Independent: true, CompletedAt: now, EvidenceCorrelationID: plan.EvidenceCorrelationID,
+		Outcome: "passed", Independent: true, VerifiedBy: "forge.verifier.test", CompletedAt: now, EvidenceCorrelationID: plan.EvidenceCorrelationID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestVerifierDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) 
 			{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
 			{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
 		},
-		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
+		ProducedBy: "forge.worker.subject.test", Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
 		EvidenceCorrelationID: "correlation-integration",
 	})
 	if err != nil {

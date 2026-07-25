@@ -34,12 +34,12 @@ func TestVerifierUsesIndependentForgeControls(t *testing.T) {
 			{ID: ControlDeclaredPathScope, Version: "1", Consequential: true},
 			{ID: ControlGoFormat, Version: "1", Consequential: true},
 		},
-		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "corr",
+		ProducedBy: "forge.worker.subject.test", Environment: "developer-trial", ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "corr",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, _ := NewEngine(func() time.Time { return now })
+	engine, _ := NewEngine(func() time.Time { return now }, DefaultIdentity)
 	result, err := engine.Verify(context.Background(), plan, bundle, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestVerifierRefusesPlanWithoutApplicableOracle(t *testing.T) {
 		{ID: ControlCandidateIntegrity, Version: "1", Consequential: true},
 		{ID: ControlDeclaredPathScope, Version: "1", Consequential: true},
 	})
-	engine, _ := NewEngine(time.Now().UTC)
+	engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
 	if _, err := engine.Verify(context.Background(), plan, bundle, workspace); !errors.Is(err, ErrNoApplicableOracle) {
 		t.Fatalf("expected the plan to be refused, got %v", err)
 	}
@@ -77,7 +77,7 @@ func TestDocumentMetadataControlFailsWithoutLifecycleStatus(t *testing.T) {
 			plan := mustPlan(t, bundle, []verificationcontract.Control{
 				{ID: ControlDocumentMetadata, Version: "1", Consequential: true},
 			})
-			engine, _ := NewEngine(time.Now().UTC)
+			engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
 			result, err := engine.Verify(context.Background(), plan, bundle, t.TempDir())
 			if err != nil {
 				t.Fatal(err)
@@ -94,7 +94,7 @@ func TestDocumentMetadataControlAcceptsDeclaredDocument(t *testing.T) {
 	plan := mustPlan(t, bundle, []verificationcontract.Control{
 		{ID: ControlDocumentMetadata, Version: "1", Consequential: true},
 	})
-	engine, _ := NewEngine(time.Now().UTC)
+	engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
 	result, err := engine.Verify(context.Background(), plan, bundle, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestMarkdownLinksControlFailsOnUnresolvableLink(t *testing.T) {
 	plan := mustPlan(t, bundle, []verificationcontract.Control{
 		{ID: ControlMarkdownLinks, Version: "1", Consequential: true},
 	})
-	engine, _ := NewEngine(time.Now().UTC)
+	engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
 	result, err := engine.Verify(context.Background(), plan, bundle, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +145,7 @@ func TestMarkdownLinksControlResolvesAgainstSourceAndCandidate(t *testing.T) {
 	plan := mustPlan(t, bundle, []verificationcontract.Control{
 		{ID: ControlMarkdownLinks, Version: "1", Consequential: true},
 	})
-	engine, _ := NewEngine(time.Now().UTC)
+	engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
 	result, err := engine.Verify(context.Background(), plan, bundle, workspace)
 	if err != nil {
 		t.Fatal(err)
@@ -178,8 +178,9 @@ func mustPlan(t *testing.T, bundle workercontract.CandidateBundle, controls []ve
 		SchemaVersion:   verificationcontract.AssurancePlanVersion,
 		CandidateDigest: bundle.Digest, PlanDigest: bundle.PlanDigest, RiskClass: "low",
 		Classification: "internal", AffectedCapabilities: []string{"forge.capability.delivery"},
-		ChangedPaths: paths, Controls: controls, Environment: "developer-trial",
-		ExpiresAt: time.Now().UTC().Add(time.Hour), EvidenceCorrelationID: "corr",
+		ChangedPaths: paths, Controls: controls, ProducedBy: "forge.worker.subject.test",
+		Environment: "developer-trial",
+		ExpiresAt:   time.Now().UTC().Add(time.Hour), EvidenceCorrelationID: "corr",
 	})
 	if err != nil {
 		t.Fatal(err)

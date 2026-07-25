@@ -80,6 +80,7 @@ type AssurancePlan struct {
 	AffectedCapabilities  []string  `json:"affectedCapabilities"`
 	ChangedPaths          []string  `json:"changedPaths"`
 	Controls              []Control `json:"controls"`
+	ProducedBy            string    `json:"producedBy"`
 	Environment           string    `json:"environment"`
 	ExpiresAt             time.Time `json:"expiresAt"`
 	EvidenceCorrelationID string    `json:"evidenceCorrelationId"`
@@ -105,6 +106,7 @@ type Result struct {
 	Findings              []Finding `json:"findings"`
 	Outcome               string    `json:"outcome"`
 	Independent           bool      `json:"independent"`
+	VerifiedBy            string    `json:"verifiedBy"`
 	CompletedAt           time.Time `json:"completedAt"`
 	EvidenceCorrelationID string    `json:"evidenceCorrelationId"`
 }
@@ -120,7 +122,7 @@ func BindPlan(value AssurancePlan) (AssurancePlan, error) {
 		!validDigest(value.PlanDigest) || value.RiskClass == "" || value.Classification == "" ||
 		value.Environment != "developer-trial" || value.ExpiresAt.IsZero() ||
 		value.EvidenceCorrelationID == "" || len(value.AffectedCapabilities) == 0 ||
-		len(value.ChangedPaths) == 0 || len(value.Controls) == 0 {
+		len(value.ChangedPaths) == 0 || len(value.Controls) == 0 || value.ProducedBy == "" {
 		return AssurancePlan{}, ErrInvalidContract
 	}
 	hasIndependentOracle := false
@@ -156,7 +158,7 @@ func BindResult(value Result) (Result, error) {
 	if value.SchemaVersion != ResultVersion || value.AssurancePlanID == "" ||
 		!validDigest(value.AssurancePlanDigest) || !validDigest(value.CandidateDigest) ||
 		value.Environment != "developer-trial" || value.CompletedAt.IsZero() ||
-		value.EvidenceCorrelationID == "" || !value.Independent ||
+		value.EvidenceCorrelationID == "" || !value.Independent || value.VerifiedBy == "" ||
 		(value.Outcome != "passed" && value.Outcome != "failed") || len(value.Findings) == 0 {
 		return Result{}, ErrInvalidContract
 	}
@@ -190,6 +192,15 @@ func (value Result) Validate(plan AssurancePlan) error {
 		value.CandidateDigest != plan.CandidateDigest || value.Environment != plan.Environment ||
 		value.EvidenceCorrelationID != plan.EvidenceCorrelationID ||
 		!value.CompletedAt.Before(plan.ExpiresAt) || len(value.Findings) != len(plan.Controls) {
+		return ErrInvalidContract
+	}
+	// OWASP AISVS Appendix C, AC.8.1: an agent may not approve what it produced.
+	// The producing principal is issued by Identity under Policy, so a candidate
+	// cannot assert it. Today's verifier is deterministic and therefore always a
+	// different principal, so this invariant is dormant; it becomes load-bearing
+	// the moment verification itself becomes model-assisted. It lives here
+	// rather than in a control because a profile can omit a control.
+	if value.VerifiedBy == plan.ProducedBy {
 		return ErrInvalidContract
 	}
 	for index, control := range plan.Controls {

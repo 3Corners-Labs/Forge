@@ -138,18 +138,59 @@ Tests cover the refusal, both new controls in their passing and failing forms,
 and link resolution against source, sibling candidate files, external URLs and
 fragments.
 
+## Provenance and the AC.8.1 invariant
+
+Candidate provenance was recorded nowhere, so nothing could require that a
+reviewer differ from the producer. That is now closed.
+
+`AssurancePlan.ProducedBy` is mandatory and is set from the workload principal
+Policy issued for the worker phase. The candidate cannot assert it.
+`Result.VerifiedBy` is mandatory and is set by the verifier from its own
+identity. `Result.Validate` refuses any result whose verifier is the producing
+principal.
+
+The rule lives in the contract rather than in a control, because a profile can
+omit a control but cannot omit an invariant. This mirrors how the independent
+oracle rule is already enforced.
+
+**The invariant is dormant today, and that is stated rather than disguised.**
+Forge's verifier is deterministic and therefore never the producing principal,
+so the check cannot currently fire. It becomes load-bearing the moment
+verification becomes model-assisted, which is precisely when it would be
+expensive to retrofit. It is asserted by test now.
+
+What has immediate value is the recording itself: every assurance plan now
+names the principal that produced the candidate, which the
+[delivery measures](ai-delivery-experiment.md) need and which OWASP AISVS
+AC.10.1 requires.
+
+### Contract mode does not verify
+
+Investigating provenance surfaced a separate honesty problem. The default
+contract-mode runner records a passing finding for every declared control
+**without evaluating any of them**. It is a stub.
+
+This is not an oversight but a consequence of the module boundary: the control
+plane may not import the verifier deployment unit, so the real controls can only
+execute in operational mode, where the verifier runs as a separate immutable
+image. Contract mode exercises the trust path and the state machine and proves
+nothing about the candidate.
+
+Its results are now stamped `forge.verifier.contract-double.v1`, distinct from
+the real verifier identity, so evidence can never conflate the two. Anyone
+reading a result can tell whether anything was actually checked.
+
 ## Not established
 
-- **Agent identity is not bound anywhere.** Nothing records which model or
-  harness produced a candidate, so nothing can require that a future
-  model-assisted reviewer differs from the generator. The cross-harness rule
-  ("one model may not review its own work") is absent, and it will be needed
-  before any model-assisted verification is added.
 - The verifier runs Forge-owned code, but nothing attests *which build* of the
-  verifier ran. Binding a verifier image digest into the result would close
-  that.
+  verifier ran. Binding the verifier image digest into `VerifiedBy` would close
+  that and is the natural next step.
+- Model identity for the ADR-0023 change-preparation path is not yet part of
+  `ProducedBy`; the workload principal is recorded, not the model that proposed
+  the change.
 - These attacks target the contract and engine layers. The Docker-isolated
   verifier deployment path was not attacked.
+- Contract mode remains unverified by construction, as described above.
 
 ## Reproduction
 

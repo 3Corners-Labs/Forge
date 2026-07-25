@@ -4,7 +4,7 @@
   "title": "Forge Assurance Plan v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "id", "digest", "candidateDigest", "planDigest", "riskClass", "classification", "affectedCapabilities", "changedPaths", "controls", "environment", "expiresAt", "evidenceCorrelationId"],
+  "required": ["schemaVersion", "id", "digest", "candidateDigest", "planDigest", "riskClass", "classification", "affectedCapabilities", "changedPaths", "controls", "producedBy", "environment", "expiresAt", "evidenceCorrelationId"],
   "properties": {
     "schemaVersion": {"const": "forge.assurance-plan.v1"}, "id": {"type": "string", "minLength": 1},
     "digest": {"$ref": "#/$defs/digest"}, "candidateDigest": {"$ref": "#/$defs/digest"},
@@ -13,6 +13,7 @@
     "affectedCapabilities": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "changedPaths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
     "controls": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/control"}},
+    "producedBy": {"type": "string", "minLength": 1},
     "environment": {"const": "developer-trial"}, "expiresAt": {"type": "string", "format": "date-time"},
     "evidenceCorrelationId": {"type": "string", "minLength": 1}
   },
