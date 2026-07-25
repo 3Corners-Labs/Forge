@@ -1,7 +1,7 @@
 ---
 title: Design Philosophy
 version: 1.0
-status: Informative
+status: Draft
 owner: Architecture
 ---
 
