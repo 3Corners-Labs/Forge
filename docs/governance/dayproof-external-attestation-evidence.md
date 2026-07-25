@@ -167,6 +167,51 @@ EUR 0.006 at volume), Camerfirma (ES), InfoCert (IT).
 Qualified status for every candidate is provider-published and SHALL be confirmed
 against the authoritative EU Trusted List before contracting.
 
+## Follow-on: ASiC container for Dutch comply-or-explain
+
+AdES Baseline Profiles has been on the Forum Standaardisatie "pas toe of leg uit"
+list since 9 May 2017, binding central government, provinces, municipalities and
+water authorities, and its functional scope explicitly names seals and
+timestamps. A Sigstore bundle is not an AdES format, so the standard does not
+point at cosign. The gap is a container.
+
+An ASiC-S container was therefore built around the attestation, per
+ETSI EN 319 162-1:
+
+~~~text
+approval.asics
+├── mimetype                     (first entry, stored, application/vnd.etsi.asic-s+zip)
+├── approval-attestation.json    (the Sigstore bundle as the data object)
+└── META-INF/timestamp.tst       (RFC 3161 token over that data object)
+~~~
+
+Structural checks pass: mimetype is the first entry, uncompressed, with the
+correct value; exactly one data object; the timestamp is in the reserved
+location.
+
+Cryptographic verification of the token against the data object extracted from
+the container returns `Verification: OK`. Adding one space to the attestation
+inside the container returns `Verification: FAILED`, and comparing the message
+imprint to the recomputed hash shows exactly where it broke.
+
+This is the bridge: a modern supply-chain attestation, carried inside the
+container format a binding Dutch standard already names.
+
+**Limitation, stated plainly.** The container was built from the specification
+and validated by structural self-checks and OpenSSL. It has **not** been run
+through a conformance validator such as the European Commission's DSS demo
+validator. Self-checks are not conformance, and this SHALL be validated
+independently before any comply-or-explain claim is made.
+
+Two further air-gap obstacles surfaced:
+
+8. macOS ships LibreSSL rather than OpenSSL, and its `ts -verify` failed on a
+   chain that OpenSSL accepts. Toolchain provenance matters for verification
+   hosts.
+9. The timestamp authority's **self-signed root** is not in the token; only the
+   cross-signed intermediate is. It had to be fetched separately from the
+   vendor. An air-gapped verifier needs the root provisioned in advance.
+
 ## Conclusion
 
 The one capability the market does not ship — a human approval cryptographically
