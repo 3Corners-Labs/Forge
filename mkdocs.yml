@@ -37,6 +37,7 @@ nav:
   - M1 Exit Model-Assisted Self-Build: governance/m1-exit-model-assisted-self-build-evidence.md
   - M1 Exit Operational Journey: governance/m1-exit-operational-journey-evidence.md
   - M1 Workbench Prototype: governance/m1-workbench-prototype-evidence.md
+  - Day-Proof External Attestation: governance/dayproof-external-attestation-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
@@ -100,6 +101,7 @@ nav:
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
       - Workplace Orchestrator Positioning: reference-applications/workplace-orchestrator-positioning.md
+      - Spike Room Navigator Calendar Source: reference-applications/spike-room-navigator-calendar-source.md
   - Reference:
       - Glossary: reference/glossary.md
   - Source Material:
