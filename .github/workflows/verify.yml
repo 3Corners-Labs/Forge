@@ -25,6 +25,9 @@ jobs:
     env:
       FORGE_TEST_POSTGRES_DSN: postgres://forge:forge-dev-only@127.0.0.1:5432/forge?sslmode=disable
       FORGE_TEST_MINIO_ENDPOINT: 127.0.0.1:9000
+      FORGE_M1_MINIO_ENDPOINT: 127.0.0.1:9000
+      FORGE_M1_MINIO_ACCESS_KEY: minio
+      FORGE_M1_MINIO_SECRET_KEY: minio-dev-only
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -45,4 +48,15 @@ jobs:
             sleep 2
           done
           exit 1
-      - run: go test -race ./internal/delivery ./internal/evidence ./internal/verification
+      - name: Build immutable M1 worker and verifier images
+        run: |
+          mkdir -p dist/runtime/images/worker dist/runtime/images/verifier
+          CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags "-s -w" -o dist/runtime/images/worker/forge-worker ./cmd/forge-worker
+          CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags "-s -w" -o dist/runtime/images/verifier/forge-verifier ./cmd/forge-verifier
+          docker build --iidfile dist/runtime/worker-image.id -f cmd/forge-worker/Dockerfile dist/runtime/images/worker
+          docker build --iidfile dist/runtime/verifier-image.id -f cmd/forge-verifier/Dockerfile dist/runtime/images/verifier
+          echo "FORGE_TEST_WORKER_IMAGE=$(cat dist/runtime/worker-image.id)" >> "$GITHUB_ENV"
+          echo "FORGE_TEST_VERIFIER_IMAGE=$(cat dist/runtime/verifier-image.id)" >> "$GITHUB_ENV"
+          echo "FORGE_TEST_SOURCE_REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "FORGE_TEST_OPERATIONAL_M1=1" >> "$GITHUB_ENV"
+      - run: go test -race ./internal/delivery ./internal/evidence ./internal/execution ./internal/verification ./internal/experience ./internal/intent ./internal/identity ./internal/sourcecontrol ./internal/cli

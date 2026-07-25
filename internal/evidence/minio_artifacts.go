@@ -35,6 +35,11 @@ type PutArtifactRequest struct {
 	Bytes                              []byte
 }
 
+type GetArtifactRequest struct {
+	TenantID, ProjectID, DeliveryRunID string
+	ObjectKey, Digest                  string
+}
+
 func (store *MinIOArtifactStore) Put(ctx context.Context, request PutArtifactRequest) (ArtifactMetadata, error) {
 	if len(request.Bytes) == 0 || int64(len(request.Bytes)) > store.maxBytes ||
 		!safeObjectSegment(request.TenantID) || !safeObjectSegment(request.ProjectID) ||
@@ -87,6 +92,30 @@ func (store *MinIOArtifactStore) Put(ctx context.Context, request PutArtifactReq
 		return ArtifactMetadata{}, err
 	}
 	return metadata, nil
+}
+
+func (store *MinIOArtifactStore) Get(ctx context.Context, request GetArtifactRequest) ([]byte, error) {
+	prefix := request.TenantID + "/" + request.ProjectID + "/" + request.DeliveryRunID + "/sha256/"
+	if !safeObjectSegment(request.TenantID) || !safeObjectSegment(request.ProjectID) ||
+		!safeObjectSegment(request.DeliveryRunID) || !strings.HasPrefix(request.ObjectKey, prefix) ||
+		request.ObjectKey != prefix+strings.TrimPrefix(request.Digest, "sha256:") ||
+		len(request.Digest) != 71 || !strings.HasPrefix(request.Digest, "sha256:") {
+		return nil, errors.New("artifact read request is invalid")
+	}
+	object, err := store.client.GetObject(ctx, store.bucket, request.ObjectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer object.Close()
+	value, err := io.ReadAll(io.LimitReader(object, store.maxBytes+1))
+	if err != nil || int64(len(value)) > store.maxBytes {
+		return nil, errors.New("artifact is unavailable or oversized")
+	}
+	sum := sha256.Sum256(value)
+	if "sha256:"+hex.EncodeToString(sum[:]) != request.Digest {
+		return nil, errors.New("artifact digest verification failed")
+	}
+	return value, nil
 }
 
 func safeObjectSegment(value string) bool {

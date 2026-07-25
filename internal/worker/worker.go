@@ -71,13 +71,27 @@ func (engine *Engine) Prepare(ctx context.Context, request workercontract.Reques
 		if outputBytes > request.Limits.MaxOutputBytes {
 			return workercontract.CandidateBundle{}, workercontract.Result{}, ErrOutputLimit
 		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+		parent := filepath.Dir(target)
+		_, statErr := os.Stat(parent)
+		parentMissing := errors.Is(statErr, os.ErrNotExist)
+		if statErr != nil && !parentMissing {
+			return workercontract.CandidateBundle{}, workercontract.Result{}, statErr
+		}
+		if err := os.MkdirAll(parent, 0o777); err != nil {
 			return workercontract.CandidateBundle{}, workercontract.Result{}, err
 		}
-		if err := rejectSymlinkPath(root, filepath.Dir(target)); err != nil {
+		// A newly created purpose-limited directory must remain traversable and
+		// removable by the host launcher after fixed-UID container execution.
+		// Existing projected source directories retain launcher-set modes.
+		if parentMissing {
+			if err := os.Chmod(parent, 0o777); err != nil {
+				return workercontract.CandidateBundle{}, workercontract.Result{}, err
+			}
+		}
+		if err := rejectSymlinkPath(root, parent); err != nil {
 			return workercontract.CandidateBundle{}, workercontract.Result{}, err
 		}
-		if err := os.WriteFile(target, replacement.Content, 0o600); err != nil {
+		if err := os.WriteFile(target, replacement.Content, 0o644); err != nil {
 			return workercontract.CandidateBundle{}, workercontract.Result{}, err
 		}
 		files = append(files, workercontract.CandidateFile{

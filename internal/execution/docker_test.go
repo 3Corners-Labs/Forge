@@ -78,7 +78,7 @@ func TestDockerRunnerEnforcesIsolationAndReadsClosedOutputs(t *testing.T) {
 	}
 	for _, required := range []string{
 		"--network none", "--read-only", "--cap-drop ALL", "no-new-privileges",
-		"--user 65532:65532", "--pids-limit 4", "dst=/input,readonly",
+		"--user 65532:65532", "--pids-limit 4", "GOMAXPROCS=1", "dst=/input,readonly",
 	} {
 		if !strings.Contains(invoked, required) {
 			t.Fatalf("Docker invocation lacks %q: %s", required, invoked)
@@ -86,6 +86,71 @@ func TestDockerRunnerEnforcesIsolationAndReadsClosedOutputs(t *testing.T) {
 	}
 	if gotBundle.Digest != bundle.Digest || gotResult.CleanupOutcome != "completed" {
 		t.Fatalf("unexpected outputs: bundle=%q cleanup=%q", gotBundle.Digest, gotResult.CleanupOutcome)
+	}
+}
+
+func TestDockerRunnerAcceptsImmutableLocalImageIDAndRejectsTag(t *testing.T) {
+	config := DockerConfig{
+		Image: "sha256:" + strings.Repeat("a", 64), TempRoot: t.TempDir(), Memory: "256m", CPUs: "1",
+	}
+	if _, err := NewDockerRunner(config, commandRunnerFunc(func(context.Context, string, ...string) error { return nil })); err != nil {
+		t.Fatalf("immutable local image ID rejected: %v", err)
+	}
+	config.Image = "forge-worker:latest"
+	if _, err := NewDockerRunner(config, commandRunnerFunc(func(context.Context, string, ...string) error { return nil })); err == nil {
+		t.Fatal("mutable Docker tag was admitted")
+	}
+}
+
+func TestDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) {
+	image := os.Getenv("FORGE_TEST_WORKER_IMAGE")
+	if image == "" {
+		t.Skip("FORGE_TEST_WORKER_IMAGE is not configured")
+	}
+	now := time.Now().UTC()
+	request, err := workercontract.BindRequest(workercontract.Request{
+		SchemaVersion: workercontract.RequestVersion, EnvelopeID: "envelope-integration",
+		DelegationID: "delegation-integration", PlanID: "plan-integration",
+		PlanDigest: testDigest('a'), PlanApprovalRecordID: "approval-integration",
+		ContextPackageID: "context-integration", ContextManifestDigest: testDigest('b'),
+		SourceRevision: "revision-integration",
+		Scope: workercontract.Scope{
+			TenantID: "tenant", WorkspaceID: "workspace", ProjectID: "project",
+			RepositoryID: "repository", DeliveryRunID: "run",
+		},
+		Action: workercontract.PrepareChangeAction, TransformationID: workercontract.TransformationV1,
+		TransformationVersion: "1", AllowedReadPaths: []string{"docs/result.md"},
+		AllowedWritePaths: []string{"docs/result.md"}, DependencyDigests: []string{testDigest('c')},
+		Replacements: []workercontract.FileReplacement{{Path: "docs/result.md", Content: []byte("# Result\n")}},
+		Limits: workercontract.Limits{
+			MaxDurationSeconds: 60, MaxProcesses: 8, MaxOutputBytes: 1 << 20,
+			MaxChangedFiles: 1, MaxAttempts: 1,
+		},
+		Attempt: 1, ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "correlation-integration",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	workspace := filepath.Join(root, "workspace")
+	if err := os.Mkdir(workspace, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(workspace, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	runner, err := NewDockerRunner(DockerConfig{
+		Image: image, TempRoot: root, Memory: "256m", CPUs: "1",
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundle, result, err := runner.Run(context.Background(), request, workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bundle.Digest == "" || result.CandidateDigest != bundle.Digest {
+		t.Fatalf("unbound runtime result: %#v %#v", bundle, result)
 	}
 }
 

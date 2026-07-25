@@ -2,6 +2,8 @@ package doctor
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 )
 
@@ -26,7 +28,34 @@ func Run() []Check {
 	return checks
 }
 
+func RunOperational() []Check {
+	checks := Run()
+	docker := Check{Name: "Docker daemon", Command: "docker info"}
+	command := exec.Command("docker", "info", "--format", "{{.ServerVersion}}")
+	command.Stdout = io.Discard
+	command.Stderr = io.Discard
+	docker.OK = command.Run() == nil
+	checks = append(checks, docker)
+	for _, variable := range []string{
+		"FORGE_M1_POSTGRES_DSN",
+		"FORGE_M1_MINIO_ENDPOINT",
+		"FORGE_M1_MINIO_ACCESS_KEY",
+		"FORGE_M1_MINIO_SECRET_KEY",
+	} {
+		checks = append(checks, Check{
+			Name:    variable,
+			Command: variable,
+			OK:      os.Getenv(variable) != "",
+		})
+	}
+	return checks
+}
+
 func Print(checks []Check) bool {
+	return PrintTo(os.Stdout, checks)
+}
+
+func PrintTo(output io.Writer, checks []Check) bool {
 	allOK := true
 	for _, c := range checks {
 		status := "OK"
@@ -34,7 +63,7 @@ func Print(checks []Check) bool {
 			status = "MISSING"
 			allOK = false
 		}
-		fmt.Printf("%-12s %s\n", c.Name, status)
+		fmt.Fprintf(output, "%-30s %s\n", c.Name, status)
 	}
 	return allOK
 }

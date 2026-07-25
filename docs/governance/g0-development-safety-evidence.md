@@ -56,6 +56,16 @@ python3 scripts/check_architecture.py
 task verify
 ~~~
 
+## M1-exit candidate evidence
+
+The public CLI now has an explicit operational mode that requires an exact
+source revision, immutable worker and verifier images, a project-local runtime
+root, PostgreSQL, and bounded MinIO configuration. `forge doctor
+--operational` checks the Docker daemon and configuration presence without
+displaying values. A real local journey passed with non-root, network-disabled,
+read-only containers and asserted ephemeral cleanup. Contract mode remains the
+safe default. Complete clean-host conformance remains Before Trial evidence.
+
 ## Evidence assignment
 
 Before M1 evidence in this document is implemented and reproducible. M1 must later prove that its public CLI and worker paths cannot bypass the Developer profile restriction. Before Trial, the complete Developer profile conformance suite must pass on a clean supported host.

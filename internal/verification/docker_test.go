@@ -74,7 +74,7 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 	}
 	for _, required := range []string{
 		"--network none", "--read-only", "--cap-drop ALL", "no-new-privileges",
-		"--user 65532:65532", "dst=/workspace,readonly", "dst=/input,readonly",
+		"--user 65532:65532", "GOMAXPROCS=1", "dst=/workspace,readonly", "dst=/input,readonly",
 	} {
 		if !strings.Contains(invoked, required) {
 			t.Fatalf("Docker invocation lacks %q: %s", required, invoked)
@@ -82,6 +82,66 @@ func TestVerifierDockerRunnerUsesSeparateReadOnlyCheckout(t *testing.T) {
 	}
 	if got.Digest != result.Digest {
 		t.Fatalf("result digest=%q want %q", got.Digest, result.Digest)
+	}
+}
+
+func TestVerifierDockerRunnerAcceptsImmutableLocalImageIDAndRejectsTag(t *testing.T) {
+	config := DockerConfig{
+		Image: "sha256:" + strings.Repeat("a", 64), TempRoot: t.TempDir(),
+		Memory: "256m", CPUs: "1", PIDs: "8", MaxOutputBytes: 1 << 20,
+	}
+	if _, err := NewDockerRunner(config, verifierCommandFunc(func(context.Context, string, ...string) error { return nil })); err != nil {
+		t.Fatalf("immutable local image ID rejected: %v", err)
+	}
+	config.Image = "forge-verifier:latest"
+	if _, err := NewDockerRunner(config, verifierCommandFunc(func(context.Context, string, ...string) error { return nil })); err == nil {
+		t.Fatal("mutable Docker tag was admitted")
+	}
+}
+
+func TestVerifierDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) {
+	image := os.Getenv("FORGE_TEST_VERIFIER_IMAGE")
+	if image == "" {
+		t.Skip("FORGE_TEST_VERIFIER_IMAGE is not configured")
+	}
+	now := time.Now().UTC()
+	bundle, err := workercontract.BindBundle(workercontract.CandidateBundle{
+		SchemaVersion: workercontract.BundleVersion, SourceRevision: "revision-integration",
+		PlanDigest: verifierDigest('a'),
+		Files: []workercontract.CandidateFile{{
+			Path: "docs/result.md", Content: []byte("# Result\n"),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := verificationcontract.BindPlan(verificationcontract.AssurancePlan{
+		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
+		PlanDigest: bundle.PlanDigest, RiskClass: "low", Classification: "Internal",
+		AffectedCapabilities: []string{"forge.capability.delivery"}, ChangedPaths: []string{"docs/result.md"},
+		Controls: []verificationcontract.Control{
+			{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
+			{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
+		},
+		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
+		EvidenceCorrelationID: "correlation-integration",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner, err := NewDockerRunner(DockerConfig{
+		Image: image, TempRoot: t.TempDir(), Memory: "256m", CPUs: "1",
+		PIDs: "8", MaxOutputBytes: 1 << 20,
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := runner.Verify(context.Background(), plan, bundle, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Outcome != "passed" || !result.Independent {
+		t.Fatalf("unexpected verifier result: %#v", result)
 	}
 }
 

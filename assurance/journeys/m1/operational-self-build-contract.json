@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "forge.m1-operational-self-build-evidence.v1",
+  "status": "candidate",
+  "acceptedOracleChanged": false,
+  "publicEntryPoint": "forge delivery start",
+  "runtimeMode": "docker",
+  "sourceContext": {
+    "revisionRequired": true,
+    "repositoryMounted": false,
+    "purposeLimitedBytes": true
+  },
+  "execution": {
+    "workerImageImmutable": true,
+    "verifierImageImmutable": true,
+    "separateRuntimes": true,
+    "nonRoot": true,
+    "networkDisabled": true,
+    "readOnlyRoot": true,
+    "resourceBounded": true,
+    "ephemeralCleanupRequired": true
+  },
+  "durability": {
+    "controlState": "postgresql",
+    "artifacts": "minio",
+    "publicationProvider": "postgresql-backed-contract-double",
+    "idempotentAfterProviderRestart": true
+  },
+  "requiredHumanActions": [
+    "promote exact Requirements Proposal",
+    "approve exact Delivery Plan",
+    "approve publication of exact verified candidate"
+  ],
+  "forbidden": [
+    "ambient credentials",
+    "live GitHub effect",
+    "merge",
+    "release",
+    "deployment",
+    "production"
+  ]
+}

@@ -69,6 +69,16 @@ This evidence does not support any claim that:
 - provider portability, SaaS conformance, restricted connectivity, or disconnected operation has been validated;
 - the current Compose bootstrap implements the complete Developer Trial profile.
 
+## M1-exit candidate evidence
+
+The Developer Trial Compose profile now supplies the PostgreSQL and MinIO
+services exercised by the operational public journey. Worker and verifier
+images build reproducibly from separate deployment units and are invoked by
+immutable local image ID with explicit resource and network restrictions.
+This is a local Developer Trial composition only; it does not complete the
+profile's backup, restore, upgrade, rollback, capacity, recovery, identity,
+secret-provider, or connected self-hosted conformance requirements.
+
 ## Verification commands
 
 ~~~text

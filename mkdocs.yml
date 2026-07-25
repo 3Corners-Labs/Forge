@@ -35,6 +35,7 @@ nav:
   - M1 Discovery Resilience: governance/m1-discovery-resilience-evidence.md
   - M1 Requirements Proposal Review and Edit: governance/m1-proposal-review-edit-loop-evidence.md
   - M1 Exit Model-Assisted Self-Build: governance/m1-exit-model-assisted-self-build-evidence.md
+  - M1 Exit Operational Journey: governance/m1-exit-operational-journey-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md

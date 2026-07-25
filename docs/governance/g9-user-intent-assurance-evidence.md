@@ -67,7 +67,14 @@ task verify
 
 ## Deferred evidence
 
-M1 exit SHALL execute both accepted scenarios through the implemented public CLI and bind immutable result records. Before Trial SHALL measure repeatability, negative authorization, evidence privacy, duration, cost, and quarantine handling. This F0 evidence does not claim either phase has passed.
+The M1-exit candidate executes the accepted allowed journey through the public
+CLI with immutable worker and verifier image IDs and reaches exactly one
+reviewable contract-double pull request. The unchanged denied scenario fails
+before repository discovery through the same admission boundary. The accepted
+oracle remains version 2.0.0 and is not modified by this candidate. Protected
+CI still must bind the exact candidate revision and runner images. Before Trial
+SHALL measure repeatability, negative authorization, evidence privacy,
+duration, cost, and quarantine handling.
 
 ## Review record
 

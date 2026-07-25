@@ -76,6 +76,17 @@ python3 scripts/check_architecture.py
 task verify
 ~~~
 
+## M1-exit candidate evidence
+
+The operational journey now enforces exact source digests, declared paths,
+non-root isolated worker and verifier images, no runtime network, read-only
+container roots, bounded resources, independent source reconstruction,
+separate publication approval, append-only Evidence, bounded digest-addressed
+artefacts, disclosure-safe CLI failures, and no live credentials. The denied
+identity test still fails before repository discovery, and sensitive fixture
+content is absent from public output. Production cryptography, retention,
+deletion, backup, restore, and operator-access assurance remain unresolved.
+
 ## Review record
 
 | Field | Value |

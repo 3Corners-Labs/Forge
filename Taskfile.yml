@@ -15,6 +15,16 @@ tasks:
     cmds:
       - mkdir -p dist
       - go build -trimpath -ldflags "-s -w" -o dist/forge ./cmd/forge
+  runtime-images:
+    desc: Build immutable local Developer Trial worker and verifier images
+    vars:
+      RUNTIME_ROOT: '{{default "dist/runtime" .FORGE_RUNTIME_ROOT}}'
+    cmds:
+      - mkdir -p {{.RUNTIME_ROOT}}/images/worker {{.RUNTIME_ROOT}}/images/verifier
+      - CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags "-s -w" -o {{.RUNTIME_ROOT}}/images/worker/forge-worker ./cmd/forge-worker
+      - CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags "-s -w" -o {{.RUNTIME_ROOT}}/images/verifier/forge-verifier ./cmd/forge-verifier
+      - docker build --iidfile {{.RUNTIME_ROOT}}/worker-image.id -f cmd/forge-worker/Dockerfile {{.RUNTIME_ROOT}}/images/worker
+      - docker build --iidfile {{.RUNTIME_ROOT}}/verifier-image.id -f cmd/forge-verifier/Dockerfile {{.RUNTIME_ROOT}}/images/verifier
   architecture:
     cmds: [python3 scripts/check_architecture.py]
   verify:

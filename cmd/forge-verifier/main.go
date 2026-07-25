@@ -44,7 +44,7 @@ func main() {
 		exit("candidate verification failed")
 	}
 	resultBytes, _ := json.Marshal(result)
-	if err := os.WriteFile(*resultPath, resultBytes, 0o600); err != nil {
+	if err := os.WriteFile(*resultPath, resultBytes, 0o644); err != nil {
 		exit("verification result could not be written")
 	}
 }

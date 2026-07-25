@@ -671,6 +671,53 @@ func TestDeveloperTrialPublicJourneyReachesReviewableContractDoublePullRequest(t
 	}
 }
 
+func TestOperationalDeveloperTrialPublicJourneyUsesDockerAndDurableState(t *testing.T) {
+	if os.Getenv("FORGE_TEST_OPERATIONAL_M1") != "1" {
+		t.Skip("set FORGE_TEST_OPERATIONAL_M1=1 with immutable test images and PostgreSQL")
+	}
+	workerImage := os.Getenv("FORGE_TEST_WORKER_IMAGE")
+	verifierImage := os.Getenv("FORGE_TEST_VERIFIER_IMAGE")
+	revision := os.Getenv("FORGE_TEST_SOURCE_REVISION")
+	dsn := os.Getenv("FORGE_TEST_POSTGRES_DSN")
+	if workerImage == "" || verifierImage == "" || revision == "" || dsn == "" {
+		t.Fatal("operational M1 test bindings are incomplete")
+	}
+	root, err := resolveRepositoryRoot("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeRoot := filepath.Join(root, ".forge-worktrees", ".runtime", fmt.Sprintf("m1-test-%d", time.Now().UnixNano()))
+	t.Cleanup(func() { _ = os.RemoveAll(runtimeRoot) })
+	t.Setenv("FORGE_M1_POSTGRES_DSN", dsn)
+	t.Setenv("FORGE_IDENTITY_PROFILE", "developer-allowed")
+	intentFile := writeIntentFixture(t)
+	var output bytes.Buffer
+	input := &promptReader{output: &output}
+	err = execute([]string{
+		"delivery", "start", "--workspace", "fixture-workspace", "--project", "forge",
+		"--repository", "forge", "--intent-file", intentFile, "--output", "json",
+		"--runtime", "docker", "--repository-root", root, "--runtime-root", runtimeRoot,
+		"--source-revision", revision, "--worker-image", workerImage, "--verifier-image", verifierImage,
+	}, input, &output, &bytes.Buffer{}, newDeveloperTrialJourney)
+	if err != nil {
+		t.Fatalf("operational Developer Trial: %v\n%s", err, output.String())
+	}
+	for _, expected := range []string{
+		`"state":"reviewable"`, `"provider":"contract-double"`, `"mergePermitted":false`,
+	} {
+		if !strings.Contains(output.String(), expected) {
+			t.Fatalf("operational output missing %q:\n%s", expected, output.String())
+		}
+	}
+	entries, err := os.ReadDir(runtimeRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("ephemeral runtime was not cleaned: %#v", entries)
+	}
+}
+
 func TestDeniedDeveloperTrialJourneyStopsBeforeRepositoryDiscovery(t *testing.T) {
 	t.Setenv("FORGE_IDENTITY_PROFILE", "observer-denied")
 	value, err := newDeveloperTrialJourney(journeyOptions{})
