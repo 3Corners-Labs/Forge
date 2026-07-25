@@ -7,3 +7,14 @@ coverage.out
 .vscode/
 __pycache__/
 *.pyc
+
+# Signing and attestation material. Private keys never belong in the repository;
+# the rest is per-run evidence that belongs with the run, not with the source.
+cosign.key
+cosign.pub
+*.key
+*.tsq
+*.tsr
+*.bundle
+signing-config*.json
+trusted-root*.json
