@@ -1,0 +1,139 @@
+openapi: 3.1.0
+info:
+  title: Forge Workbench Trial API
+  version: 0.1.0
+  description: >-
+    Read and advance a local projection of the accepted M1 guided journey.
+    Free text creates a proposal; authority is granted only by the declared actions.
+servers:
+  - url: http://127.0.0.1:7331/api/v1
+paths:
+  /overview:
+    get:
+      operationId: getWorkbenchOverview
+      responses:
+        "200":
+          description: Current local delivery runs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [schemaVersion, product, mode, runs]
+                properties:
+                  schemaVersion: {const: forge.workbench-api.v1}
+                  product: {type: string}
+                  mode: {const: exploratory-trial}
+                  runs:
+                    type: array
+                    items: {$ref: "#/components/schemas/Run"}
+  /runs:
+    post:
+      operationId: createWorkbenchRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [message]
+              properties:
+                message: {type: string, minLength: 1, maxLength: 4000}
+      responses:
+        "201":
+          description: Requirements Proposal ready for explicit promotion.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Run"}
+  /runs/{runId}:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    get:
+      operationId: getWorkbenchRun
+      responses:
+        "200":
+          description: Current run projection.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Run"}
+  /runs/{runId}/actions:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    post:
+      operationId: advanceWorkbenchRun
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [action]
+              properties:
+                action:
+                  enum: [promote, approve-plan, approve-publication]
+      responses:
+        "200":
+          description: Run after the exact accepted action.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Run"}
+        "409":
+          description: The action is unknown or not available in the current state.
+  /runs/{runId}/events:
+    parameters:
+      - $ref: "#/components/parameters/RunId"
+    get:
+      operationId: streamWorkbenchActivity
+      responses:
+        "200":
+          description: Server-sent activity events.
+          content:
+            text/event-stream:
+              schema: {type: string}
+components:
+  parameters:
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema: {type: string}
+  schemas:
+    Run:
+      type: object
+      required: [schemaVersion, id, title, request, state, progress, agents, gates, activity]
+      properties:
+        schemaVersion: {const: forge.workbench-api.v1}
+        id: {type: string}
+        title: {type: string}
+        request: {type: string}
+        state: {type: string}
+        progress: {type: integer, minimum: 0, maximum: 100}
+        agents:
+          type: array
+          items:
+            type: object
+            required: [id, role, label, state, summary, authority]
+            properties:
+              id: {type: string}
+              role: {type: string}
+              label: {type: string}
+              state: {enum: [queued, waiting, completed]}
+              summary: {type: string}
+              authority: {type: string}
+              waitingOn: {type: string}
+        gates:
+          type: array
+          items:
+            type: object
+            required: [action, label, digest, summary]
+            properties:
+              action: {type: string}
+              label: {type: string}
+              digest: {type: string}
+              summary: {type: string}
+        activity: {type: array, items: {type: object}}
+        proposal: {type: object}
+        plan: {type: object}
+        candidate: {type: object}
+        publication: {type: object}

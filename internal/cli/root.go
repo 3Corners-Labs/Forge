@@ -43,6 +43,8 @@ func execute(args []string, input io.Reader, output, errorOutput io.Writer, jour
 		return runInit(args[1:])
 	case "delivery":
 		return runDelivery(args[1:], bufio.NewReader(input), output, errorOutput, journeys)
+	case "workbench":
+		return runWorkbench(args[1:], input, output, errorOutput, journeys)
 	case "up":
 		return runCompose("up")
 	case "down":
@@ -62,7 +64,7 @@ func printUsage() {
 func printUsageTo(output io.Writer) {
 	fmt.Fprintln(output, "3Corners Forge engineering platform CLI")
 	fmt.Fprintln(output, "Usage: forge <command>")
-	fmt.Fprintln(output, "Commands: delivery, init, doctor, up, down, version")
+	fmt.Fprintln(output, "Commands: workbench, delivery, init, doctor, up, down, version")
 }
 
 func runInit(args []string) error {
