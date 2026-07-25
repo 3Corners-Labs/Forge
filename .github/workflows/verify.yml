@@ -59,4 +59,4 @@ jobs:
           echo "FORGE_TEST_VERIFIER_IMAGE=$(cat dist/runtime/verifier-image.id)" >> "$GITHUB_ENV"
           echo "FORGE_TEST_SOURCE_REVISION=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
           echo "FORGE_TEST_OPERATIONAL_M1=1" >> "$GITHUB_ENV"
-      - run: go test -race ./internal/delivery ./internal/evidence ./internal/verification ./internal/experience ./internal/intent ./internal/identity ./internal/sourcecontrol ./internal/cli
+      - run: go test -race ./internal/delivery ./internal/evidence ./internal/execution ./internal/verification ./internal/experience ./internal/intent ./internal/identity ./internal/sourcecontrol ./internal/cli
