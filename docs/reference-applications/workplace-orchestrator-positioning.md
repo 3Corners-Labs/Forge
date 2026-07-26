@@ -56,9 +56,11 @@ Supporting properties, in priority order:
 2. self-hosted, on-premises, or partner-delivered SaaS from the same artefact,
    which requires multi-tenancy, RBAC, and privacy controls in the foundation
    rather than as later additions;
-3. explainable handling of occupancy and presence data, which is legally and
-   culturally sensitive in a public-sector workforce and opaque in both
-   incumbent products;
+3. **counts rather than identities.** The product is designed so that it
+   structurally cannot identify who occupies a space, which keeps it clear of the
+   AI Act's worker-monitoring category and is a materially different offer to a
+   works council. Both incumbents are identity-bound by construction. See the
+   [identity boundary](workplace-orchestrator.md#identity-boundary);
 4. Webex Collaboration as the first device integration, because that is where
    3Corners' expertise and current customer engagements are.
 
@@ -81,10 +83,19 @@ If this is false, or only achievable through an integration path the vendor can
 withdraw, then "workplace orchestration without Microsoft 365" does not exist on
 Webex hardware, and every feature built around it is wasted.
 
-This assumption SHALL be tested first, by a bounded technical feasibility spike
-against the current Webex device and workspace integration surface. The spike
-produces a written finding, not product code. A negative finding is a successful
-outcome of the spike: it redirects the product before investment.
+**Tested 2026-07-25. The assumption holds.** The
+[spike finding](spike-room-navigator-calendar-source.md) records that
+`xCommand Bookings Put` accepts bookings from any source and does not involve
+Hybrid Calendar, and that the device has carried its own on-device calendar since
+RoomOS 11.20.
+
+The binding constraint turned out to be legal rather than technical: Cisco
+restricts `Bookings Put` to non-commercial use absent separate written
+permission, and open-sourcing the product distributes that restriction to every
+deployer rather than removing it. `Bookings Book`, `Edit` and `Delete` carry no
+such terms, so the licence-clean path is a macro reconciling the on-device
+calendar against a self-hosted source. That path is also the more sovereign one,
+because its traffic never leaves the customer network.
 
 Secondary assumptions, to be tested after the first:
 
@@ -97,26 +108,36 @@ Secondary assumptions, to be tested after the first:
 
 ## First delivery
 
-Two slices, in order:
+The feasibility spike is complete. Its finding also removed the previously
+proposed first feature: **no-show release is not a candidate, because RoomOS
+already ships it natively** through `Bookings CheckIn Enabled` and
+`WindowDuration`. Building it would have reimplemented a feature the hardware
+provides for free.
 
-1. **Feasibility spike** on the load-bearing assumption. Days, not months.
-   Output is a finding.
-2. **No-show release.** Automatically release rooms reserved but unoccupied.
-   Chosen because it is small, its value is measurable in recovered room-hours,
-   it attaches to a live 3Corners customer engagement, and it exercises external
-   credentials, policy, evidence, and approval end to end.
+The first slice SHALL instead exercise the differentiator directly: a bounded
+reconciliation between the on-device calendar and a self-hosted source, using
+only the commands that carry no vendor restriction. That is the smallest change
+that proves the product exists, and it produces something no incumbent offers.
+
+Sequencing constraint from the spike: the cloud path is faster to deploy but uses
+the restricted API, while the local path is licence-clean and more sovereign. The
+local path therefore becomes the foundation and the cloud path an optional
+accelerator, which reverses the order originally assumed.
 
 The agenda portal, just-in-time capability booking, three-dimensional floor
 displays, sensor visualization, and analytics dashboards described in the
 lighthouse dossier remain intended direction. They are not first delivery, and
-treating them as such is the principal scope risk for this product.
+treating them as such is the principal scope risk for this product. Analytics in
+particular SHALL respect the [identity boundary](workplace-orchestrator.md#identity-boundary).
 
 ## Risks
 
 - The load-bearing assumption fails, and the product as conceived does not exist.
 - The vendor withdraws or restricts the integration path after adoption.
 - Occupancy and presence data create privacy obligations disproportionate to a
-  small team, particularly under public-sector works-council scrutiny.
+  small team, particularly under public-sector works-council scrutiny. The
+  identity boundary is the mitigation; drifting across it would reintroduce the
+  risk in a form that is expensive to reverse.
 - Public-sector procurement cycles outlast the available capacity.
 - The open-source community edition attracts no contributors, leaving
   maintenance with one person.

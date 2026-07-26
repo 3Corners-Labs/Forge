@@ -36,6 +36,42 @@ The product is positioned for organizations reducing hyperscaler dependency. Tha
 
 No claim of community maintainability, sovereignty, or hyperscaler independence SHALL be published before tier-three evidence exists.
 
+## Identity boundary
+
+The product's purpose is to know **how many** people occupy a space and where those numbers are, not **who** they are. Counts, not names.
+
+This is an architectural constraint, not a policy statement, and it is enforced at ingestion rather than at presentation. What is not collected cannot leak, cannot be subpoenaed, and cannot be repurposed.
+
+### Why the line sits here
+
+Annex III point 4(b) of the AI Act treats systems that monitor and evaluate the behaviour of workers as high-risk. Those obligations apply from 2 December 2027. A room and desk booking tool with occupancy counting is not high-risk. It becomes arguable the moment the product produces per-employee presence analytics, attendance or utilisation scoring, or feeds HR dashboards.
+
+Staying on the safe side of that line is worth more than the features it forecloses. Crossing it deliberately, later, with an accountable decision, remains possible. Drifting across it by accident does not.
+
+### The identity actually arrives through the calendar
+
+The obvious risk is sensors. The real risk is bookings.
+
+Every reservation carries an organizer. The Webex `Bookings` API requires `Organizer/Name`, and any calendar source carries the same. So without a single sensor the system already holds *who* reserved *which space* at *what time*. Add check-in confirmation and it holds confirmed attendance. Aggregate that over weeks and it holds an attendance pattern per employee.
+
+Guarding the sensor path while leaving the booking path open would protect the wrong door.
+
+### Rules
+
+1. **Purpose separation.** Booking identity exists to serve the person who booked: showing them their own reservations, letting them release or extend. It SHALL NOT be a source for occupancy analysis, utilisation reporting, or any aggregate. The two data flows are separated at ingestion and SHALL NOT be joined.
+2. **Deliberate check-in is the only identified presence signal.** A person checking in is an explicit, visible act by that person. Presence SHALL NOT be inferred from a device, a network association, a camera, or a badge.
+3. **Small-number suppression.** Aggregates below a declared threshold are not displayed. Two people in a four-person room on a Friday evening, next to a booking record, is not anonymous.
+4. **Retention differs per flow.** Bookings and check-ins are operational and retained briefly. Aggregates are management information and may be retained longer. Equal retention would reconstitute an attendance archive.
+5. **Ingestion discipline.** Room devices can report more than a count, and calendar integrations carry organizer identity. The product SHALL declare what it does not ingest, and that declaration is testable.
+
+### Consequences
+
+Some features are foreclosed: per-person utilisation reports, individual attendance summaries, and any "who is in the office today" view beyond what a colleague has chosen to share. That is intended.
+
+This boundary is also a differentiator. Both incumbent products are identity-bound by construction, because they are extensions of an account and device estate. A product that structurally cannot identify individuals is a materially different offer to a works council.
+
+When Workplace Orchestrator moves to its own repository, this section SHALL become its first architecture decision record.
+
 ## Existing product baseline
 
 The current source set contains:
