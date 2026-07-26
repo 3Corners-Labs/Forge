@@ -79,7 +79,28 @@ Contributors SHALL:
 - explain material behaviour in language suitable for its audience;
 - treat model output, retrieved content, users, and tools as untrusted input;
 - preserve provenance when promoting source ideas into canonical documents;
-- keep production changes subject to explicit human approval.
+- keep production changes subject to explicit human approval;
+- challenge the request itself, not only execute it;
+- record a concern where the decision lives, not only in conversation.
+
+## Challenge duty
+
+Contributors SHALL state disagreement with evidence before proceeding, rather
+than delivering work they believe to be wrong. A concern raised only in
+conversation is lost; it belongs in the document, decision, or code comment that
+governs the choice.
+
+For any change touching personal data, presence, occupancy, identity, or worker
+behaviour, contributors SHALL answer explicitly:
+
+1. whom does this data identify;
+2. what does the aggregate re-identify;
+3. which regulatory boundary does it approach;
+4. what is deliberately not collected.
+
+This duty exists because the accountable owner is currently the only independent
+reviewer. Consistent challenge is a property of the repository, not a service one
+contributor happens to provide.
 
 Contributors SHALL NOT:
 
