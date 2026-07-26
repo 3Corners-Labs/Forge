@@ -33,10 +33,10 @@ const (
 
 var (
 	ErrUnsupportedControl = errors.New("verifier control is unsupported")
-	// ErrNoApplicableCheck reports that every deciding independent check in the
+	// ErrNoApplicableCheck reports that every independent blocking check in the
 	// plan is incapable of failing for the paths this candidate changes.
 	// Certifying such a candidate would be an empty assurance.
-	ErrNoApplicableCheck = errors.New("no deciding independent check can fail for the changed paths")
+	ErrNoApplicableCheck = errors.New("no independent blocking check can fail for the changed paths")
 	// ErrProducerIsVerifier reports that the principal that produced the
 	// candidate is the principal asked to verify it.
 	ErrProducerIsVerifier = errors.New("the candidate producer cannot verify its own candidate")
@@ -58,7 +58,7 @@ var documentStatuses = []string{"Draft", "Proposed", "Accepted", "Superseded", "
 // The two integrity controls are deliberately never applicable. Both are
 // already enforced before the verifier evaluates anything: the bundle is
 // validated at entry, and the delivery lifecycle requires the assurance plan's
-// changed paths to equal the candidate's own. Counting them as a deciding
+// changed paths to equal the candidate's own. Counting them as a blocking
 // check would certify a candidate against invariants that cannot fail.
 func Applicable(controlID string, changedPaths []string) bool {
 	switch controlID {
@@ -238,8 +238,8 @@ func evaluate(control verificationcontract.Control, plan verificationcontract.As
 		if !control.CandidateOwned {
 			return verificationcontract.Finding{}, ErrUnsupportedControl
 		}
-		// Candidate-owned controls can be recorded but never become a deciding
-		// independent check.
+		// Candidate-owned controls can be recorded but never become an independent
+		// blocking check.
 		passed = true
 	}
 	if passed {

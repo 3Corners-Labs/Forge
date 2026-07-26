@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestAssurancePlanRequiresDecidingIndependentCheck(t *testing.T) {
+func TestAssurancePlanRequiresBlockingIndependentCheck(t *testing.T) {
 	now := time.Now().UTC()
 	base := AssurancePlan{
 		SchemaVersion:   AssurancePlanVersion,

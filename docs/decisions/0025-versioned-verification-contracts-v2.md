@@ -131,5 +131,5 @@ govern, and follows the precedent set by ADR-0016.
 
 It supersedes only the in-place amendment of `forge.assurance-plan.v1` and
 `forge.verification-result.v1` introduced earlier on the same branch. It does not
-supersede capability ownership, the deciding-check rule, the applicability
+supersede capability ownership, the blocking-check rule, the applicability
 rule, isolated execution, or any approval or publication restriction.

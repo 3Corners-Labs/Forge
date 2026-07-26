@@ -10,7 +10,7 @@ OWASP AISVS 1.0 Appendix C, requirement AC.8.1, states that agents cannot
 approve, merge, sign, or deploy artifacts that they themselves generated. Market
 research found no shipped agent product enforcing this structurally.
 
-Forge claims a mandatory deciding independent check. This exercise
+Forge claims a mandatory independent blocking check. This exercise
 attacks that claim rather than restating it.
 
 ## Result in one line
@@ -31,7 +31,7 @@ pipeline so the contract layer had to defend itself.
 
 Two independent enforcement points, not one:
 
-- `BindPlan` refuses to construct a plan lacking a deciding independent check.
+- `BindPlan` refuses to construct a plan lacking a independent blocking check.
 - `BindResult` refuses to mark a result `passed` unless some finding is
   consequential, not candidate-owned, and passed.
 
@@ -40,7 +40,7 @@ verifier rejects control identifiers it does not implement. This is stronger
 than any of the eight agent products surveyed, none of which enforce
 generator/verifier separation at all.
 
-## The deciding check is substantively empty
+## The blocking check is substantively empty
 
 Forge implements exactly three Forge-owned controls:
 `forge.candidate-integrity`, `forge.declared-path-scope`, `forge.go-format`.
@@ -63,7 +63,7 @@ by the verifier.
 
 So the verifier is independent, mandatory, and correct, and for a documentation
 change it certifies nothing. Had Forge's pipeline processed this session's own
-documentation commits, its deciding check would have passed vacuously on
+documentation commits, its blocking check would have passed vacuously on
 every one of them.
 
 This is the difference between satisfying AC.8.1 in form and in substance.
@@ -105,8 +105,8 @@ image stays minimal and a candidate cannot alter a control's rule.
 **Applicability, the durable fix.** `Applicable(controlID, changedPaths)` reports
 whether a control is capable of failing for the paths under change. The two
 integrity controls are permanently inapplicable, by design and with the reason
-recorded in the code. `Verify` now refuses any plan whose deciding
-independent checks are all inapplicable, returning `ErrNoApplicableCheck`.
+recorded in the code. `Verify` now refuses any plan whose independent
+blocking checks are all inapplicable, returning `ErrNoApplicableCheck`.
 Forge fails closed rather than certifying what it cannot check.
 
 **Two controls capable of failing.** `forge.document-metadata` requires every
@@ -149,7 +149,7 @@ identity. `Result.Validate` refuses any result whose verifier is the producing
 principal.
 
 The rule lives in the contract rather than in a control, because a profile can
-omit a control but cannot omit an invariant. This mirrors how the deciding-check
+omit a control but cannot omit an invariant. This mirrors how the blocking-check
 rule is already enforced.
 
 **The invariant is dormant today, and that is stated rather than disguised.**
