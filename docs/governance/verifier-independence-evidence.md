@@ -194,6 +194,21 @@ reading a result can tell whether anything was actually checked.
 
 ## Reproduction
 
-The attack harness is `dist/verifierproof/main.go`, in the gitignored `dist/`
-directory. It imports the production `internal/verifier` engine and the
-production contracts, so the behaviour under test is the shipped behaviour.
+The attacks were first run through a throwaway harness that imported the
+production engine and contracts directly. That harness is not retained, because
+every scenario it exercised is now a permanent test:
+
+| Scenario | Test |
+|---|---|
+| Plan whose independent controls cannot fail is refused | `TestVerifierRefusesPlanWithoutApplicableOracle` |
+| Unknown control identifier is refused | covered by `ErrUnsupportedControl` in `evaluate` |
+| Document without lifecycle status or owner fails | `TestDocumentMetadataControlFailsWithoutLifecycleStatus` |
+| Unresolvable Markdown link fails | `TestMarkdownLinksControlFailsOnUnresolvableLink` |
+| Links resolve against source and sibling candidates | `TestMarkdownLinksControlResolvesAgainstSourceAndCandidate` |
+| Producer cannot verify its own candidate | `TestProducerCannotVerifyItsOwnCandidate` |
+| Plan without recorded provenance is refused | `TestPlanRequiresRecordedProvenance` |
+
+Run `go test ./internal/verifier/... ./internal/contracts/verification/...`.
+
+A finding that only a discarded script can demonstrate is not evidence. Where an
+attack is worth recording, it belongs in the suite that runs on every change.

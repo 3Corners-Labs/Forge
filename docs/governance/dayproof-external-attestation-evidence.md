@@ -234,7 +234,24 @@ air-gapped, verified bundle as a deliverable in its own right.
 
 ## Reproduction
 
-The proof harness is `dist/dayproof/main.go`, which is deliberately inside the
-gitignored `dist/` directory: it is throwaway evidence code, not a Forge
-capability. It imports `internal/contracts/worker` so the digest under test is
-the production one.
+The harness that produced the tree digest is not retained; it was throwaway
+evidence code, not a Forge capability. It computed the digest by importing
+`workercontract.CandidateTreeDigest` over the files of a real commit, so the
+digest under test was the production one. The Python reproduction in this
+document is sufficient to recompute it independently.
+
+The attestation steps are reproducible from the commands recorded above:
+
+~~~text
+cosign signing-config create --no-default-fulcio --no-default-rekor \
+  --no-default-oidc --no-default-tsa --out signing-config.json
+cosign attest-blob --key cosign.key --predicate predicate.json \
+  --type <predicate-type> --signing-config signing-config.json \
+  --bundle attestation.bundle subject.txt
+cosign verify-blob-attestation --key cosign.pub --bundle attestation.bundle \
+  --type <predicate-type> --insecure-ignore-tlog subject.txt
+~~~
+
+Key material was generated in a scratch directory outside the repository and is
+not retained. `.gitignore` now refuses signing and attestation artefacts so a
+key cannot reach a commit by accident.
