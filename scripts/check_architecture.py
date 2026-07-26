@@ -123,6 +123,7 @@ def check_local_markdown_links() -> None:
     excluded = {PRINCIPLES_SOURCE}
     link_pattern = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
     failures: list[str] = []
+    escaping: list[str] = []
     for path in (ROOT / "docs").rglob("*.md"):
         if path in excluded:
             continue
@@ -143,8 +144,20 @@ def check_local_markdown_links() -> None:
                 failures.append(
                     f"{path.relative_to(ROOT)} -> {target}"
                 )
+                continue
+            # MkDocs resolves links inside the documentation tree only, and CI
+            # builds with --strict. A link that exists on disk but escapes docs/
+            # passes here and fails there, so reject it at the same place.
+            if not resolved.resolve().is_relative_to((ROOT / "docs").resolve()):
+                escaping.append(f"{path.relative_to(ROOT)} -> {target}")
     if failures:
         fail("broken local Markdown links: " + "; ".join(sorted(failures)))
+    if escaping:
+        fail(
+            "Markdown links escape the documentation tree and will fail "
+            "`mkdocs build --strict`; reference the path as code instead: "
+            + "; ".join(sorted(escaping))
+        )
 
 
 def check_navigation_coverage() -> None:

@@ -9,7 +9,7 @@ owner: Forge Architecture
 
 # Documentation agent adapter
 
-> **Historical Draft:** this document is preserved as consolidation source and is not normative. Its concepts are being consolidated into [`/AGENTS.md`](../AGENTS.md); only Accepted documents have authority.
+> **Historical Draft:** this document is preserved as consolidation source and is not normative. Its concepts are being consolidated into the repository operating contract at `/AGENTS.md`; only Accepted documents have authority.
 
 The repository's single agent operating contract is `/AGENTS.md` at the repository root.
 

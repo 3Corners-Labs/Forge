@@ -189,7 +189,7 @@ result.
 - The accepted masterplan, principles, and roadmap require revision. Those
   revisions are consequences of this decision and SHALL NOT precede its
   acceptance.
-- The [roadmap structure check](../../scripts/check_architecture.py) currently
+- The roadmap structure check in `scripts/check_architecture.py` currently
   requires nine milestones in order. It SHALL be amended alongside the roadmap
   revision, as a recorded change rather than a silent relaxation.
 - Forge gains an explicit consumer. Capability decisions become answerable to a
