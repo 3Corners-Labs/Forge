@@ -15,9 +15,13 @@ import (
 	"time"
 )
 
+// ADR-0025 versioned these contracts when provenance became mandatory. v1
+// remains readable for historical validation but cannot satisfy a current gate.
 const (
-	AssurancePlanVersion = "forge.assurance-plan.v1"
-	ResultVersion        = "forge.verification-result.v1"
+	AssurancePlanVersion   = "forge.assurance-plan.v2"
+	ResultVersion          = "forge.verification-result.v2"
+	AssurancePlanVersionV1 = "forge.assurance-plan.v1"
+	ResultVersionV1        = "forge.verification-result.v1"
 )
 
 var ErrInvalidContract = errors.New("verification contract is invalid")

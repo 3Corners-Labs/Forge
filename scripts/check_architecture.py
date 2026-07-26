@@ -390,7 +390,9 @@ def check_trust_schemas() -> None:
         "candidate-bundle.schema.json",
         "worker-result.schema.json",
         "assurance-plan.schema.json",
+        "assurance-plan-v2.schema.json",
         "verification-result.schema.json",
+        "verification-result-v2.schema.json",
     }
     present = {path.name for path in schema_directory.glob("*.schema.json")}
     if present != required:

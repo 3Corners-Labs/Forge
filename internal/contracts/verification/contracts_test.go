@@ -91,6 +91,47 @@ func TestProducerCannotVerifyItsOwnCandidate(t *testing.T) {
 	}
 }
 
+// TestVersionOneRemainsReadableButCannotSatisfyAGate covers ADR-0025. The v1
+// contracts predate mandatory provenance. They stay decodable so historical
+// evidence can still be read, but they cannot satisfy a current gate, and a
+// stale verifier is reported as a version mismatch rather than a decode error.
+func TestVersionOneRemainsReadableButCannotSatisfyAGate(t *testing.T) {
+	now := time.Now().UTC()
+	legacy := AssurancePlan{
+		SchemaVersion: AssurancePlanVersionV1, CandidateDigest: digest("candidate"), PlanDigest: digest("plan"),
+		RiskClass: "low", Classification: "internal", AffectedCapabilities: []string{"forge.capability.delivery"},
+		ChangedPaths: []string{"internal/delivery/example.go"},
+		Controls:     []Control{{ID: "forge-contract", Version: "1", Consequential: true}},
+		ProducedBy:   "forge.worker.subject.test", Environment: "developer-trial",
+		ExpiresAt: now.Add(time.Hour), EvidenceCorrelationID: "corr-1",
+	}
+	encoded, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := DecodePlan(encoded)
+	if err != nil {
+		t.Fatalf("a v1 plan must remain readable for historical validation: %v", err)
+	}
+	if decoded.SchemaVersion != AssurancePlanVersionV1 {
+		t.Fatal("decoding must preserve the recorded contract version")
+	}
+	if _, err := BindPlan(legacy); !errors.Is(err, ErrInvalidContract) {
+		t.Fatal("a v1 plan must not satisfy a current gate")
+	}
+
+	legacyResult := Result{
+		SchemaVersion: ResultVersionV1, AssurancePlanID: "forge.assurance-plan.x",
+		AssurancePlanDigest: digest("plan"), CandidateDigest: digest("candidate"),
+		Environment: "developer-trial", Outcome: "passed", Independent: true,
+		VerifiedBy: "forge.verifier.test", CompletedAt: now, EvidenceCorrelationID: "corr-1",
+		Findings: []Finding{{ControlID: "forge-contract", Outcome: "passed", Code: "ok", EvidenceDigest: digest("evidence"), Consequential: true}},
+	}
+	if _, err := BindResult(legacyResult); !errors.Is(err, ErrInvalidContract) {
+		t.Fatal("a v1 result must not satisfy a current gate")
+	}
+}
+
 // TestPlanRequiresRecordedProvenance keeps candidate provenance mandatory. It is
 // the field the AC.8.1 invariant and the delivery measures both depend on.
 func TestPlanRequiresRecordedProvenance(t *testing.T) {

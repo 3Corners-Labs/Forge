@@ -4,12 +4,11 @@
   "title": "Forge Verification Result v1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "id", "digest", "assurancePlanId", "assurancePlanDigest", "candidateDigest", "environment", "findings", "outcome", "independent", "verifiedBy", "completedAt", "evidenceCorrelationId"],
+  "required": ["schemaVersion", "id", "digest", "assurancePlanId", "assurancePlanDigest", "candidateDigest", "environment", "findings", "outcome", "independent", "completedAt", "evidenceCorrelationId"],
   "properties": {
     "schemaVersion": {"const": "forge.verification-result.v1"}, "id": {"type": "string", "minLength": 1},
     "digest": {"$ref": "#/$defs/digest"}, "assurancePlanId": {"type": "string", "minLength": 1},
     "assurancePlanDigest": {"$ref": "#/$defs/digest"}, "candidateDigest": {"$ref": "#/$defs/digest"},
-    "verifiedBy": {"type": "string", "minLength": 1},
     "environment": {"const": "developer-trial"}, "findings": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/finding"}},
     "outcome": {"enum": ["passed", "failed"]}, "independent": {"const": true},
     "completedAt": {"type": "string", "format": "date-time"}, "evidenceCorrelationId": {"type": "string", "minLength": 1}
