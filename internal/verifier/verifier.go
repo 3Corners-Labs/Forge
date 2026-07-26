@@ -33,10 +33,10 @@ const (
 
 var (
 	ErrUnsupportedControl = errors.New("verifier control is unsupported")
-	// ErrNoApplicableOracle reports that every independent consequential control
-	// in the plan is incapable of failing for the paths this candidate changes.
+	// ErrNoApplicableCheck reports that every deciding independent check in the
+	// plan is incapable of failing for the paths this candidate changes.
 	// Certifying such a candidate would be an empty assurance.
-	ErrNoApplicableOracle = errors.New("no independent consequential control can fail for the changed paths")
+	ErrNoApplicableCheck = errors.New("no deciding independent check can fail for the changed paths")
 	// ErrProducerIsVerifier reports that the principal that produced the
 	// candidate is the principal asked to verify it.
 	ErrProducerIsVerifier = errors.New("the candidate producer cannot verify its own candidate")
@@ -58,8 +58,8 @@ var documentStatuses = []string{"Draft", "Proposed", "Accepted", "Superseded", "
 // The two integrity controls are deliberately never applicable. Both are
 // already enforced before the verifier evaluates anything: the bundle is
 // validated at entry, and the delivery lifecycle requires the assurance plan's
-// changed paths to equal the candidate's own. Counting them as an oracle would
-// certify a candidate against invariants that cannot fail.
+// changed paths to equal the candidate's own. Counting them as a deciding
+// check would certify a candidate against invariants that cannot fail.
 func Applicable(controlID string, changedPaths []string) bool {
 	switch controlID {
 	case ControlCandidateIntegrity, ControlDeclaredPathScope:
@@ -136,8 +136,8 @@ func (engine *Engine) Verify(ctx context.Context, plan verificationcontract.Assu
 	if plan.ProducedBy == engine.identity {
 		return verificationcontract.Result{}, ErrProducerIsVerifier
 	}
-	if !hasApplicableOracle(plan) {
-		return verificationcontract.Result{}, ErrNoApplicableOracle
+	if !hasApplicableCheck(plan) {
+		return verificationcontract.Result{}, ErrNoApplicableCheck
 	}
 	findings := make([]verificationcontract.Finding, 0, len(plan.Controls))
 	outcome := "passed"
@@ -195,7 +195,7 @@ func verifyFreshSource(workspace string, bundle workercontract.CandidateBundle) 
 	return nil
 }
 
-func hasApplicableOracle(plan verificationcontract.AssurancePlan) bool {
+func hasApplicableCheck(plan verificationcontract.AssurancePlan) bool {
 	for _, control := range plan.Controls {
 		if control.Consequential && !control.CandidateOwned && Applicable(control.ID, plan.ChangedPaths) {
 			return true
@@ -238,8 +238,8 @@ func evaluate(control verificationcontract.Control, plan verificationcontract.As
 		if !control.CandidateOwned {
 			return verificationcontract.Finding{}, ErrUnsupportedControl
 		}
-		// Candidate-owned controls can be recorded but never become an
-		// independent consequential oracle.
+		// Candidate-owned controls can be recorded but never become a deciding
+		// independent check.
 		passed = true
 	}
 	if passed {

@@ -49,11 +49,11 @@ func TestVerifierUsesIndependentForgeControls(t *testing.T) {
 	}
 }
 
-// TestVerifierRefusesPlanWithoutApplicableOracle covers the case that motivated
+// TestVerifierRefusesPlanWithoutApplicableCheck covers the case that motivated
 // these controls: a documentation candidate whose only independent controls are
 // integrity preconditions incapable of failing. Certifying it would be an empty
 // assurance, so verification fails closed instead.
-func TestVerifierRefusesPlanWithoutApplicableOracle(t *testing.T) {
+func TestVerifierRefusesPlanWithoutApplicableCheck(t *testing.T) {
 	workspace := t.TempDir()
 	bundle := mustBundle(t, "docs/notes.md", "# notes\n")
 	plan := mustPlan(t, bundle, []verificationcontract.Control{
@@ -61,7 +61,7 @@ func TestVerifierRefusesPlanWithoutApplicableOracle(t *testing.T) {
 		{ID: ControlDeclaredPathScope, Version: "1", Consequential: true},
 	})
 	engine, _ := NewEngine(time.Now().UTC, DefaultIdentity)
-	if _, err := engine.Verify(context.Background(), plan, bundle, workspace); !errors.Is(err, ErrNoApplicableOracle) {
+	if _, err := engine.Verify(context.Background(), plan, bundle, workspace); !errors.Is(err, ErrNoApplicableCheck) {
 		t.Fatalf("expected the plan to be refused, got %v", err)
 	}
 }

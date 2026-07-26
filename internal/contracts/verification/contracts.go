@@ -129,17 +129,17 @@ func BindPlan(value AssurancePlan) (AssurancePlan, error) {
 		len(value.ChangedPaths) == 0 || len(value.Controls) == 0 || value.ProducedBy == "" {
 		return AssurancePlan{}, ErrInvalidContract
 	}
-	hasIndependentOracle := false
+	hasDecidingIndependentCheck := false
 	for index, control := range value.Controls {
 		if control.ID == "" || control.Version == "" ||
 			(index > 0 && value.Controls[index-1].ID == control.ID) {
 			return AssurancePlan{}, ErrInvalidContract
 		}
 		if control.Consequential && !control.CandidateOwned {
-			hasIndependentOracle = true
+			hasDecidingIndependentCheck = true
 		}
 	}
-	if !hasIndependentOracle {
+	if !hasDecidingIndependentCheck {
 		return AssurancePlan{}, ErrInvalidContract
 	}
 	value.Digest = digest(value)

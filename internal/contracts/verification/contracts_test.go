@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestAssurancePlanRequiresIndependentConsequentialOracle(t *testing.T) {
+func TestAssurancePlanRequiresDecidingIndependentCheck(t *testing.T) {
 	now := time.Now().UTC()
 	base := AssurancePlan{
 		SchemaVersion:   AssurancePlanVersion,

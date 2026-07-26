@@ -10,7 +10,7 @@ OWASP AISVS 1.0 Appendix C, requirement AC.8.1, states that agents cannot
 approve, merge, sign, or deploy artifacts that they themselves generated. Market
 research found no shipped agent product enforcing this structurally.
 
-Forge claims a mandatory independent consequential oracle. This exercise
+Forge claims a mandatory deciding independent check. This exercise
 attacks that claim rather than restating it.
 
 ## Result in one line
@@ -31,8 +31,7 @@ pipeline so the contract layer had to defend itself.
 
 Two independent enforcement points, not one:
 
-- `BindPlan` refuses to construct a plan lacking an independent consequential
-  control.
+- `BindPlan` refuses to construct a plan lacking a deciding independent check.
 - `BindResult` refuses to mark a result `passed` unless some finding is
   consequential, not candidate-owned, and passed.
 
@@ -41,7 +40,7 @@ verifier rejects control identifiers it does not implement. This is stronger
 than any of the eight agent products surveyed, none of which enforce
 generator/verifier separation at all.
 
-## The independent oracle is substantively empty
+## The deciding check is substantively empty
 
 Forge implements exactly three Forge-owned controls:
 `forge.candidate-integrity`, `forge.declared-path-scope`, `forge.go-format`.
@@ -64,7 +63,7 @@ by the verifier.
 
 So the verifier is independent, mandatory, and correct, and for a documentation
 change it certifies nothing. Had Forge's pipeline processed this session's own
-documentation commits, its independent oracle would have passed vacuously on
+documentation commits, its deciding check would have passed vacuously on
 every one of them.
 
 This is the difference between satisfying AC.8.1 in form and in substance.
@@ -77,8 +76,8 @@ consistency, link resolution, schema sets, module boundaries and more. During
 this session it rejected a real defect: a document committed without its
 navigation entry.
 
-The proposal is therefore not to invent an oracle but to promote the ones that
-exist:
+The proposal is therefore not to invent a new check but to promote the ones
+that exist:
 
 1. Add `forge.architecture-fitness` as a Forge-owned consequential control that
    executes `scripts/check_architecture.py` inside the verifier.
@@ -106,8 +105,8 @@ image stays minimal and a candidate cannot alter a control's rule.
 **Applicability, the durable fix.** `Applicable(controlID, changedPaths)` reports
 whether a control is capable of failing for the paths under change. The two
 integrity controls are permanently inapplicable, by design and with the reason
-recorded in the code. `Verify` now refuses any plan whose independent
-consequential controls are all inapplicable, returning `ErrNoApplicableOracle`.
+recorded in the code. `Verify` now refuses any plan whose deciding
+independent checks are all inapplicable, returning `ErrNoApplicableCheck`.
 Forge fails closed rather than certifying what it cannot check.
 
 **Two controls capable of failing.** `forge.document-metadata` requires every
@@ -150,8 +149,8 @@ identity. `Result.Validate` refuses any result whose verifier is the producing
 principal.
 
 The rule lives in the contract rather than in a control, because a profile can
-omit a control but cannot omit an invariant. This mirrors how the independent
-oracle rule is already enforced.
+omit a control but cannot omit an invariant. This mirrors how the deciding-check
+rule is already enforced.
 
 **The invariant is dormant today, and that is stated rather than disguised.**
 Forge's verifier is deterministic and therefore never the producing principal,
@@ -200,7 +199,7 @@ every scenario it exercised is now a permanent test:
 
 | Scenario | Test |
 |---|---|
-| Plan whose independent controls cannot fail is refused | `TestVerifierRefusesPlanWithoutApplicableOracle` |
+| Plan whose independent controls cannot fail is refused | `TestVerifierRefusesPlanWithoutApplicableCheck` |
 | Unknown control identifier is refused | covered by `ErrUnsupportedControl` in `evaluate` |
 | Document without lifecycle status or owner fails | `TestDocumentMetadataControlFailsWithoutLifecycleStatus` |
 | Unresolvable Markdown link fails | `TestMarkdownLinksControlFailsOnUnresolvableLink` |
