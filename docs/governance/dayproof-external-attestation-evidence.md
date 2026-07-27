@@ -1,0 +1,257 @@
+# Day-proof: digest-bound approval through external attestation
+
+Status: Draft
+Owner: Forge Engineering and Architecture
+Verified: 2026-07-25
+
+## Question
+
+Market research recorded that no shipped agent tool binds a human approval to an
+artifact digest, and that roughly 70–85% of Forge's trust chain already exists as
+free standard tooling. This proof tests the practical consequence:
+
+> Can `cosign` bind a Forge Approval Record to the exact digest Forge already
+> computes, fully offline, and does that make any Forge module redundant?
+
+Fully offline means: local key, no transparency log, no Fulcio, no OIDC, no
+timestamp authority, no network. The target customer runs air-gapped.
+
+## Method
+
+Subject: commit `08097f9` ("rebaseline Forge as a bounded means"), a real change
+of 11 files.
+
+1. Compute the candidate tree digest by importing Forge's own
+   `workercontract.CandidateTreeDigest` — the production algorithm, not a
+   reimplementation.
+2. Derive a `HumanApproval` predicate from the existing
+   `schemas/forge/trust/v1/approval-record-v2.schema.json`. No new format.
+3. Sign with `cosign attest-blob` using a locally generated key.
+4. Verify offline.
+5. Attempt to break it two ways.
+
+Tooling: cosign v3.1.1, Go 1.26.5. Keys and artefacts were written to a
+scratchpad outside the repository; no key material was committed.
+
+## Result: the mechanism works
+
+**Tree digest** (Forge's own algorithm):
+
+~~~text
+sha256:033f2ecda3f4302e292a6f2d59bc275ad813294366b99d5917a8baa43d066bef
+~~~
+
+Independently reproduced from the file list in Python, byte-identical. The
+algorithm is not Go-specific and can be implemented by any verifier.
+
+**Attestation**: a Sigstore bundle v0.3 containing a DSSE envelope, payload type
+`application/vnd.in-toto+json`, in-toto Statement v0.1, predicate type
+`https://3corners.nl/attestations/HumanApproval/v1`, carrying the Approval
+Record fields — `action`, `subjectDigest`, `decision`, `approverId`,
+`environment`, `riskClass`, `decidedAt`, `expiresAt`, and the 11 file digests.
+
+**Verification**: `Verified OK`, offline.
+
+### Break test A — one byte of source
+
+Flipping one character in the content digest of one file changes the tree digest
+to `sha256:d9cd86e0…`. The approved digest no longer matches the actual tree, so
+publication must be refused. The approval is bound to exact content, not to a
+branch, a commit message, or a reviewer's intent.
+
+### Break test B — forging the approval
+
+Editing the signed payload to name a different approver and lower the risk class,
+leaving the signature untouched, produces:
+
+~~~text
+Error: failed to verify signature: could not verify envelope:
+accepted signatures do not match threshold, Found: 0, Expected 1
+~~~
+
+The unmodified bundle still verifies. An approval cannot be rewritten after the
+fact without the signing key.
+
+## What this does and does not replace
+
+This is where the earlier estimate was too generous. Being precise:
+
+| Forge module | Lines | Disposition |
+|---|---|---|
+| `internal/contracts/trust` integrity binding | part of 1257 | **Can delegate** the signing and verification mechanics to DSSE/cosign; the schemas stay |
+| `internal/evidence` | 529 | **Partly.** Per-record signing and tamper detection are covered. The append-only stream, fork detection, and artefact promotion are not |
+| `internal/verifier` | 160 | **Partly**, on the integrity-checking side |
+| `internal/verification` | 451 | **Keep.** cosign verifies signatures, not whether the change is correct. Independent assurance-plan derivation and execution is a different problem and remains unsolved by the market |
+| `internal/policy` | 2172 | **Keep the rules, replace the engine** with OPA later. Not tested here |
+
+Honest total directly displaced by this proof: on the order of **500–700 lines**,
+not the thousands claimed earlier in the session. The value is not deletion. It
+is that the retained code now sits behind a standard, externally verifiable
+format instead of a bespoke one.
+
+## Air-gap friction found
+
+Every step that needed a workaround, because this list is the beginning of the
+air-gapped bundle the target customer needs and nobody publishes:
+
+1. **`--tlog-upload=false` is deprecated in cosign 3.x** and errors out when a
+   signing config is in play.
+2. **The error message's suggested fix requires the internet.** It instructs the
+   operator to `curl` a signing config from `raw.githubusercontent.com` and strip
+   the Rekor URLs with `jq`. In an air-gapped environment that instruction is
+   unusable.
+3. **The working offline route is undocumented as such:**
+   `cosign signing-config create --no-default-fulcio --no-default-rekor
+   --no-default-oidc --no-default-tsa --out signing-config.json` produces a local
+   empty config that permits offline signing. Nothing points an operator here.
+4. **`--output-attestation` was removed** in favour of `--bundle` with the new
+   bundle format. Existing instructions and scripts break silently on upgrade.
+5. **Offline verification requires `--insecure-ignore-tlog`**, which prints
+   `WARNING: Skipping tlog verification is an insecure practice…`. Technically
+   accurate, but presenting that warning to a public-sector auditor undermines
+   the evidence it accompanies.
+
+Item 5 is not cosmetic. The proper resolutions are a self-hosted Rekor v2
+(`rekor-server-posix`, documented as having no cloud dependencies) or an
+eIDAS-qualified European RFC 3161 timestamp authority. The latter is worth
+evaluating on its own merits: a qualified EU timestamp carries legal evidentiary
+weight in the Netherlands that a US transparency log does not.
+
+## Follow-on: external RFC 3161 timestamping
+
+The proof was extended to test whether an external timestamp authority can
+replace the Sigstore transparency log, as the route to an eIDAS-qualified
+timestamp. A public, **non-qualified** authority was used to prove the mechanism;
+it carries no Article 41 presumption.
+
+**The mechanism works.** Signing with `--signing-config` carrying a `--tsa`
+entry, and verifying against a `--trusted-root` containing only that authority,
+produces a bundle with one RFC 3161 token and **zero transparency-log entries**,
+verifying offline. Tampering with the approver in the timestamped bundle still
+fails signature verification.
+
+Two results matter more than the success:
+
+1. **Only a hash leaves the environment.** The timestamp request is 70 bytes
+   containing the SHA-256 and a nonce — no filename, no content, no metadata.
+   This is the argument that permits timestamping across an air-gap boundary.
+2. **The `--insecure-ignore-tlog` warning cannot be removed.** An earlier claim
+   in this session that a timestamp would eliminate it was wrong. Verifying
+   without the flag fails with `not enough verified log entries from transparency
+   log: 0 < 1`, **even when the trusted root declares no transparency logs at
+   all**. cosign does not treat an empty `tlogs` set as "no log required". A
+   valid qualified timestamp therefore still produces a warning about missing
+   transparency — the opposite of the intended effect in front of an auditor.
+
+Item 2 is a cosign limitation, not a design constraint of the approach. It is
+worth reporting upstream; the trusted root already carries enough information to
+infer that no log is expected.
+
+Additional air-gap friction, extending the list above:
+
+6. `--timestamp-server-url` and `--rfc3161-timestamp` were removed in cosign 3.x.
+   The published Sigstore documentation still describes them.
+7. The timestamp authority's certificate chain must be supplied at **signing**
+   time as well as verification time, because cosign verifies the token as it
+   signs. An air-gapped signer needs the chain provisioned in advance.
+
+### Qualified provider selection
+
+No Netherlands-established qualified provider sells a documented, publicly priced
+qualified RFC 3161 endpoint, so the service must be procured from another Member
+State. Article 41(3) provides cross-border recognition. Candidates recorded for
+evaluation: Aruba PEC (IT, self-service, 50 timestamps for EUR 13.50), SK ID
+Solutions (EE, contract plus IP allowlist, EUR 0.036 per timestamp falling to
+EUR 0.006 at volume), Camerfirma (ES), InfoCert (IT).
+
+Qualified status for every candidate is provider-published and SHALL be confirmed
+against the authoritative EU Trusted List before contracting.
+
+## Follow-on: ASiC container for Dutch comply-or-explain
+
+AdES Baseline Profiles has been on the Forum Standaardisatie "pas toe of leg uit"
+list since 9 May 2017, binding central government, provinces, municipalities and
+water authorities, and its functional scope explicitly names seals and
+timestamps. A Sigstore bundle is not an AdES format, so the standard does not
+point at cosign. The gap is a container.
+
+An ASiC-S container was therefore built around the attestation, per
+ETSI EN 319 162-1:
+
+~~~text
+approval.asics
+├── mimetype                     (first entry, stored, application/vnd.etsi.asic-s+zip)
+├── approval-attestation.json    (the Sigstore bundle as the data object)
+└── META-INF/timestamp.tst       (RFC 3161 token over that data object)
+~~~
+
+Structural checks pass: mimetype is the first entry, uncompressed, with the
+correct value; exactly one data object; the timestamp is in the reserved
+location.
+
+Cryptographic verification of the token against the data object extracted from
+the container returns `Verification: OK`. Adding one space to the attestation
+inside the container returns `Verification: FAILED`, and comparing the message
+imprint to the recomputed hash shows exactly where it broke.
+
+This is the bridge: a modern supply-chain attestation, carried inside the
+container format a binding Dutch standard already names.
+
+**Limitation, stated plainly.** The container was built from the specification
+and validated by structural self-checks and OpenSSL. It has **not** been run
+through a conformance validator such as the European Commission's DSS demo
+validator. Self-checks are not conformance, and this SHALL be validated
+independently before any comply-or-explain claim is made.
+
+Two further air-gap obstacles surfaced:
+
+8. macOS ships LibreSSL rather than OpenSSL, and its `ts -verify` failed on a
+   chain that OpenSSL accepts. Toolchain provenance matters for verification
+   hosts.
+9. The timestamp authority's **self-signed root** is not in the token; only the
+   cross-signed intermediate is. It had to be fetched separately from the
+   vendor. An air-gapped verifier needs the root provisioned in advance.
+
+## Conclusion
+
+The one capability the market does not ship — a human approval cryptographically
+bound to an exact artifact digest — is achievable today, offline, with standard
+tooling, in an afternoon. It is a missing bundle, not a missing technology.
+
+That confirms the direction: assemble on standard tooling, keep the contract and
+the parts of Forge that genuinely have no market equivalent, and treat the
+air-gapped, verified bundle as a deliverable in its own right.
+
+## Not established
+
+- Independent verification the agent cannot influence. Break test B proves an
+  approval cannot be forged; it says nothing about whether the reviewer was
+  independent of the author. That is the second gap and it is untested.
+- Behaviour with a hardware or KMS-held key.
+- Self-hosted Rekor, and whether an eIDAS timestamp authority integrates cleanly.
+- Whether OPA can express the existing `internal/policy` rules without loss.
+- Long-term key custody, rotation, and revocation.
+
+## Reproduction
+
+The harness that produced the tree digest is not retained; it was throwaway
+evidence code, not a Forge capability. It computed the digest by importing
+`workercontract.CandidateTreeDigest` over the files of a real commit, so the
+digest under test was the production one. The Python reproduction in this
+document is sufficient to recompute it independently.
+
+The attestation steps are reproducible from the commands recorded above:
+
+~~~text
+cosign signing-config create --no-default-fulcio --no-default-rekor \
+  --no-default-oidc --no-default-tsa --out signing-config.json
+cosign attest-blob --key cosign.key --predicate predicate.json \
+  --type <predicate-type> --signing-config signing-config.json \
+  --bundle attestation.bundle subject.txt
+cosign verify-blob-attestation --key cosign.pub --bundle attestation.bundle \
+  --type <predicate-type> --insecure-ignore-tlog subject.txt
+~~~
+
+Key material was generated in a scratch directory outside the repository and is
+not retained. `.gitignore` now refuses signing and attestation artefacts so a
+key cannot reach a commit by accident.

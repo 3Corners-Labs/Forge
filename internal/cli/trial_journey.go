@@ -163,10 +163,22 @@ func (runner trialWorkerRunner) Run(_ context.Context, request workercontract.Re
 	}, nil
 }
 
+// contractDoubleVerifierIdentity marks results produced without evaluating any
+// control, so evidence never conflates the double with real verification.
+const contractDoubleVerifierIdentity = "forge.verifier.contract-double.v1"
+
 type trialVerifierRunner struct {
 	now func() time.Time
 }
 
+// Verify records a passing finding for every declared control without
+// evaluating any of them. It is a contract double, not verification.
+//
+// The control plane may not import the verifier deployment unit, so the real
+// controls can only run in operational mode, where the verifier executes as a
+// separate immutable image. Contract mode therefore exercises the trust path
+// and the state machine, and proves nothing about the candidate itself. Its
+// identity is deliberately distinct so that evidence never suggests otherwise.
 func (runner trialVerifierRunner) Verify(_ context.Context, plan verificationcontract.AssurancePlan, bundle workercontract.CandidateBundle, _ string) (verificationcontract.Result, error) {
 	if err := plan.Validate(runner.now()); err != nil {
 		return verificationcontract.Result{}, err
@@ -183,7 +195,8 @@ func (runner trialVerifierRunner) Verify(_ context.Context, plan verificationcon
 		SchemaVersion: verificationcontract.ResultVersion, AssurancePlanID: plan.ID,
 		AssurancePlanDigest: plan.Digest, CandidateDigest: bundle.Digest,
 		Environment: plan.Environment, Findings: findings, Outcome: "passed",
-		Independent: true, CompletedAt: runner.now(), EvidenceCorrelationID: plan.EvidenceCorrelationID,
+		Independent: true, VerifiedBy: contractDoubleVerifierIdentity,
+		CompletedAt: runner.now(), EvidenceCorrelationID: plan.EvidenceCorrelationID,
 	})
 }
 
@@ -1053,9 +1066,17 @@ func (journey *developerTrialJourney) ApprovePlanAndVerify(ctx context.Context, 
 		journey.verifierRunner, journey.persistence.verification,
 		verification.Profile{
 			Version: "forge.m1-c.verification.v1", MaximumLifetime: 10 * time.Minute,
+			// The first two controls are integrity preconditions that cannot fail
+			// once the lifecycle has admitted the candidate. The remaining three
+			// are the controls capable of failing; the verifier refuses any plan
+			// whose independent controls are all inapplicable to the changed
+			// paths.
 			Controls: []verificationcontract.Control{
-				{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
-				{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlCandidateIntegrity, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlDeclaredPathScope, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlGoFormat, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlDocumentMetadata, Version: "1", Consequential: true},
+				{ID: verificationcontract.ControlMarkdownLinks, Version: "1", Consequential: true},
 			},
 		}, journey.now,
 	)

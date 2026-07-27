@@ -37,6 +37,8 @@ nav:
   - M1 Exit Model-Assisted Self-Build: governance/m1-exit-model-assisted-self-build-evidence.md
   - M1 Exit Operational Journey: governance/m1-exit-operational-journey-evidence.md
   - M1 Workbench Prototype: governance/m1-workbench-prototype-evidence.md
+  - Day-Proof External Attestation: governance/dayproof-external-attestation-evidence.md
+  - Verifier Independence Attack Results: governance/verifier-independence-evidence.md
   - Historical Minimum Acceptance Packet: governance/minimum-architecture-acceptance.md
   - Architecture:
       - Overview: architecture/overview.md
@@ -65,6 +67,7 @@ nav:
       - Extensibility: architecture/extensibility.md
   - Governance:
       - Delivery: governance/delivery.md
+      - AI Delivery Experiment: governance/ai-delivery-experiment.md
       - Documentation Lifecycle: governance/document-lifecycle.md
       - Content Migration: governance/content-migration.md
       - External Baseline Assessment: governance/workplace-baseline-assessment.md
@@ -94,9 +97,13 @@ nav:
       - ADR-0021 Guided Resumable M1 Journey: decisions/0021-guided-resumable-m1-journey.md
       - ADR-0022 Model-Assisted Product Discovery: decisions/0022-non-authoritative-model-assisted-product-discovery.md
       - ADR-0023 Bounded Model-Assisted Change Preparation: decisions/0023-bounded-model-assisted-change-preparation.md
+      - ADR-0024 Rebaseline Forge as Bounded Means: decisions/0024-rebaseline-forge-as-bounded-means.md
+      - ADR-0025 Versioned Verification Contracts v2: decisions/0025-versioned-verification-contracts-v2.md
   - Roadmap: roadmap.md
   - Reference Applications:
       - Workplace Orchestrator: reference-applications/workplace-orchestrator.md
+      - Workplace Orchestrator Positioning: reference-applications/workplace-orchestrator-positioning.md
+      - Spike Room Navigator Calendar Source: reference-applications/spike-room-navigator-calendar-source.md
   - Reference:
       - Glossary: reference/glossary.md
   - Source Material:

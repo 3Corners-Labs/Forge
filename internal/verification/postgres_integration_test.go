@@ -33,6 +33,7 @@ func TestPostgresVerificationContractsSurviveRestart(t *testing.T) {
 		RiskClass: "low", Classification: "Internal",
 		AffectedCapabilities: []string{"forge.capability.delivery"}, ChangedPaths: []string{"internal/example.go"},
 		Controls:    []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
+		ProducedBy:  "forge.worker.subject.test",
 		Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
 		EvidenceCorrelationID: "correlation-" + now.Format(time.RFC3339Nano),
 	})
@@ -42,7 +43,8 @@ func TestPostgresVerificationContractsSurviveRestart(t *testing.T) {
 	result, err := verificationcontract.BindResult(verificationcontract.Result{
 		SchemaVersion: verificationcontract.ResultVersion, AssurancePlanID: plan.ID,
 		AssurancePlanDigest: plan.Digest, CandidateDigest: plan.CandidateDigest,
-		Environment: plan.Environment, Outcome: "passed", Independent: true, CompletedAt: now,
+		Environment: plan.Environment, Outcome: "passed", Independent: true,
+		VerifiedBy: "forge.verifier.test", CompletedAt: now,
 		EvidenceCorrelationID: plan.EvidenceCorrelationID,
 		Findings: []verificationcontract.Finding{{
 			ControlID: "forge.candidate-integrity", Outcome: "passed", Code: "passed",

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://3corners.example/schemas/forge/trust/v1/verification-result-v2.schema.json",
+  "title": "Forge Verification Result v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "digest", "assurancePlanId", "assurancePlanDigest", "candidateDigest", "environment", "findings", "outcome", "independent", "verifiedBy", "completedAt", "evidenceCorrelationId"],
+  "properties": {
+    "schemaVersion": {"const": "forge.verification-result.v2"}, "id": {"type": "string", "minLength": 1},
+    "digest": {"$ref": "#/$defs/digest"}, "assurancePlanId": {"type": "string", "minLength": 1},
+    "assurancePlanDigest": {"$ref": "#/$defs/digest"}, "candidateDigest": {"$ref": "#/$defs/digest"},
+    "verifiedBy": {"type": "string", "minLength": 1},
+    "environment": {"const": "developer-trial"}, "findings": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/finding"}},
+    "outcome": {"enum": ["passed", "failed"]}, "independent": {"const": true},
+    "completedAt": {"type": "string", "format": "date-time"}, "evidenceCorrelationId": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["controlId", "outcome", "code", "evidenceDigest", "candidateOwned", "consequential"],
+      "properties": {
+        "controlId": {"type": "string", "minLength": 1}, "outcome": {"enum": ["passed", "failed"]},
+        "code": {"type": "string", "minLength": 1}, "evidenceDigest": {"$ref": "#/$defs/digest"},
+        "candidateOwned": {"type": "boolean"}, "consequential": {"type": "boolean"}
+      }
+    }
+  }
+}

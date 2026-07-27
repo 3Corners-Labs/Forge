@@ -53,6 +53,8 @@ AI assists with discovery, reasoning, creation, and operation. People and their 
 
 Forge is developed as a reusable application-development team and Engineering Operating System. Workplace Orchestrator and later products validate Forge, but no lighthouse application may become the hidden platform architecture.
 
+> **Evidence label: Vision.** [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md) demoted this principle from a binding design constraint to an aspiration. Forge is developed as a bounded means for delivering 3Corners applications, and MAY be shaped by Workplace requirements where that shortens delivery, provided the coupling is recorded and reversible. The principle is retained because generality remains desirable and because a second application would reinstate it. Reusability is no longer a reason to build capability ahead of demonstrated need.
+
 ### 11. Simplicity is created, not discovered
 
 Simplicity is an external quality achieved through deliberate internal engineering. Forge may contain sophisticated mechanisms when they remove recurring accidental complexity for users and applications.

@@ -3,6 +3,8 @@
 Status: Accepted
 Owner: Workplace Orchestrator Product
 
+> **Revised by [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md).** Workplace delivery begins after M1 exit rather than at the former M6, proceeds in a **separate repository**, and is subject to the sovereignty tiers recorded below. Market positioning and the load-bearing product assumption are recorded separately in [Workplace Orchestrator positioning](workplace-orchestrator-positioning.md).
+
 ## Relationship to Forge
 
 Workplace Orchestrator is the first business application commissioned to the Forge development team after Forge reaches its controlled change-preparation stage. It is simultaneously:
@@ -13,6 +15,62 @@ Workplace Orchestrator is the first business application commissioned to the For
 - a validation of identical signed artefacts across SaaS and self-hosted profiles.
 
 Workplace does not become part of the Forge platform core. It consumes Forge capabilities through versioned contracts in the same way that future applications will.
+
+## Repository boundary
+
+Workplace Orchestrator SHALL be developed in a separate repository with its own lifecycle, license, and decision register.
+
+Forge modules SHALL NOT contain workplace reservation, occupancy, navigation, sensor, or collaboration-domain logic. Workplace SHALL NOT depend on unreleased Forge runtime internals.
+
+The separation is not only a capability boundary. It is the only honest test of whether Forge can deliver into a codebase it did not generate, which is the question the [AI delivery experiment](../governance/ai-delivery-experiment.md) measures.
+
+## Sovereignty tiers
+
+The product is positioned for organizations reducing hyperscaler dependency. That obligation reaches into how the product is built, not only how it runs.
+
+| Tier | Requirement |
+|---|---|
+| Workplace runtime | SHALL function completely without any external model provider. Model-assisted features are optional enhancements that degrade to deterministic behaviour. |
+| Forge build-time, accountable owner | MAY use an external cloud model. This is a tool choice by the accountable engineer, not a product dependency. |
+| Forge build-time, community contributor | SHALL be operable against a locally hosted model or small language model for at least one complete delivery path, before any claim that the application is community-maintainable. |
+
+No claim of community maintainability, sovereignty, or hyperscaler independence SHALL be published before tier-three evidence exists.
+
+## Identity boundary
+
+The product's purpose is to know **how many** people occupy a space and where those numbers are, not **who** they are. Counts, not names.
+
+This is an architectural constraint, not a policy statement, and it is enforced at ingestion rather than at presentation. What is not collected cannot leak, cannot be subpoenaed, and cannot be repurposed.
+
+### Why the line sits here
+
+Annex III point 4(b) of the AI Act treats systems that monitor and evaluate the behaviour of workers as high-risk. Those obligations apply from 2 December 2027. A room and desk booking tool with occupancy counting is not high-risk. It becomes arguable the moment the product produces per-employee presence analytics, attendance or utilisation scoring, or feeds HR dashboards.
+
+Staying on the safe side of that line is worth more than the features it forecloses. Crossing it deliberately, later, with an accountable decision, remains possible. Drifting across it by accident does not.
+
+### The identity actually arrives through the calendar
+
+The obvious risk is sensors. The real risk is bookings.
+
+Every reservation carries an organizer. The Webex `Bookings` API requires `Organizer/Name`, and any calendar source carries the same. So without a single sensor the system already holds *who* reserved *which space* at *what time*. Add check-in confirmation and it holds confirmed attendance. Aggregate that over weeks and it holds an attendance pattern per employee.
+
+Guarding the sensor path while leaving the booking path open would protect the wrong door.
+
+### Rules
+
+1. **Purpose separation.** Booking identity exists to serve the person who booked: showing them their own reservations, letting them release or extend. It SHALL NOT be a source for occupancy analysis, utilisation reporting, or any aggregate. The two data flows are separated at ingestion and SHALL NOT be joined.
+2. **Deliberate check-in is the only identified presence signal.** A person checking in is an explicit, visible act by that person. Presence SHALL NOT be inferred from a device, a network association, a camera, or a badge.
+3. **Small-number suppression.** Aggregates below a declared threshold are not displayed. Two people in a four-person room on a Friday evening, next to a booking record, is not anonymous.
+4. **Retention differs per flow.** Bookings and check-ins are operational and retained briefly. Aggregates are management information and may be retained longer. Equal retention would reconstitute an attendance archive.
+5. **Ingestion discipline.** Room devices can report more than a count, and calendar integrations carry organizer identity. The product SHALL declare what it does not ingest, and that declaration is testable.
+
+### Consequences
+
+Some features are foreclosed: per-person utilisation reports, individual attendance summaries, and any "who is in the office today" view beyond what a colleague has chosen to share. That is intended.
+
+This boundary is also a differentiator. Both incumbent products are identity-bound by construction, because they are extensions of an account and device estate. A product that structurally cannot identify individuals is a materially different offer to a works council.
+
+When Workplace Orchestrator moves to its own repository, this section SHALL become its first architecture decision record.
 
 ## Existing product baseline
 

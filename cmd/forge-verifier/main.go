@@ -18,6 +18,7 @@ func main() {
 	bundlePath := flag.String("bundle", "", "immutable candidate bundle")
 	workspace := flag.String("workspace", "", "fresh source checkout")
 	resultPath := flag.String("result", "", "verification result output")
+	identity := flag.String("identity", verifierruntime.DefaultIdentity, "verifier principal recorded in the result")
 	flag.Parse()
 	if *planPath == "" || *bundlePath == "" || *workspace == "" || *resultPath == "" {
 		exit("verifier arguments are invalid")
@@ -38,7 +39,7 @@ func main() {
 	if err != nil {
 		exit("candidate bundle is invalid")
 	}
-	engine, _ := verifierruntime.NewEngine(func() time.Time { return time.Now().UTC() })
+	engine, _ := verifierruntime.NewEngine(func() time.Time { return time.Now().UTC() }, *identity)
 	result, err := engine.Verify(context.Background(), plan, bundle, *workspace)
 	if err != nil {
 		exit("candidate verification failed")

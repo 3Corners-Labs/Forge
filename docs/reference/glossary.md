@@ -8,10 +8,12 @@ Owner: Forge Architecture
 - Accepted scenario: a reviewed, versioned user journey whose expected and forbidden outcomes may contribute to release eligibility.
 - Autonomous security testing: offensive testing in which software selects or adapts targets, techniques, or exploitation steps within externally enforced rules of engagement.
 - Capability: a durable business responsibility independent of deployment topology.
+- Independent blocking check: a control that Forge owns, that is capable of failing for the paths a candidate changes, and whose failure stops the candidate. Verification is refused when a plan has none, because certifying a candidate against checks that cannot fail is empty assurance. A check examines and reports; the verification result aggregates checks; a gate is a point where something is stopped. Earlier documents call this an "independent consequential oracle"; that phrase overstated a bounded mechanism and is no longer used in new writing.
 - Delivery run: a traceable instance that transforms intent into artefacts and evidence.
 - Evidence: structured, attributable proof of decisions, execution, validation, and outcomes.
 - End-User Assurance Agent: a governed role that executes and explores scenarios as least-privilege personas through public application interfaces without owning product intent or release approval.
 - Execution envelope: immutable constraints and authority supplied to an agent or tool invocation.
+- Test oracle: the kind of authority that decides whether an observed outcome is correct, recorded per expected outcome as deterministic, reference, statistical, human, or semantic-supporting. This is the established testing term and is retained; it is distinct from a independent blocking check, which is one concrete control.
 - Forge Workbench: the role-aware interface for collaboration, visualization, explanation, and approval.
 - Intent-driven development: progressive conversion of human outcomes into governed delivery artefacts.
 - Exploratory scenario: a non-authoritative journey used to discover behaviour, risks, or product opportunities; it becomes release-gating only after accountable review.

@@ -51,11 +51,17 @@ The result includes more than source code:
 - portable across Forge SaaS and self-hosted deployment;
 - able to develop Forge itself under stricter self-modification controls.
 
-### Forge first, Workplace second
+### Forge and Workplace
 
 [Workplace Orchestrator](../reference-applications/workplace-orchestrator.md) is the first business application commissioned to the Forge team. Its existing masterplan, privacy and security requirements, logical architecture, cryptographic design, technology research, and product roadmap become structured input to Forge rather than being merged into Forge platform code.
 
-Before accepting that commission, Forge must exist as a usable development-team application: it can ingest knowledge, coordinate roles, prepare branches and pull requests, run independent checks, explain its work, and operate within human-controlled authority. Workplace then proves that the team can ingest substantial prior thinking, challenge it, create a governed product workspace, produce a Software System Twin, build a reproducible application environment, and deliver a secure vertical slice for both SaaS and self-hosted operation.
+> **Revised by [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md).** This section previously required Forge to exist as a complete usable development-team application before accepting the Workplace commission. That sequencing placed the stated objective behind platform work the available capacity could not complete. Workplace delivery now begins after M1 exit, and Workplace requirements are a legitimate driver of Forge scope.
+
+Forge must be able to prepare one governed change through a complete trust path before it delivers an application: bounded context, planned work, isolated execution, independent verification, and human publication authority. That is the M1 exit condition, and it remains a precondition.
+
+The remaining capabilities previously required here — a coordinated multi-role workforce, a Software System Twin, and a generated application environment — are recorded as Vision direction in the [roadmap](../roadmap.md). They are reinstated by demonstrated delivery need, not by sequence.
+
+Workplace delivery proceeds in a separate repository with its own lifecycle and decision register. This preserves the capability boundary and provides the only honest test of whether Forge can deliver into a codebase it did not generate.
 
 ## 4A. Bootstrap strategy
 
@@ -373,6 +379,8 @@ Weighted evaluation considers architectural fit, operational simplicity, securit
 ## 18. Roadmap
 
 > **Implementation sequencing:** accepted [ADR-0007](../decisions/0007-sequence-self-building-before-full-advisory.md) places the bounded self-building kernel before the general advisory product. The stages below retain the product-level capability progression; the canonical implementation sequence and F0 readiness gate are defined in the [implementation roadmap](../roadmap.md).
+>
+> **Scope:** accepted [ADR-0024](../decisions/0024-rebaseline-forge-as-bounded-means.md) rebaselined Forge as a bounded means for delivering 3Corners applications. Only M1 through M3 in the implementation roadmap are committed scope. The M2 through M7 stages below describe product-level capability direction with evidence label **Vision**; they are not a plan and SHALL NOT justify building capability ahead of demonstrated delivery need.
 
 ### M0: Coherent architecture baseline
 

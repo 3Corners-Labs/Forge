@@ -1,4 +1,15 @@
+---
+title: Engineering Language
+project: Forge
+document: ENGINEERING_LANGUAGE.md
+version: 1.0-draft
+status: Draft
+owner: Forge Architecture
+---
+
 # Engineering Language
+
+> **Historical Draft:** this document is preserved as consolidation source and is not normative. Its concepts are being consolidated into [`docs/reference/glossary.md`](reference/glossary.md); only Accepted documents have authority.
 
 ## Canonical Language
 

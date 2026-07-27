@@ -15,9 +15,13 @@ import (
 	"time"
 )
 
+// ADR-0025 versioned these contracts when provenance became mandatory. v1
+// remains readable for historical validation but cannot satisfy a current gate.
 const (
-	AssurancePlanVersion = "forge.assurance-plan.v1"
-	ResultVersion        = "forge.verification-result.v1"
+	AssurancePlanVersion   = "forge.assurance-plan.v2"
+	ResultVersion          = "forge.verification-result.v2"
+	AssurancePlanVersionV1 = "forge.assurance-plan.v1"
+	ResultVersionV1        = "forge.verification-result.v1"
 )
 
 var ErrInvalidContract = errors.New("verification contract is invalid")
@@ -50,6 +54,18 @@ func DecodeResult(encoded []byte) (Result, error) {
 	return value, nil
 }
 
+// Forge-owned control identifiers. They live in the shared contract because
+// both the control plane, when it composes an assurance profile, and the
+// isolated verifier, when it evaluates one, must name the same controls without
+// the control plane depending on the verifier deployment unit.
+const (
+	ControlCandidateIntegrity = "forge.candidate-integrity"
+	ControlDeclaredPathScope  = "forge.declared-path-scope"
+	ControlGoFormat           = "forge.go-format"
+	ControlDocumentMetadata   = "forge.document-metadata"
+	ControlMarkdownLinks      = "forge.markdown-links"
+)
+
 type Control struct {
 	ID             string `json:"id"`
 	Version        string `json:"version"`
@@ -68,6 +84,7 @@ type AssurancePlan struct {
 	AffectedCapabilities  []string  `json:"affectedCapabilities"`
 	ChangedPaths          []string  `json:"changedPaths"`
 	Controls              []Control `json:"controls"`
+	ProducedBy            string    `json:"producedBy"`
 	Environment           string    `json:"environment"`
 	ExpiresAt             time.Time `json:"expiresAt"`
 	EvidenceCorrelationID string    `json:"evidenceCorrelationId"`
@@ -93,6 +110,7 @@ type Result struct {
 	Findings              []Finding `json:"findings"`
 	Outcome               string    `json:"outcome"`
 	Independent           bool      `json:"independent"`
+	VerifiedBy            string    `json:"verifiedBy"`
 	CompletedAt           time.Time `json:"completedAt"`
 	EvidenceCorrelationID string    `json:"evidenceCorrelationId"`
 }
@@ -108,20 +126,20 @@ func BindPlan(value AssurancePlan) (AssurancePlan, error) {
 		!validDigest(value.PlanDigest) || value.RiskClass == "" || value.Classification == "" ||
 		value.Environment != "developer-trial" || value.ExpiresAt.IsZero() ||
 		value.EvidenceCorrelationID == "" || len(value.AffectedCapabilities) == 0 ||
-		len(value.ChangedPaths) == 0 || len(value.Controls) == 0 {
+		len(value.ChangedPaths) == 0 || len(value.Controls) == 0 || value.ProducedBy == "" {
 		return AssurancePlan{}, ErrInvalidContract
 	}
-	hasIndependentOracle := false
+	hasBlockingIndependentCheck := false
 	for index, control := range value.Controls {
 		if control.ID == "" || control.Version == "" ||
 			(index > 0 && value.Controls[index-1].ID == control.ID) {
 			return AssurancePlan{}, ErrInvalidContract
 		}
 		if control.Consequential && !control.CandidateOwned {
-			hasIndependentOracle = true
+			hasBlockingIndependentCheck = true
 		}
 	}
-	if !hasIndependentOracle {
+	if !hasBlockingIndependentCheck {
 		return AssurancePlan{}, ErrInvalidContract
 	}
 	value.Digest = digest(value)
@@ -144,7 +162,7 @@ func BindResult(value Result) (Result, error) {
 	if value.SchemaVersion != ResultVersion || value.AssurancePlanID == "" ||
 		!validDigest(value.AssurancePlanDigest) || !validDigest(value.CandidateDigest) ||
 		value.Environment != "developer-trial" || value.CompletedAt.IsZero() ||
-		value.EvidenceCorrelationID == "" || !value.Independent ||
+		value.EvidenceCorrelationID == "" || !value.Independent || value.VerifiedBy == "" ||
 		(value.Outcome != "passed" && value.Outcome != "failed") || len(value.Findings) == 0 {
 		return Result{}, ErrInvalidContract
 	}
@@ -178,6 +196,15 @@ func (value Result) Validate(plan AssurancePlan) error {
 		value.CandidateDigest != plan.CandidateDigest || value.Environment != plan.Environment ||
 		value.EvidenceCorrelationID != plan.EvidenceCorrelationID ||
 		!value.CompletedAt.Before(plan.ExpiresAt) || len(value.Findings) != len(plan.Controls) {
+		return ErrInvalidContract
+	}
+	// OWASP AISVS Appendix C, AC.8.1: an agent may not approve what it produced.
+	// The producing principal is issued by Identity under Policy, so a candidate
+	// cannot assert it. Today's verifier is deterministic and therefore always a
+	// different principal, so this invariant is dormant; it becomes load-bearing
+	// the moment verification itself becomes model-assisted. It lives here
+	// rather than in a control because a profile can omit a control.
+	if value.VerifiedBy == plan.ProducedBy {
 		return ErrInvalidContract
 	}
 	for index, control := range plan.Controls {

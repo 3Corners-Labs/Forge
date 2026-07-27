@@ -225,8 +225,8 @@ func completeM1BDelivery(t testing.TB, service *Service, approved DeliveryRun) D
 		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
 		PlanDigest: plan.Digest, RiskClass: plan.RiskClass, Classification: verifying.Classification(),
 		AffectedCapabilities: slices.Clone(plan.AffectedCapabilities), ChangedPaths: changedPaths,
-		Controls:    []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
-		Environment: "developer-trial", ExpiresAt: lifecycleTime.Add(time.Hour),
+		Controls:   []verificationcontract.Control{{ID: "forge.candidate-integrity", Version: "1", Consequential: true}},
+		ProducedBy: "forge.worker.subject.test", Environment: "developer-trial", ExpiresAt: lifecycleTime.Add(time.Hour),
 		EvidenceCorrelationID: verifying.CorrelationID(),
 	})
 	if err != nil {
@@ -235,7 +235,7 @@ func completeM1BDelivery(t testing.TB, service *Service, approved DeliveryRun) D
 	verificationResult, err := verificationcontract.BindResult(verificationcontract.Result{
 		SchemaVersion: verificationcontract.ResultVersion, AssurancePlanID: assurancePlan.ID,
 		AssurancePlanDigest: assurancePlan.Digest, CandidateDigest: bundle.Digest,
-		Environment: "developer-trial", Outcome: "passed", Independent: true, CompletedAt: lifecycleTime,
+		Environment: "developer-trial", Outcome: "passed", Independent: true, VerifiedBy: "forge.verifier.test", CompletedAt: lifecycleTime,
 		EvidenceCorrelationID: verifying.CorrelationID(),
 		Findings: []verificationcontract.Finding{{
 			ControlID: "forge.candidate-integrity", Outcome: "passed", Code: "passed",
