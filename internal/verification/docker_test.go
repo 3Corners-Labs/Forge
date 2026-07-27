@@ -119,9 +119,14 @@ func TestVerifierDockerRunnerExecutesImmutableDeveloperTrialImage(t *testing.T) 
 		SchemaVersion: verificationcontract.AssurancePlanVersion, CandidateDigest: bundle.Digest,
 		PlanDigest: bundle.PlanDigest, RiskClass: "low", Classification: "Internal",
 		AffectedCapabilities: []string{"forge.capability.delivery"}, ChangedPaths: []string{"docs/result.md"},
+		// The two integrity controls cannot fail for any candidate the lifecycle
+		// admits, so a plan carrying only those certifies nothing. The verifier
+		// refuses it. Markdown link resolution is the control that can actually
+		// fail for a .md candidate.
 		Controls: []verificationcontract.Control{
 			{ID: "forge.candidate-integrity", Version: "1", Consequential: true},
 			{ID: "forge.declared-path-scope", Version: "1", Consequential: true},
+			{ID: "forge.markdown-links", Version: "1", Consequential: true},
 		},
 		ProducedBy: "forge.worker.subject.test", Environment: "developer-trial", ExpiresAt: now.Add(time.Hour),
 		EvidenceCorrelationID: "correlation-integration",
