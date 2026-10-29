@@ -1,0 +1,8 @@
+3Corners Forge
+Copyright 2026 3Corners
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes software developed by third parties under their own licences.
+Their notices are kept with each dependency; see go.mod and
+internal/experience/workbench/ui/package.json for the list.

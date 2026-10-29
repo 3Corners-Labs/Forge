@@ -36,3 +36,4 @@ File names use `NNNN-short-title.md`. Each ADR records status, context, decision
 | [ADR-0023](0023-bounded-model-assisted-change-preparation.md) | Permit bounded model-assisted change preparation for M1 exit | Accepted |
 | [ADR-0024](0024-rebaseline-forge-as-bounded-means.md) | Rebaseline Forge as a bounded means for sovereign application delivery | Accepted |
 | [ADR-0025](0025-versioned-verification-contracts-v2.md) | Introduce versioned verification contracts v2 | Accepted |
+| [ADR-0026](0026-apache-licence-and-dco-contributions.md) | License Forge under Apache-2.0 and accept contributions under the DCO | Accepted |
