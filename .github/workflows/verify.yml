@@ -49,13 +49,14 @@ jobs:
           pnpm run build
           git diff --exit-code -- ../dist
           pnpm run test:e2e
+      # Same pinned image as deploy/compose/docker-compose.yml.
       - name: Start Developer Trial MinIO
         run: >-
           docker run --detach --rm --name forge-test-minio
           --publish 9000:9000
           --env MINIO_ROOT_USER=minio
           --env MINIO_ROOT_PASSWORD=minio-dev-only
-          minio/minio:RELEASE.2025-04-22T22-12-26Z server /data
+          pgsty/minio:RELEASE.2026-08-04T00-00-00Z@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372 server /data
       - name: Wait for MinIO
         run: |
           for attempt in $(seq 1 30); do
