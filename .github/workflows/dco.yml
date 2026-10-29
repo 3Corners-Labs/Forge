@@ -1,0 +1,33 @@
+name: DCO
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # ADR-0026: every human commit carries a Developer Certificate of Origin
+      # sign-off by its author. Bot accounts cannot certify and are skipped.
+      - name: Check Signed-off-by on every commit
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for commit in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            email=$(git show -s --format='%ae' "$commit")
+            case "$email" in *'[bot]@users.noreply.github.com') continue ;; esac
+            if ! git show -s --format='%(trailers:key=Signed-off-by,valueonly)' "$commit" | grep -qiF "<$email>"; then
+              echo "::error::$(git show -s --format='%h %s' "$commit") lacks 'Signed-off-by:' for its author; amend with 'git commit -s'"
+              missing=1
+            fi
+          done
+          exit "$missing"

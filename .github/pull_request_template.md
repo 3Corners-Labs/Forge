@@ -34,6 +34,7 @@ Describe agent-generated content, models or tools used, and the human review per
 ## Review checklist
 
 - [ ] Tests added or updated
+- [ ] Every commit is signed off under the DCO (`git commit -s`)
 - [ ] Security and privacy impact considered
 - [ ] Accessibility impact considered
 - [ ] Accepted user outcomes were preserved or their reviewed change is explicit
