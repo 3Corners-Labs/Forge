@@ -107,4 +107,4 @@ All candidates remain Research until an ADR records versions, licensing, update 
 - [OWASP ZAP Automation Framework](https://www.zaproxy.org/docs/automate/automation-framework/) — candidate passive, authenticated and active DAST orchestration.
 - [Nuclei documentation](https://docs.projectdiscovery.io/opensource/nuclei/overview) — candidate curated vulnerability-regression runner.
 - [Trivy documentation](https://trivy.dev/docs/latest/guide/) — candidate filesystem, image, dependency and configuration scanner.
-- [OWASP Autonomous Penetration Testing Standard](https://owasp.org/APTS/standard/Introduction.html) — candidate governance reference for future autonomous offensive capability; it is not a testing methodology.
+- [OWASP Autonomous Penetration Testing Standard](https://github.com/OWASP/APTS/blob/main/standard/Introduction.md) — candidate governance reference for future autonomous offensive capability; it is not a testing methodology.

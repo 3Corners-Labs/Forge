@@ -1,6 +1,6 @@
 module github.com/3corners/forge
 
-go 1.26.5
+go 1.26.10
 
 require (
 	github.com/jackc/pgx/v5 v5.9.2
@@ -26,5 +26,5 @@ require (
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )
